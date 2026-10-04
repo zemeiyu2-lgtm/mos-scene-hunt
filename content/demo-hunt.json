@@ -3,9 +3,9 @@
   "id": "demo-hunt",
   "language": "zh-CN",
   "title": "Demo Hunt · 记忆之路",
-  "description": "一条三站式的城市微寻宝。你会在三个真实地点之间移动，观察身边的世界，回答一个简单的问题，收集一个关键词，最后走完一条被遗忘的「记忆之路」。本内容包用于验证 MOS Scene Hunt V0.1 的完整闭环。",
+  "description": "一条三站式的城市微寻宝。你会在一个约 1.5 公里的探索区域内，在三个真实地点之间移动，观察身边的世界，回答一个简单的问题，收集一个关键词，最后走完一条被遗忘的「记忆之路」。本内容包用于验证 MOS Scene Hunt V0.2 的区域寻宝闭环。",
   "author": "MOS Scene Hunt",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "estimatedMinutes": 25,
   "difficulty": "easy",
 
@@ -15,6 +15,15 @@
     "lng": 120.9794,
     "name": "寻宝起点 · 集合点",
     "radius": 80
+  },
+
+  "huntArea": {
+    "center": {
+      "lat": 14.584481,
+      "lng": 120.9794
+    },
+    "radiusMeters": 1500,
+    "name": "马尼拉城市探索区 · 1.5 km"
   },
 
   "entrySceneId": "scene-a",
