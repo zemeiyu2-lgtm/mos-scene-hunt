@@ -27,7 +27,7 @@ import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
 import { bearing, bearingToCompass, formatDistance, resolveRadius } from "@/lib/location";
 import type { SceneStatus } from "@/lib/game/state";
-import type { Scene } from "@/lib/game/types";
+import type { HuntArea, Scene } from "@/lib/game/types";
 import type { PositionFix } from "@/lib/location";
 
 import { TILE_PROVIDERS, type TileProviderId } from "@/lib/map/tiles";
@@ -46,6 +46,7 @@ export interface MapSceneEntry {
 interface GameMapProps {
   player: PositionFix | null;
   entries: MapSceneEntry[];
+  huntArea?: HuntArea;
   tileProvider: TileProviderId;
   /** Called when the developer drags the simulated player marker. */
   onSimulatedDrag?: (lat: number, lng: number) => void;
@@ -105,6 +106,7 @@ function playerIcon(simulated: boolean): L.DivIcon {
 export default function GameMap({
   player,
   entries,
+  huntArea,
   tileProvider,
   onSimulatedDrag,
   draggablePlayer = false,
@@ -120,6 +122,7 @@ export default function GameMap({
   const playerMarkerRef = useRef<L.Marker | null>(null);
   const playerHaloRef = useRef<L.Circle | null>(null);
   const directionLineRef = useRef<L.Polyline | null>(null);
+  const huntAreaRef = useRef<L.Circle | null>(null);
 
   // Callbacks arriving via props must not become stale closures inside Leaflet
   // event handlers, so they are read through a ref at event time.
@@ -181,6 +184,7 @@ export default function GameMap({
       playerMarkerRef.current = null;
       playerHaloRef.current = null;
       directionLineRef.current = null;
+      huntAreaRef.current = null;
     };
     // Mount/unmount only. Everything else is synced below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -261,6 +265,37 @@ export default function GameMap({
       }
     }
   }, [ringsSignature, entries]);
+
+  /* ------------------------------------------------ 整体寻宝区域 */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (!huntArea) {
+      if (huntAreaRef.current) {
+        map.removeLayer(huntAreaRef.current);
+        huntAreaRef.current = null;
+      }
+      return;
+    }
+
+    const center: L.LatLngExpression = [huntArea.center.lat, huntArea.center.lng];
+    if (!huntAreaRef.current) {
+      huntAreaRef.current = L.circle(center, {
+        radius: huntArea.radiusMeters,
+        color: "#5b6b9a",
+        weight: 2,
+        opacity: 0.55,
+        fillColor: "#5b6b9a",
+        fillOpacity: 0.035,
+        dashArray: "8 8",
+        interactive: false,
+      }).addTo(map);
+    } else {
+      huntAreaRef.current.setLatLng(center);
+      huntAreaRef.current.setRadius(huntArea.radiusMeters);
+    }
+  }, [huntArea?.center.lat, huntArea?.center.lng, huntArea?.radiusMeters]);
 
   /* ------------------------------------------------ 场景标记 */
   useEffect(() => {
