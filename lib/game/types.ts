@@ -109,6 +109,17 @@ export interface Scene {
     scale?: number;
     rotation?: [number, number, number];
   };
+  /** Real-world place metadata for authored location-based content. */
+  place?: {
+    name: string;
+    type?: "monument" | "garden" | "memorial" | "landmark" | "public-space";
+    observationFocus?: string;
+    accessNote?: string;
+    source?: {
+      name: string;
+      url: string;
+    };
+  };
   /** Optional per-scene overrides for the map style. */
   mapStyle?: {
     color?: string;

@@ -2,18 +2,18 @@
   "$schema": "../../docs/game-data.schema.json",
   "id": "demo-hunt",
   "language": "zh-CN",
-  "title": "Demo Hunt · 记忆之路",
-  "description": "一条三站式的城市微寻宝。你会在一个约 1.5 公里的探索区域内，在三个真实地点之间移动，观察身边的世界，回答一个简单的问题，收集一个关键词，最后走完一条被遗忘的「记忆之路」。本内容包用于验证 MOS Scene Hunt V0.2 的区域寻宝闭环。",
+  "title": "Luneta · 看见这座城市",
+  "description": "一条真实地点驱动的五站城市寻宝。你将在 Rizal Park（Luneta）约 1.5 公里的探索区域内，走到真实的纪念碑、花园与公共空间，在现场观察、历史记忆与信仰反思之间移动。每一站都必须先到现场，再解锁任务。",
   "author": "MOS Scene Hunt",
-  "version": "0.2.0",
-  "estimatedMinutes": 25,
+  "version": "0.3.0",
+  "estimatedMinutes": 55,
   "difficulty": "easy",
 
   "startLocation": {
-    "_note": "起点必须落在所有场景的触发半径之外，否则玩家还没动就已经解锁了第一站。此处距 scene-a 约 97m。",
+    "_note": "集合点位于 Rizal Park 东侧，距第一站 Sentinel of Freedom 约 130m。",
     "lat": 14.584481,
     "lng": 120.9794,
-    "name": "寻宝起点 · 集合点",
+    "name": "Luneta 集合点",
     "radius": 80
   },
 
@@ -23,18 +23,18 @@
       "lng": 120.9794
     },
     "radiusMeters": 1500,
-    "name": "马尼拉城市探索区 · 1.5 km"
+    "name": "Rizal Park 城市探索区 · 1.5 km"
   },
 
   "entrySceneId": "scene-a",
 
   "aiProfile": {
-    "tone": "克制、安静、略带怀旧；像一位不催促你的向导",
+    "tone": "真实、安静、带一点城市行走感；像一位带队的教会导师，而不是导游",
     "canon": [
-      "本寻宝的主题是「记忆」",
-      "第二个关键词是「方向」，第三个是「归处」",
-      "全部任务都发生在户外开阔地带，不需要进入任何建筑物",
-      "场景与 GPS、坐标、距离的规则由引擎决定，任何叙述都不能改变解锁条件"
+      "所有地点都是真实的 Rizal Park / Luneta 公共空间或纪念地点",
+      "玩家必须先到达 GPS 触发圈，再解锁该站内容",
+      "内容重点不是背诵历史，而是让真实地点成为观察、记忆、责任与使命的入口",
+      "历史事实只采用内容包注明的来源；现场任务主要要求观察与反思，不把 AI 当作事实裁判"
     ],
     "allowGeneration": false
   },
@@ -42,40 +42,50 @@
   "scenes": [
     {
       "id": "scene-a",
-      "title": "第一站 · 观察",
-      "story": "你站在起点。周围是你每天都会经过、却从未真正看过的地方。\n\n先别急着走。抬头看一眼离你最近的那栋建筑——它的外墙是什么主要颜色？\n\n这不是考试，只是让你确认一件事：你确实在这里。",
-      "briefing": "前往第一站。向南走大约 100 米，方向由地图指引。",
+      "title": "第一站 · 自由",
+      "story": "你来到 Rizal Park 的东侧。
+
+眼前是一座高大的人物雕像。不要急着读说明。先站远一点，看整体；再走近一点，看姿态。
+
+这是 Sentinel of Freedom（Lapu-Lapu Monument）。它不是一个抽象的“自由”概念，而是一个真实的人物形象，被放在今天的城市空间里。",
+      "briefing": "前往第一站：Sentinel of Freedom。到达后，先观察雕像整体，再回答问题。",
       "location": {
-        "lat": 14.583604,
-        "lng": 120.9794,
-        "radius": 50,
-        "name": "第一站 · 观察点"
+        "lat": 14.58376,
+        "lng": 120.9805337,
+        "radius": 30,
+        "name": "Sentinel of Freedom · Lapu-Lapu Monument"
       },
-      "hint": "颜色只需要一个词。常见的有：白、灰、红、蓝、绿、黄、棕。",
+      "place": {
+        "name": "Sentinel of Freedom（Lapu-Lapu Monument）",
+        "type": "monument",
+        "observationFocus": "人物姿态、站立方式、人与城市空间的关系",
+        "accessNote": "在公共空间外部观察即可，不需要进入建筑。",
+        "source": {
+          "name": "National Museum of the Philippines / Philippine Information Agency",
+          "url": "https://pia.gov.ph/news/giant-lapu-lapu-figure-finds-new-home-at-national-museum-complex/"
+        }
+      },
+      "hint": "不要问“他是谁”先问“他以什么姿态站在这里”。",
       "challenge": {
         "type": "choice",
-        "question": "你眼前这栋建筑，外墙的主要颜色是哪一种？",
-        "options": ["白色", "灰色", "红色", "蓝色", "黄色", "绿色"],
+        "question": "现场观察这座雕像：它给你的第一印象更接近哪一种？",
+        "options": ["正在奔跑", "站立守卫", "坐着休息", "正在低头阅读"],
         "answer": 1,
-        "prompt": "在真实世界里观察，然后回答。答案会因地点不同而不同——在本 Demo 中，请按现场情况选择最接近的一项。",
-        "explanation": "观察是记忆的入口。你刚刚做的，是很多人在同一条路上走了十年都没有做过的事。",
+        "prompt": "这是观察题，不是历史考试。",
+        "explanation": "现场观察让“自由”从抽象概念变成一个可以被看见的姿态。",
         "hintAfterAttempts": 2
       },
       "reward": {
         "type": "keyword",
-        "title": "记忆",
-        "value": "记忆",
-        "description": "你获得的第一个关键词。它会一直留在你的背包里。",
-        "icon": "🔑"
+        "title": "自由",
+        "value": "自由",
+        "description": "第一个关键词：自由。",
+        "icon": "🕊️"
       },
       "nextSceneId": "scene-b",
       "dialogue": [
-        { "speaker": "narrator", "text": "你确认了自己的位置。城市开始回应你。" }
+        { "speaker": "narrator", "text": "先看见，再解释。城市本身就是一本打开的书。" }
       ],
-      "ar": {
-        "anchorType": "ground",
-        "scale": 1
-      },
       "mapStyle": {
         "color": "#f5a524",
         "icon": "1"
@@ -84,88 +94,214 @@
 
     {
       "id": "scene-b",
-      "title": "第二站 · 辨认",
-      "story": "继续往东南走。路会变窄一点。\n\n这一站的问题不再是颜色，而是一个字。\n\n你身边的人、脚下的路、头顶的天——都在提醒你一件事。你不必说出来，只要写下它。",
-      "briefing": "前往第二站。往东南移动大约 70 米。",
+      "title": "第二站 · 智慧",
+      "story": "从纪念碑走向花园。
+
+你现在进入的是 Chinese Garden。这里的速度和刚才不同：水、树、桥、石与人的脚步共同构成一个空间。
+
+这一站不要求你知道很多历史。你只需要安静三十秒，然后注意：一个空间怎样影响人的心。",
+      "briefing": "前往 Chinese Garden。进入花园公共区域后，找一个安全的位置停下来观察 30 秒。",
       "location": {
-        "lat": 14.5832,
-        "lng": 120.979883,
-        "radius": 50,
-        "name": "第二站 · 辨认点"
+        "lat": 14.58315,
+        "lng": 120.97757,
+        "radius": 30,
+        "name": "Chinese Garden · Rizal Park"
       },
-      "hint": "答案是一个字。它描述的是「你要往哪里去」。",
+      "place": {
+        "name": "Chinese Garden",
+        "type": "garden",
+        "observationFocus": "水面、植物、桥、人的活动与空间节奏",
+        "accessNote": "仅在开放的公共区域活动；不要跨越围栏或进入封闭区域。",
+        "source": {
+          "name": "National Parks Development Committee",
+          "url": "https://npdc.gov.ph/rizal-park/"
+        }
+      },
+      "hint": "先停下来，不要马上回答。",
       "challenge": {
-        "type": "keyword",
-        "question": "当你站在这里、继续向前走的时候，你正在寻找的是什么？请用一个字回答。",
-        "answer": ["方向", "路", "方向感"],
-        "acceptedKeywords": ["道", "路"],
-        "prompt": "这一题开放度较高。只要意思相近，引擎都会接受。",
-        "explanation": "关键词「方向」已经记入你的背包。没有方向的人走得很快，有方向的人走得对。",
+        "type": "choice",
+        "question": "在你停留的这 30 秒里，哪一种最明显地帮助你慢下来？",
+        "options": ["水与园林", "车辆与交通", "广告牌", "建筑施工"],
+        "answer": 0,
+        "prompt": "根据你此刻真实看到的环境作答。",
+        "explanation": "智慧不只是知道更多，也包括知道什么时候应该停下来观察。",
         "hintAfterAttempts": 2
       },
       "reward": {
         "type": "keyword",
-        "title": "方向",
-        "value": "方向",
-        "description": "第二个关键词。它和「记忆」放在一起时，会显示出新的意义。",
-        "icon": "🧭"
+        "title": "智慧",
+        "value": "智慧",
+        "description": "第二个关键词：智慧。",
+        "icon": "💧"
       },
       "nextSceneId": "scene-c",
-      "npc": {
-        "id": "guide",
-        "name": "向导",
-        "role": "沉默的同行者",
-        "aiDriven": false
-      },
       "dialogue": [
-        { "speaker": "guide", "text": "你走对了。继续。", "intent": "简短肯定，不解释" }
+        { "speaker": "narrator", "text": "一个好的地方，会帮助人重新调整自己的速度。" }
       ],
-      "ar": {
-        "anchorType": "ground",
-        "scale": 1
-      },
       "mapStyle": {
-        "color": "#f5a524",
+        "color": "#4f8fba",
         "icon": "2"
       }
     },
 
     {
       "id": "scene-c",
-      "title": "第三站 · 归处",
-      "story": "最后一站，往西南大约 80 米。\n\n你手里现在有两个词：记忆、方向。\n\n把它们放在一起，会得到第三个词。你不需要思考很久——你只需要承认你已经知道的那个答案。",
-      "briefing": "前往终点。往西南移动大约 80 米。",
+      "title": "第三站 · 人",
+      "story": "继续向东一点，来到 Juan Sumuroy Memorial 附近。
+
+到这里，不要寻找一个“标准答案”。看一看周围的人：游客、工作人员、跑步的人、坐着的人、经过的人。
+
+城市不是只有建筑和历史人物。城市真正发生的事情，是人在其中生活。",
+      "briefing": "前往 Juan Sumuroy Memorial 附近。在不打扰他人的前提下，观察周围人的活动。",
       "location": {
-        "lat": 14.582679,
-        "lng": 120.9794,
-        "radius": 50,
-        "name": "第三站 · 终点"
+        "lat": 14.58331,
+        "lng": 120.97902,
+        "radius": 30,
+        "name": "Juan Sumuroy Memorial"
       },
-      "hint": "这不是一个地名，也不是一个物体。它是一种「可以回去的地方」。",
+      "place": {
+        "name": "Juan Sumuroy Memorial",
+        "type": "memorial",
+        "observationFocus": "纪念空间与今天真实生活的人群",
+        "accessNote": "只在公共通道和开放区域观察，不拍摄陌生人的正脸。",
+        "source": {
+          "name": "Mapcarta / OpenStreetMap",
+          "url": "https://mapcarta.com/N4472958648"
+        }
+      },
+      "hint": "不要拍人，先看人群如何使用这个地方。",
       "challenge": {
-        "type": "text",
-        "question": "记忆加上方向，最终会带人回到哪里？用两个字回答。",
-        "answer": ["归处", "回家", "家", "故乡", "来处"],
-        "acceptedKeywords": ["归途"],
-        "prompt": "两个字即可。",
-        "explanation": "记忆告诉你从哪里来，方向告诉你要往哪里去。两者交汇的地方，是归处。",
+        "type": "keyword",
+        "question": "当你观察这里的人群时，你觉得公共空间首先服务的是“建筑”还是“人”？请用一个词回答。",
+        "answer": ["人", "人民", "人群"],
+        "acceptedKeywords": ["生活", "社区"],
+        "prompt": "答案很简单：把注意力从物转向人。",
+        "explanation": "真实场景内容的核心不是把人变成游戏里的道具，而是学习看见真实的人。",
+        "hintAfterAttempts": 2
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "人",
+        "value": "人",
+        "description": "第三个关键词：人。",
+        "icon": "👥"
+      },
+      "nextSceneId": "scene-d",
+      "dialogue": [
+        { "speaker": "guide", "text": "不要只寻找景点。寻找这里正在生活的人。" }
+      ],
+      "npc": {
+        "id": "guide",
+        "name": "向导",
+        "role": "同行者",
+        "aiDriven": false
+      },
+      "mapStyle": {
+        "color": "#7c6bb1",
+        "icon": "3"
+      }
+    },
+
+    {
+      "id": "scene-d",
+      "title": "第四站 · 记得",
+      "story": "现在向西南走，到 Rizal Park 的 Independence Flagpole 一带。
+
+这是一个很容易被路过的地方：一根旗杆、一块空间、许多人经过。
+
+停下来，抬头，然后再低头看脚下。你会发现，“国家”“历史”“个人”这些很大的词，最后都会落在具体的人和具体的土地上。",
+      "briefing": "前往 Independence Flagpole。安全到达后，抬头观察旗杆与周围空间。",
+      "location": {
+        "lat": 14.58156,
+        "lng": 120.97659,
+        "radius": 25,
+        "name": "Independence Flagpole · Rizal Park"
+      },
+      "place": {
+        "name": "Independence Flagpole",
+        "type": "landmark",
+        "observationFocus": "旗帜、尺度、人与国家记忆的关系",
+        "accessNote": "停留在步道和开放草地，不进入道路或车辆区域。",
+        "source": {
+          "name": "Mapcarta / OpenStreetMap",
+          "url": "https://mapcarta.com/W879137748"
+        }
+      },
+      "hint": "抬头看，再低头看。",
+      "challenge": {
+        "type": "choice",
+        "question": "站在这里，你最想把哪一个词重新放回自己的生活？",
+        "options": ["记得", "遗忘", "赶路", "忽略"],
+        "answer": 0,
+        "prompt": "这是反思题，不是历史知识题。",
+        "explanation": "记忆的价值不在于让我们停在过去，而在于让我们知道今天为什么值得认真生活。",
+        "hintAfterAttempts": 2
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "记得",
+        "value": "记得",
+        "description": "第四个关键词：记得。",
+        "icon": "🧭"
+      },
+      "nextSceneId": "scene-e",
+      "dialogue": [
+        { "speaker": "narrator", "text": "记忆不是把过去收藏起来，而是让过去继续参与今天。" }
+      ],
+      "mapStyle": {
+        "color": "#d28a38",
+        "icon": "4"
+      }
+    },
+
+    {
+      "id": "scene-e",
+      "title": "第五站 · 成为祝福",
+      "story": "最后来到 Dr. Jose Rizal Monument 附近。
+
+现在打开你的背包：自由、智慧、人、记得。
+
+你已经走过纪念碑、花园、人群与国家记忆。最后的问题不再问“这里是什么”，而是问：你从这里走出去以后，要成为什么样的人？
+
+站在真实的地方，做一个真实的决定。",
+      "briefing": "前往 Dr. Jose Rizal Monument。到达后，完成最后的个人使命选择。",
+      "location": {
+        "lat": 14.58174,
+        "lng": 120.97705,
+        "radius": 20,
+        "name": "Dr. Jose Rizal Monument"
+      },
+      "place": {
+        "name": "Dr. Jose Rizal Monument",
+        "type": "monument",
+        "observationFocus": "纪念碑、城市轴线与个人使命",
+        "accessNote": "在纪念碑外围开放区域完成任务，不需要进入建筑。",
+        "source": {
+          "name": "Mapcarta / OpenStreetMap",
+          "url": "https://mapcarta.com/30414860"
+        }
+      },
+      "hint": "把四个关键词放在一起，再回答最后一个问题。",
+      "challenge": {
+        "type": "choice",
+        "question": "如果把“自由、智慧、人、记得”变成一个行动，你最愿意选择哪一个？",
+        "options": ["看见一个被忽略的人", "学习一个新的事实", "为所在社区做一件实际的事", "把这段经历分享给别人"],
+        "answer": 2,
+        "prompt": "选择最符合你接下来一周愿意真正做的事。",
+        "explanation": "真实场景寻宝的终点不是地图上的最后一个点，而是离开地图以后仍然会发生的行动。",
         "hintAfterAttempts": 2
       },
       "reward": {
         "type": "badge",
-        "title": "走完记忆之路",
-        "value": "memory-path",
-        "description": "你完成了 Demo Hunt 的全部三个地点。",
+        "title": "城市行走者",
+        "value": "city-walker-v03",
+        "description": "你完成了 Luneta · 看见这座城市。愿你离开地图以后，继续看见真实的人、真实的需要，并把看见变成行动。",
         "icon": "🏅"
       },
       "nextSceneId": null,
       "dialogue": [
-        { "speaker": "narrator", "text": "路线到这里结束。但这条路本身，已经是答案。" }
+        { "speaker": "narrator", "text": "游戏结束。使命开始。" }
       ],
-      "ar": {
-        "anchorType": "ground",
-        "scale": 1.5
-      },
       "mapStyle": {
         "color": "#2ec27e",
         "icon": "★"

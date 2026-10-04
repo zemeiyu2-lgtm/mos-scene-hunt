@@ -17,6 +17,7 @@
   "difficulty": "easy",           // 可选：easy | normal | hard
 
   "startLocation": { … },         // 必填，见下
+  "huntArea": { … },              // 可选，整体探索区域，通常 0.5–2km
   "entrySceneId": "scene-a",      // 必填，必须指向 scenes[0].id
 
   "aiProfile": { … },             // 可选，AI 扩展位
@@ -36,6 +37,18 @@
   "radius": 80        // 可选， metres；触发半径预设见下
 }
 ```
+
+## HuntArea（整体探索区域）
+
+```jsonc
+{
+  "center": { "lat": 14.584481, "lng": 120.9794 },
+  "radiusMeters": 1500,
+  "name": "Rizal Park 城市探索区 · 1.5 km"
+}
+```
+
+`huntArea` 是“整场游戏”的探索边界；`scene.location.radius` 是“单个地点”的 GPS 触发圈。两者必须分开设计。V0.3 推荐城市步行游戏使用约 1–2 km 的整体区域、25–50m 的单站触发圈。
 
 ## Scene（场景）
 
@@ -58,6 +71,25 @@
   "dialogue": [ … ],              // 可选，AI 扩展位
   "ar": { … },                    // 可选，AR 扩展位
   "mapStyle": { "icon": "1" }     // 可选，地图标记上的字形
+}
+```
+
+### place（真实地点元数据）
+
+V0.3 开始，真实场景可以声明地点身份、观察重点、访问提示与资料来源。它不参与 GPS 判定，只负责让内容作者能够把“真实地点”与“内容依据”一起保存。
+
+```jsonc
+{
+  "place": {
+    "name": "Chinese Garden",
+    "type": "garden",
+    "observationFocus": "水面、植物、桥与人的活动",
+    "accessNote": "只在开放公共区域活动。",
+    "source": {
+      "name": "National Parks Development Committee",
+      "url": "https://npdc.gov.ph/rizal-park/"
+    }
+  }
 }
 ```
 
