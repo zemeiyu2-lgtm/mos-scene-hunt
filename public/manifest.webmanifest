@@ -1,0 +1,55 @@
+{
+  "name": "MOS Scene Hunt",
+  "short_name": "Scene Hunt",
+  "description": "手机优先的真实地理情境寻宝游戏。走到真实地点，解锁情境、线索与任务。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7fb",
+  "theme_color": "#f5a524",
+  "categories": ["games", "navigation", "travel"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "打开地图",
+      "short_name": "地图",
+      "url": "/map",
+      "description": "直接进入地图，查看你与目标地点的距离"
+    },
+    {
+      "name": "任务列表",
+      "short_name": "任务",
+      "url": "/quest",
+      "description": "查看全部地点与完成进度"
+    }
+  ]
+}

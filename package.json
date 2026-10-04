@@ -1,0 +1,44 @@
+{
+  "name": "mos-scene-hunt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MOS Scene Hunt V0.1 - a mobile-first real-world location-based scenario hunt game engine",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:acceptance": "node tests/e2e/run.mjs",
+    "test:acceptance:rebuild": "node tests/e2e/run.mjs --rebuild",
+    "test:acceptance:only": "node tests/e2e/run-e2e.mjs"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.1",
+    "leaflet": "^1.9.4",
+    "next": "15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/leaflet": "^1.9.16",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^2.1.8",
+    "autoprefixer": "^10.4.20",
+    "esbuild": "^0.24.2",
+    "jsdom": "^26.0.0",
+    "postcss": "^8.5.1",
+    "puppeteer-core": "^23.11.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

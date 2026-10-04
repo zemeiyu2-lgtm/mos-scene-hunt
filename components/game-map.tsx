@@ -1,0 +1,463 @@
+"use client";
+
+/**
+ * Game map — vanilla Leaflet, no React binding layer.
+ *
+ * Leaflet is imperative and only exists in the browser, so this module is
+ * dynamically imported with SSR disabled (see `map-view.tsx`). Everything here
+ * assumes `window` exists.
+ *
+ * Why vanilla instead of react-leaflet: react-leaflet 5 is licensed under
+ * Hippocratic-2.1, which is not an OSI-approved license. The binding adds
+ * conveniences the game does not need, so the map layer is written directly
+ * against Leaflet (BSD-2-Clause). The layer objects are diffed imperatively in
+ * effects keyed on stable signatures; React state only describes *what* the map
+ * should show, never *how* Leaflet mutates.
+ *
+ * What the map shows (spec section 10):
+ *   - the player's position, with an accuracy halo
+ *   - the current target scene
+ *   - completed scenes
+ *   - still-locked scenes
+ *   - the direction to the current target
+ */
+
+import "leaflet/dist/leaflet.css";
+import { useEffect, useMemo, useRef } from "react";
+import L from "leaflet";
+import { bearing, bearingToCompass, formatDistance, resolveRadius } from "@/lib/location";
+import type { SceneStatus } from "@/lib/game/state";
+import type { Scene } from "@/lib/game/types";
+import type { PositionFix } from "@/lib/location";
+
+import { TILE_PROVIDERS, type TileProviderId } from "@/lib/map/tiles";
+
+export type { TileProviderId };
+
+/** A scene rendered on the map, with everything the marker needs precomputed. */
+export interface MapSceneEntry {
+  scene: Scene;
+  status: SceneStatus;
+  isActive: boolean;
+  distance: number | null;
+  inRange: boolean;
+}
+
+interface GameMapProps {
+  player: PositionFix | null;
+  entries: MapSceneEntry[];
+  tileProvider: TileProviderId;
+  /** Called when the developer drags the simulated player marker. */
+  onSimulatedDrag?: (lat: number, lng: number) => void;
+  /** When true, the player marker is draggable (simulator only). */
+  draggablePlayer?: boolean;
+  /** Fit the view to the whole hunt on first render. */
+  fitToHunt?: boolean;
+  /** Re-centre on the player when this value changes. */
+  recenterToken?: number;
+}
+
+/* ------------------------------------------------------------------ */
+/* Icons                                                              */
+/* ------------------------------------------------------------------ */
+
+function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
+  const statusClass =
+    entry.status === "completed"
+      ? "scene-marker--completed"
+      : entry.status === "arrived" || entry.status === "challenging"
+        ? "scene-marker--arrived"
+        : entry.status === "available"
+          ? "scene-marker--available"
+          : "scene-marker--locked";
+
+  const glyph =
+    entry.status === "completed"
+      ? "✓"
+      : entry.scene.mapStyle?.icon ?? String(index + 1);
+
+  return L.divIcon({
+    className: "",
+    html: `<div class="scene-marker ${statusClass} ${entry.isActive ? "scene-marker--active" : ""}" data-role="scene-marker" data-scene-id="${entry.scene.id}" data-status="${entry.status}">${glyph}</div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+  });
+}
+
+function playerIcon(simulated: boolean): L.DivIcon {
+  return L.divIcon({
+    className: "",
+    // `data-role` is a stable hook for acceptance tests; the CSS class names are
+    // free to change with the visual design, the role is not.
+    html: `<div class="player-marker ${simulated ? "player-marker--sim" : ""}" data-role="player-marker">
+             <div class="player-marker__pulse"></div>
+             <div class="player-marker__dot"></div>
+           </div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Component                                                          */
+/* ------------------------------------------------------------------ */
+
+export default function GameMap({
+  player,
+  entries,
+  tileProvider,
+  onSimulatedDrag,
+  draggablePlayer = false,
+  fitToHunt = false,
+  recenterToken,
+}: GameMapProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const tileRef = useRef<L.TileLayer | null>(null);
+  const scaleRef = useRef<L.Control.Scale | null>(null);
+  const ringsRef = useRef<Map<string, L.Circle>>(new Map());
+  const sceneMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+  const playerMarkerRef = useRef<L.Marker | null>(null);
+  const playerHaloRef = useRef<L.Circle | null>(null);
+  const directionLineRef = useRef<L.Polyline | null>(null);
+
+  // Callbacks arriving via props must not become stale closures inside Leaflet
+  // event handlers, so they are read through a ref at event time.
+  const dragCallbackRef = useRef(onSimulatedDrag);
+  dragCallbackRef.current = onSimulatedDrag;
+
+  const tiles = TILE_PROVIDERS[tileProvider] ?? TILE_PROVIDERS["osm-hot"];
+  const activeEntry = useMemo(() => entries.find((e) => e.isActive) ?? null, [entries]);
+
+  // Signatures keep the imperative diffs cheap: effects only run when the
+  // *meaning* of the layer changed, not on every parent re-render.
+  const ringsSignature = useMemo(
+    () =>
+      entries
+        .map(
+          (e) =>
+            `${e.scene.id}:${e.status}:${e.inRange ? 1 : 0}:${e.isActive ? 1 : 0}:${resolveRadius(e.scene.location)}`,
+        )
+        .join("|"),
+    [entries],
+  );
+  const markersSignature = useMemo(
+    () => entries.map((e) => `${e.scene.id}:${e.status}:${e.isActive ? 1 : 0}`).join("|"),
+    [entries],
+  );
+
+  /* ------------------------------------------------ 创建地图（一次） */
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || mapRef.current) return;
+
+    const initialCenter: L.LatLngExpression = player
+      ? [player.lat, player.lng]
+      : entries.length
+        ? [entries[0].scene.location.lat, entries[0].scene.location.lng]
+        : [14.5832, 120.9794];
+
+    const map = L.map(container, {
+      center: initialCenter,
+      zoom: 17,
+      zoomControl: false,
+      attributionControl: true,
+      minZoom: 3,
+      maxZoom: tiles.maxZoom,
+    });
+    mapRef.current = map;
+
+    const scale = L.control.scale({ imperial: false, position: "bottomleft" });
+    scale.addTo(map);
+    scaleRef.current = scale;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      tileRef.current = null;
+      scaleRef.current = null;
+      ringsRef.current.clear();
+      sceneMarkersRef.current.clear();
+      playerMarkerRef.current = null;
+      playerHaloRef.current = null;
+      directionLineRef.current = null;
+    };
+    // Mount/unmount only. Everything else is synced below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ------------------------------------------------ 瓦片层 */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Leaflet mutates the container's class list; swapping a TileLayer's URL in
+    // place has historically been unreliable, so the layer is recreated on a
+    // provider change. This mirrors the old `key={tileProvider}` remount.
+    if (tileRef.current) {
+      map.removeLayer(tileRef.current);
+      tileRef.current = null;
+    }
+    const layer = L.tileLayer(tiles.url, {
+      attribution: tiles.attribution,
+      maxZoom: tiles.maxZoom,
+      detectRetina: tileProvider === "carto-voyager",
+    });
+    layer.addTo(map);
+    tileRef.current = layer;
+    map.setMaxZoom(tiles.maxZoom);
+  }, [tileProvider, tiles.url, tiles.attribution, tiles.maxZoom]);
+
+  /* ------------------------------------------------ 触发圈 */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const store = ringsRef.current;
+    const seen = new Set<string>();
+
+    for (const entry of entries) {
+      seen.add(entry.scene.id);
+      const latlng: L.LatLngExpression = [
+        entry.scene.location.lat,
+        entry.scene.location.lng,
+      ];
+      const radius = resolveRadius(entry.scene.location);
+      const style: L.PathOptions = {
+        color:
+          entry.status === "completed"
+            ? "#2ec27e"
+            : entry.status === "locked"
+              ? "#98a1b3"
+              : "#f5a524",
+        weight: entry.isActive ? 2.5 : 1.5,
+        opacity: entry.status === "locked" ? 0.45 : 0.85,
+        fillColor:
+          entry.status === "completed"
+            ? "#2ec27e"
+            : entry.status === "locked"
+              ? "#98a1b3"
+              : "#f5a524",
+        fillOpacity: entry.inRange ? 0.22 : 0.1,
+        dashArray: entry.status === "locked" ? "4 6" : undefined,
+      };
+
+      const existing = store.get(entry.scene.id);
+      if (existing) {
+        existing.setLatLng(latlng);
+        existing.setRadius(radius);
+        existing.setStyle(style);
+      } else {
+        const ring = L.circle(latlng, { radius, ...style });
+        ring.addTo(map);
+        store.set(entry.scene.id, ring);
+      }
+    }
+
+    for (const [id, ring] of store) {
+      if (!seen.has(id)) {
+        map.removeLayer(ring);
+        store.delete(id);
+      }
+    }
+  }, [ringsSignature, entries]);
+
+  /* ------------------------------------------------ 场景标记 */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const store = sceneMarkersRef.current;
+    const seen = new Set<string>();
+
+    entries.forEach((entry, index) => {
+      seen.add(entry.scene.id);
+      const latlng: L.LatLngExpression = [
+        entry.scene.location.lat,
+        entry.scene.location.lng,
+      ];
+      const icon = sceneIcon(entry, index);
+
+      const existing = store.get(entry.scene.id);
+      if (existing) {
+        existing.setLatLng(latlng);
+        existing.setIcon(icon);
+      } else {
+        const marker = L.marker(latlng, { icon, interactive: false });
+        marker.addTo(map);
+        store.set(entry.scene.id, marker);
+      }
+    });
+
+    for (const [id, marker] of store) {
+      if (!seen.has(id)) {
+        map.removeLayer(marker);
+        store.delete(id);
+      }
+    }
+  }, [markersSignature, entries]);
+
+  /* ------------------------------------------------ 玩家标记与精度晕 */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (player) {
+      const latlng: L.LatLngExpression = [player.lat, player.lng];
+      const simulated = Boolean(player.simulated);
+
+      if (!playerMarkerRef.current) {
+        const marker = L.marker(latlng, {
+          icon: playerIcon(simulated),
+          draggable: draggablePlayer,
+          zIndexOffset: 1000,
+        });
+        marker.on("dragend", () => {
+          const cb = dragCallbackRef.current;
+          if (!cb) return;
+          const pos = marker.getLatLng();
+          cb(pos.lat, pos.lng);
+        });
+        marker.addTo(map);
+        playerMarkerRef.current = marker;
+      } else {
+        const marker = playerMarkerRef.current;
+        marker.setLatLng(latlng);
+        marker.setIcon(playerIcon(simulated));
+        if (draggablePlayer !== marker.dragging?.enabled()) {
+          if (draggablePlayer) marker.dragging?.enable();
+          else marker.dragging?.disable();
+        }
+      }
+
+      const haloRadius = Math.max(5, player.accuracy);
+      const haloStyle: L.PathOptions = {
+        color: simulated ? "#a855f7" : "#1d7ff0",
+        weight: 1,
+        opacity: 0.5,
+        fillColor: simulated ? "#a855f7" : "#1d7ff0",
+        fillOpacity: 0.12,
+      };
+      if (!playerHaloRef.current) {
+        const halo = L.circle(latlng, { radius: haloRadius, ...haloStyle });
+        halo.addTo(map);
+        playerHaloRef.current = halo;
+      } else {
+        playerHaloRef.current.setLatLng(latlng);
+        playerHaloRef.current.setRadius(haloRadius);
+        playerHaloRef.current.setStyle(haloStyle);
+      }
+    } else {
+      if (playerMarkerRef.current) {
+        map.removeLayer(playerMarkerRef.current);
+        playerMarkerRef.current = null;
+      }
+      if (playerHaloRef.current) {
+        map.removeLayer(playerHaloRef.current);
+        playerHaloRef.current = null;
+      }
+    }
+  }, [player, draggablePlayer]);
+
+  /* ------------------------------------------------ 目标方向线 */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (player && activeEntry) {
+      const points: L.LatLngExpression[] = [
+        [player.lat, player.lng],
+        [activeEntry.scene.location.lat, activeEntry.scene.location.lng],
+      ];
+      if (!directionLineRef.current) {
+        const line = L.polyline(points, {
+          color: "#f5a524",
+          weight: 3,
+          opacity: 0.75,
+          dashArray: "2 8",
+        });
+        line.addTo(map);
+        directionLineRef.current = line;
+      } else {
+        directionLineRef.current.setLatLngs(points);
+      }
+    } else if (directionLineRef.current) {
+      map.removeLayer(directionLineRef.current);
+      directionLineRef.current = null;
+    }
+  }, [player, activeEntry]);
+
+  /* ------------------------------------------------ 视角：整场取景或跟随玩家 */
+  const fitDoneRef = useRef(false);
+  const lastFitTokenRef = useRef<string | undefined>(undefined);
+  const lastCentredAtRef = useRef(0);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !entries.length) return;
+
+    if (fitToHunt) {
+      const force =
+        activeEntry !== undefined &&
+        activeEntry !== null &&
+        activeEntry.scene.id !== lastFitTokenRef.current;
+      if (fitDoneRef.current && !force) return;
+      lastFitTokenRef.current = activeEntry?.scene.id;
+
+      const points: L.LatLngExpression[] = entries.map((e) => [
+        e.scene.location.lat,
+        e.scene.location.lng,
+      ]);
+      if (player) points.push([player.lat, player.lng]);
+      if (points.length === 1) {
+        map.setView(points[0], 17);
+      } else {
+        map.fitBounds(L.latLngBounds(points).pad(0.35), { animate: !fitDoneRef.current });
+      }
+      fitDoneRef.current = true;
+      return;
+    }
+
+    // Follow mode: recentre on an explicit token, on the first fix, or when the
+    // player has drifted long enough since the last recentre.
+    const now = Date.now();
+    const hasFix = Boolean(player);
+    const firstFix = hasFix && lastCentredAtRef.current === 0;
+    const tokenRequested = recenterToken !== undefined;
+    const drifted = hasFix && now - lastCentredAtRef.current > 8000;
+
+    if (!hasFix || !(firstFix || tokenRequested || drifted)) return;
+    lastCentredAtRef.current = now;
+    map.setView([player!.lat, player!.lng], map.getZoom(), {
+      animate: tokenRequested,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitToHunt, recenterToken, player?.lat, player?.lng, activeEntry?.scene.id, entries, player]);
+
+  /* ------------------------------------------------ 渲染 */
+  const headingLabel = useMemo(() => {
+    if (!player || !activeEntry) return null;
+    const deg = bearing(player, {
+      lat: activeEntry.scene.location.lat,
+      lng: activeEntry.scene.location.lng,
+    });
+    return bearingToCompass(deg);
+  }, [player, activeEntry]);
+
+  return (
+    <div className="map-root">
+      <div ref={containerRef} className="h-full w-full" />
+
+      {/* Direction hint overlay, kept in the DOM so it is readable by assistive tech. */}
+      {headingLabel && activeEntry ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex justify-center p-2">
+          <div className="rounded-full bg-[var(--card)]/95 px-3 py-1 text-[12px] font-medium shadow-card backdrop-blur">
+            目标：{activeEntry.scene.location.name ?? activeEntry.scene.title}
+            {activeEntry.distance !== null ? ` · ${formatDistance(activeEntry.distance)}` : ""} ·{" "}
+            {headingLabel}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
