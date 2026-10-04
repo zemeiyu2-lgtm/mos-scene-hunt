@@ -68,11 +68,12 @@ export default function SelectPage() {
         <div className="p-5">
           <p className="text-[13.5px] leading-relaxed text-[var(--muted)]">{game.description}</p>
 
-          <dl className="mt-4 grid grid-cols-3 gap-2">
+          <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { k: "地点", v: `${game.scenes.length} 个` },
+              { k: "区域", v: formatArea(game.huntArea?.radiusMeters) },
+              { k: "触发", v: "30–50 m" },
               { k: "预计", v: `${game.estimatedMinutes ?? 20} 分钟` },
-              { k: "触发", v: "约 50 m" },
             ].map((item) => (
               <div key={item.k} className="rounded-xl bg-[var(--surface)] px-3 py-2">
                 <dt className="text-[11px] text-[var(--muted)]">{item.k}</dt>
@@ -80,6 +81,13 @@ export default function SelectPage() {
               </div>
             ))}
           </dl>
+
+          {game.huntArea ? (
+            <div className="mt-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[12px] leading-relaxed text-amber-900">
+              <p className="font-semibold">探索区域 · {game.huntArea.name ?? formatArea(game.huntArea.radiusMeters)}</p>
+              <p className="mt-0.5">整个寻宝在约 {formatArea(game.huntArea.radiusMeters)} 范围内展开；到达每个具体地点后，才会在约 30–50 米的触发圈内解锁任务。</p>
+            </div>
+          ) : null}
 
           <div className="mt-4 space-y-2">
             {game.scenes.map((scene, i) => (
@@ -151,6 +159,12 @@ export default function SelectPage() {
       <TabBar />
     </>
   );
+}
+
+function formatArea(radiusMeters?: number): string {
+  if (!Number.isFinite(radiusMeters)) return "未设定";
+  const km = (radiusMeters as number) / 1000;
+  return km >= 1 ? `约 ${km.toFixed(km < 10 ? 1 : 0)} km` : `约 ${Math.round(radiusMeters as number)} m`;
 }
 
 function challengeLabel(type: string): string {

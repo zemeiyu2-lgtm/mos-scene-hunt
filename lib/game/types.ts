@@ -124,6 +124,23 @@ export interface StartLocation {
   radius?: number;
 }
 
+/**
+ * The overall playable area of a hunt.
+ *
+ * huntArea.radiusMeters (typically 1000-2000m) is the whole exploration zone,
+ * while scene.location.radius (typically 30-50m) is the precise unlock ring.
+ */
+export interface HuntArea {
+  center: {
+    lat: number;
+    lng: number;
+  };
+  /** Overall exploration radius in metres. */
+  radiusMeters: number;
+  /** Optional player-facing label. */
+  name?: string;
+}
+
 export interface Game {
   /** Stable id, also used for the persisted save slot. */
   id: string;
@@ -138,6 +155,8 @@ export interface Game {
   difficulty?: "easy" | "medium" | "hard";
   /** Where the hunt begins. */
   startLocation: StartLocation;
+  /** Optional overall exploration boundary. */
+  huntArea?: HuntArea;
   /** Ordered entry point into the scene graph. */
   entrySceneId?: string;
   scenes: Scene[];
@@ -217,6 +236,22 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
     err("$.startLocation", "缺少起点定义");
   } else {
     checkLatLng(g.startLocation.lat, g.startLocation.lng, "$.startLocation", err);
+  }
+
+  if (g.huntArea !== undefined) {
+    if (!g.huntArea || typeof g.huntArea !== "object") {
+      err("$.huntArea", "寻宝区域必须是对象");
+    } else {
+      checkLatLng(g.huntArea.center?.lat, g.huntArea.center?.lng, "$.huntArea.center", err);
+      const r = g.huntArea.radiusMeters;
+      if (typeof r !== "number" || !Number.isFinite(r) || r <= 0) {
+        err("$.huntArea.radiusMeters", "必须是正数");
+      } else if (r < 500) {
+        warn("$.huntArea.radiusMeters", "区域半径 " + r + "m 偏小，建议至少 500m");
+      } else if (r > 5000) {
+        warn("$.huntArea.radiusMeters", "区域半径 " + r + "m 偏大，建议不超过 5km");
+      }
+    }
   }
 
   if (!Array.isArray(g.scenes) || g.scenes.length === 0) {

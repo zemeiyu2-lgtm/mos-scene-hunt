@@ -17,7 +17,7 @@ import { useGps } from "@/components/gps-provider";
 import { MapView } from "@/components/map-view";
 import { SimulatorPanel } from "@/components/simulator-panel";
 import { StatusChip } from "@/components/ui";
-import { classifyFix, formatDistance, resolveRadius } from "@/lib/location";
+import { calculateDistance, classifyFix, formatDistance, resolveRadius } from "@/lib/location";
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
 import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
@@ -57,6 +57,14 @@ export default function MapPage() {
   const currentDistance = current ? distances[current.id] ?? null : null;
   const currentRadius = current ? resolveRadius(current.location) : 50;
   const fixQuality = fix ? classifyFix(fix) : null;
+  const huntAreaDistance = fix && game?.huntArea
+    ? calculateDistance(fix, game.huntArea.center)
+    : null;
+  const outsideHuntArea = Boolean(
+    huntAreaDistance !== null &&
+      game?.huntArea &&
+      huntAreaDistance > game.huntArea.radiusMeters,
+  );
 
   // The scene the player is physically standing in, if any. Distinct from
   // "current" (the scene they *should* go to): a shortcut can put them in a
@@ -71,6 +79,7 @@ export default function MapPage() {
         <MapView
           player={fix}
           entries={entries}
+          huntArea={game?.huntArea}
           tileProvider={settings.tileProvider as TileProviderId}
           draggablePlayer={simulatorAvailable && settings.simulatorEnabled && isSimulated}
           onSimulatedDrag={(lat, lng) => update({ simulatorCoordinate: { lat, lng } })}
@@ -132,6 +141,14 @@ export default function MapPage() {
             </div>
 
             {/* GPS status strip: only shown when something is wrong or simulated. */}
+            {outsideHuntArea ? (
+              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
+                <p className="text-[12.5px] leading-snug text-amber-900">
+                  你已离开本次寻宝区域。当前距区域中心约 {huntAreaDistance !== null ? formatDistance(huntAreaDistance) : "--"}。
+                </p>
+              </div>
+            ) : null}
+
             {status === "error" && error ? (
               <div className="pointer-events-auto mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
                 <p className="text-[12.5px] leading-snug text-red-800">{error.userMessage}</p>
