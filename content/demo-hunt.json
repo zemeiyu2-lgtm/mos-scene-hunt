@@ -214,7 +214,7 @@
       "location": {
         "lat": 14.58156,
         "lng": 120.97659,
-        "radius": 30,
+        "radius": 25,
         "name": "Independence Flagpole · Rizal Park"
       },
       "place": {
@@ -268,7 +268,7 @@
       "location": {
         "lat": 14.58174,
         "lng": 120.97705,
-        "radius": 25,
+        "radius": 20,
         "name": "Dr. Jose Rizal Monument"
       },
       "place": {
