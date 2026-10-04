@@ -24,6 +24,7 @@
     "estimatedMinutes": { "type": "integer", "minimum": 1 },
     "difficulty": { "enum": ["easy", "normal", "hard"] },
     "startLocation": { "$ref": "#/$defs/locatedPoint" },
+    "huntArea": { "$ref": "#/$defs/huntArea" },
     "entrySceneId": { "type": "string", "minLength": 1 },
     "aiProfile": {
       "type": "object",
@@ -51,6 +52,24 @@
         "name": { "type": "string", "minLength": 1 },
         "radius": { "type": "number", "exclusiveMinimum": 0, "maximum": 500 },
         "_note": { "type": "string" }
+      }
+    },
+    "huntArea": {
+      "type": "object",
+      "required": ["center", "radiusMeters"],
+      "additionalProperties": false,
+      "properties": {
+        "center": {
+          "type": "object",
+          "required": ["lat", "lng"],
+          "additionalProperties": false,
+          "properties": {
+            "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+            "lng": { "type": "number", "minimum": -180, "maximum": 180 }
+          }
+        },
+        "radiusMeters": { "type": "number", "exclusiveMinimum": 0 },
+        "name": { "type": "string" }
       }
     },
     "sceneLocation": {
@@ -153,7 +172,28 @@
         "type": { "enum": ["keyword", "badge", "item"] },
         "title": { "type": "string", "minLength": 1 },
         "value": { "type": "string", "description": "keyword 奖励为收集词；badge/item 为资产引用" },
-        "description": { "type": "string" }
+        "description": { "type": "string" },
+        "icon": { "type": "string" }
+      }
+    },
+    "place": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["monument", "garden", "memorial", "landmark", "public-space"] },
+        "observationFocus": { "type": "string" },
+        "accessNote": { "type": "string" },
+        "source": {
+          "type": "object",
+          "required": ["name", "url"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "url": { "type": "string", "format": "uri" }
+          }
+        }
       }
     },
     "scene": {
@@ -179,6 +219,7 @@
         },
         "npc": { "$ref": "#/$defs/npc" },
         "dialogue": { "type": "array", "items": { "$ref": "#/$defs/dialogueLine" } },
+        "place": { "$ref": "#/$defs/place" },
         "ar": {
           "type": "object",
           "description": "AR 扩展位，V0.1 不消费",
