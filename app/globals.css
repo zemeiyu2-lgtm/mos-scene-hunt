@@ -341,3 +341,76 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+
+/* ------------------------------------------------------------------ */
+/* MOS Scene Hunt visual language — Classic 01                         */
+/* ------------------------------------------------------------------ */
+
+.hero-explore {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 85% 12%, rgba(245, 165, 36, 0.22), transparent 34%),
+    linear-gradient(135deg, #15233d 0%, #243b5d 55%, #3f6a68 100%);
+  color: white;
+}
+.hero-explore::after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -70px;
+  bottom: -80px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 999px;
+  box-shadow: 0 0 0 28px rgba(255,255,255,.035), 0 0 0 56px rgba(255,255,255,.025);
+  pointer-events: none;
+}
+.game-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.62);
+}
+.game-route {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.game-route::-webkit-scrollbar { display: none; }
+.game-route span {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.86);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.game-route i { color: rgba(255,255,255,.35); font-style: normal; }
+.story-card {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+}
+.choice-card {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 16px;
+  transition: transform .12s ease, border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.choice-card:hover { box-shadow: 0 10px 26px -18px rgba(21,35,61,.35); }
+.choice-card:active { transform: scale(.985); }
+.choice-card[data-active="true"] {
+  border-color: var(--accent);
+  background: #fff8e9;
+  box-shadow: 0 8px 24px -18px rgba(196,124,10,.6);
+}
+.completion-hero {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.18), transparent 40%),
+    linear-gradient(135deg, #175c4a 0%, #2e8b6d 55%, #2ec27e 100%);
+  color: white;
+}
