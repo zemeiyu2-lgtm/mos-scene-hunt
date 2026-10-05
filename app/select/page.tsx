@@ -65,13 +65,13 @@ export default function SelectPage() {
   return (
     <>
     <Screen title="选择寻宝" subtitle="确认信息后开始">
-      <section className="card overflow-hidden">
-        <div className="bg-gradient-to-br from-[#1d2542] to-[#2a3459] px-5 py-5 text-white">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
+      <section className="card story-card overflow-hidden">
+        <div className="hero-explore px-5 py-6">
+          <p className="game-kicker">
             {isAuthored ? "本机创作" : manifest?.difficulty === "easy" ? "入门" : "进阶"} ·{" "}
             {game.language}
           </p>
-          <h2 className="mt-1.5 text-[20px] font-bold leading-tight">{game.title}</h2>
+          <h2 className="mt-2 text-[24px] font-bold leading-tight">{game.title}</h2>\n          <div className="game-route mt-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span></div>
         </div>
 
         <div className="p-5">
