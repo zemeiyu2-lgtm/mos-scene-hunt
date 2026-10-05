@@ -7,6 +7,7 @@ import { useSettings } from "@/components/providers";
 import { Screen } from "@/components/ui";
 import { clearAuthoredGame, saveAuthoredGame } from "@/lib/content";
 import type { Game, Scene } from "@/lib/game/types";
+import { calculateDistance } from "@/lib/location";
 import type { MapSceneEntry } from "@/components/game-map";
 import type { TileProviderId } from "@/lib/map/tiles";
 import { useHunt } from "@/components/hunt-provider";
@@ -19,6 +20,7 @@ export default function DesignPage() {
   const [draft, setDraft] = useState<Game | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [drawingArea, setDrawingArea] = useState(false);
 
   const working = draft ?? game;
   const selected = working?.scenes.find((scene) => scene.id === selectedId) ?? working?.scenes[0] ?? null;
@@ -108,8 +110,57 @@ export default function DesignPage() {
   };
 
   const setSelectedLocationFromMap = (lat: number, lng: number) => {
+    if (drawingArea) {
+      const current = working.huntArea;
+      const points = current?.shape === "polygon" ? [...(current.points ?? [])] : [];
+      points.push({ lat, lng });
+      const center = polygonCenter(points, working.startLocation);
+      const radiusMeters = Math.max(30, ...points.map((point) => calculateDistance(center, point)));
+      update({ huntArea: { center, radiusMeters, shape: "polygon", points, name: current?.name ?? "自定义探索区" } });
+      return;
+    }
     if (!selected) return;
     updateLocation(selected.id, lat, lng);
+  };
+
+  const startPolygon = () => {
+    setSaved(false);
+    setDrawingArea(true);
+    update({
+      huntArea: {
+        center: working.huntArea?.center ?? working.startLocation,
+        radiusMeters: working.huntArea?.radiusMeters ?? 100,
+        shape: "polygon",
+        points: [],
+        name: working.huntArea?.name ?? "自定义探索区",
+      },
+    });
+  };
+
+  const undoPolygonPoint = () => {
+    if (working.huntArea?.shape !== "polygon") return;
+    const points = [...(working.huntArea.points ?? [])];
+    points.pop();
+    const center = polygonCenter(points, working.startLocation);
+    const radiusMeters = Math.max(30, ...(points.length ? points.map((p) => calculateDistance(center, p)) : [30]));
+    update({ huntArea: { ...working.huntArea, center, radiusMeters, points } });
+  };
+
+  const finishPolygon = () => {
+    if (working.huntArea?.shape !== "polygon" || (working.huntArea.points?.length ?? 0) < 3) return;
+    setDrawingArea(false);
+  };
+
+  const clearPolygon = () => {
+    setDrawingArea(false);
+    update({
+      huntArea: {
+        center: working.huntArea?.center ?? working.startLocation,
+        radiusMeters: working.huntArea?.shape === "polygon" ? Math.max(30, working.huntArea.radiusMeters) : (working.huntArea?.radiusMeters ?? 100),
+        shape: "circle",
+        name: working.huntArea?.name ?? "微型探索区",
+      },
+    });
   };
 
   const setAreaCenterFromMap = (lat: number, lng: number) => {
@@ -158,14 +209,26 @@ export default function DesignPage() {
         <div className="border-t border-[var(--line)] p-4 text-[12px] leading-relaxed">
           <p className="font-semibold">地图编辑</p>
           <p className="mt-1 text-[var(--muted)]">
-            当前选中「{selected?.title ?? "地点"}」。直接拖动地图上的地点标记，或点击地图把当前地点放到那里。
+            {drawingArea ? "正在绘制自定义探索区：依次点击地图上的边界点，系统会自动连线。至少 3 个点后完成闭环。" : <>当前选中「{selected?.title ?? "地点"}」。直接拖动地点标记，或点击地图移动当前地点。</>}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <button className="btn btn-secondary h-9 min-h-0 px-3 text-xs" onClick={() => setAreaCenterFromMap(selected?.location.lat ?? working.startLocation.lat, selected?.location.lng ?? working.startLocation.lng)}>
-              用当前地点作区域中心
+            <button
+              className={`btn ${drawingArea ? "btn-primary" : "btn-secondary"} h-9 min-h-0 px-3 text-xs`}
+              onClick={drawingArea ? finishPolygon : startPolygon}
+              disabled={drawingArea && (working.huntArea?.points?.length ?? 0) < 3}
+            >
+              {drawingArea ? "完成闭环" : "＋绘制自定义区域"}
             </button>
+            {drawingArea ? <>
+              <button className="btn btn-secondary h-9 min-h-0 px-3 text-xs" onClick={undoPolygonPoint} disabled={!working.huntArea?.points?.length}>撤销上一点</button>
+              <button className="btn btn-ghost h-9 min-h-0 px-3 text-xs" onClick={clearPolygon}>取消自定义区域</button>
+            </> : null}
+            {!drawingArea && working.huntArea?.shape === "polygon" ? (
+              <button className="btn btn-secondary h-9 min-h-0 px-3 text-xs" onClick={startPolygon}>重新绘制</button>
+            ) : null}
+            <button className="btn btn-secondary h-9 min-h-0 px-3 text-xs" onClick={() => setAreaCenterFromMap(selected?.location.lat ?? working.startLocation.lat, selected?.location.lng ?? working.startLocation.lng)} disabled={drawingArea}>用当前地点作圆形中心</button>
             <span className="chip bg-amber-100 text-amber-800">
-              区域半径 {Math.round(working.huntArea?.radiusMeters ?? 100)}m · 直径约 {Math.round((working.huntArea?.radiusMeters ?? 100) * 2)}m
+              {working.huntArea?.shape === "polygon" ? `自定义闭环 · ${working.huntArea.points?.length ?? 0} 点` : `圆形 · 半径 ${Math.round(working.huntArea?.radiusMeters ?? 100)}m`}
             </span>
           </div>
         </div>
@@ -186,45 +249,47 @@ export default function DesignPage() {
         <div className="mt-4">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold">游戏范围</label>
-            <span className="tabular text-xs font-bold">{Math.round(working.huntArea?.radiusMeters ?? 100)} m</span>
+            <span className="chip bg-[var(--surface)] text-[11px]">{working.huntArea?.shape === "polygon" ? "自定义闭环" : "圆形范围"}</span>
           </div>
-          <input
-            className="mt-2 w-full accent-[var(--accent)]"
-            type="range"
-            min={30}
-            max={500}
-            step={5}
-            value={working.huntArea?.radiusMeters ?? 100}
-            onChange={(e) =>
-              update({
-                huntArea: {
-                  ...(working.huntArea ?? { center: working.startLocation, radiusMeters: 100 }),
-                  radiusMeters: Number(e.target.value),
-                },
-              })
-            }
-          />
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {MICRO_PRESETS.map((radius) => (
-              <button
-                key={radius}
-                type="button"
-                className={`chip ${Math.round(working.huntArea?.radiusMeters ?? 100) === radius ? "bg-[var(--accent)] text-[#3a2400]" : "bg-[var(--surface)]"}`}
-                onClick={() =>
-                  update({
-                    huntArea: {
-                      ...(working.huntArea ?? { center: working.startLocation, radiusMeters: 100 }),
-                      radiusMeters: radius,
-                    },
-                  })
-                }
-              >
-                {radius}m
-              </button>
-            ))}
-          </div>
+          {working.huntArea?.shape !== "polygon" ? (
+            <>
+              <input
+                className="mt-2 w-full accent-[var(--accent)]"
+                type="range"
+                min={30}
+                max={500}
+                step={5}
+                value={working.huntArea?.radiusMeters ?? 100}
+                onChange={(e) => update({
+                  huntArea: {
+                    ...(working.huntArea ?? { center: working.startLocation, radiusMeters: 100 }),
+                    shape: "circle",
+                    radiusMeters: Number(e.target.value),
+                  },
+                })}
+              />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {MICRO_PRESETS.map((radius) => (
+                  <button key={radius} type="button"
+                    className={`chip ${Math.round(working.huntArea?.radiusMeters ?? 100) === radius ? "bg-[var(--accent)] text-[#3a2400]" : "bg-[var(--surface)]"}`}
+                    onClick={() => update({
+                      huntArea: {
+                        ...(working.huntArea ?? { center: working.startLocation, radiusMeters: 100 }),
+                        shape: "circle",
+                        radiusMeters: radius,
+                      },
+                    })}
+                  >{radius}m</button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="mt-2 rounded-xl bg-[var(--surface)] p-3 text-[11.5px] leading-relaxed text-[var(--muted)]">
+              自定义区域已启用。当前 {working.huntArea?.points?.length ?? 0} 个边界点；闭环只保存少量经纬度数据，不会明显增加程序体量。
+            </div>
+          )}
           <p className="mt-2 text-[11.5px] text-[var(--muted)]">
-            50–100m 就可以做非常小的游戏。实际 GPS 触发圈仍建议保持 15–30m。
+            小范围优先：区域负责限定游戏空间；地点触发建议默认 15m，并根据手机实际定位精度留出有限缓冲。
           </p>
         </div>
       </section>
@@ -317,4 +382,13 @@ function bumpVersion(version: string): string {
   const match = version.match(/^(.*?)(\d+)\.?(\d+)?$/);
   if (!match) return version;
   return `${match[1]}${match[2]}.${Number(match[3] ?? 0) + 1}`;
+}
+
+
+function polygonCenter(points: Array<{ lat: number; lng: number }>, fallback: { lat: number; lng: number }) {
+  if (!points.length) return fallback;
+  return {
+    lat: points.reduce((sum, point) => sum + point.lat, 0) / points.length,
+    lng: points.reduce((sum, point) => sum + point.lng, 0) / points.length,
+  };
 }
