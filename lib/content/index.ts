@@ -3,6 +3,7 @@
  */
 
 import { validateGame, type Game, type ValidationIssue } from "../game/types";
+import { readSharedGameFromUrl } from "./share";
 import {
   cacheGameContent,
   clearCurrentAuthoredGameId,
@@ -86,7 +87,7 @@ export interface LoadedGame {
   /** Non-fatal authoring problems worth surfacing in the dev panel. */
   issues: ValidationIssue[];
   /** Where the pack actually came from - drives the offline badge in the UI. */
-  source: "network" | "cache" | "local";
+  source: "network" | "cache" | "local" | "shared";
   cachedAt?: number;
 }
 
@@ -134,7 +135,7 @@ export async function loadGame(
 ): Promise<LoadedGame> {
   let networkError: unknown = null;
 
-  // Browser-local authored content takes precedence. This makes the designer
+  // A shared URL carries the complete validated game in its hash. Check it first so the recipient needs no local storage.\n  if (typeof window !== "undefined") {\n    const shared = await readSharedGameFromUrl();\n    if (shared) return { game: shared, issues: [], source: "shared" };\n  }\n\n  // Browser-local authored content takes precedence. This makes the designer
   // immediately playable without requiring an account or backend.
   if (typeof window !== "undefined") {
     try {
