@@ -408,8 +408,10 @@ function validateChallenge(
       return;
     }
     if (c.options.length > 6) warn(`${base}.options`, "选项超过 6 个，移动端可能显示拥挤");
-    if (typeof c.answer !== "number" || !Number.isInteger(c.answer)) {
-      err(`${base}.answer`, "选择题的 answer 必须是选项下标（整数）");
+    if (c.reflective) {
+      if (c.answer !== undefined) warn(`${base}.answer`, "reflective 选择不需要标准答案，建议移除 answer");
+    } else if (typeof c.answer !== "number" || !Number.isInteger(c.answer)) {
+      err(`${base}.answer`, "选择题的 answer 必须是选项下标（整数）；如果没有标准答案，请设置 reflective=true");
     } else if (c.answer < 0 || c.answer >= c.options.length) {
       err(`${base}.answer`, `选项下标越界：${c.answer}`);
     }
