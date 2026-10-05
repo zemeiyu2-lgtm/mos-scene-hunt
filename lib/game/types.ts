@@ -43,7 +43,7 @@ export interface Challenge {
    * For `text` / `keyword`: an array of accepted answers.
    * Matching is normalised (case, width, whitespace, punctuation) - see `answers.ts`.
    */
-  answer: number | string | string[];
+  answer?: number | string | string[];\n  /** Reflective choice: every deliberate selection is valid; the response is for self-reflection, not grading. */\n  reflective?: boolean;
   hint?: string;
   /**
    * For `keyword` challenges: additional accepted synonyms shown to the player
