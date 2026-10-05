@@ -37,7 +37,7 @@ export default function HomePage() {
       <section className="card overflow-hidden">
         <div className="bg-gradient-to-br from-[#1d2542] to-[#2a3459] px-5 py-6 text-white">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
-            V0.1 · 技术底座
+            V0.4 · Micro Designer
           </p>
           <h2 className="mt-2 text-[22px] font-bold leading-tight">
             现实移动 → GPS → 地点触发
@@ -71,6 +71,16 @@ export default function HomePage() {
 
       {hasProgress && game ? (
         <section className="card mt-4 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[13px] font-semibold">自己设计一个寻宝</p>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">地图范围、地点、故事、挑战、奖励都可以编辑。</p>
+          </div>
+          <Link href="/design" className="btn btn-primary h-9 min-h-0 px-3 text-xs">创建游戏</Link>
+        </div>
+      </section>
+
+      <section className="card mt-4 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[13px] text-[var(--muted)]">进行中的寻宝</p>
