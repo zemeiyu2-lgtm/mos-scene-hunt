@@ -35,7 +35,7 @@ export default function HomePage() {
       }
     >
       <section className="card overflow-hidden">
-        <div className="bg-gradient-to-br from-[#1d2542] to-[#2a3459] px-5 py-6 text-white">
+        <div className="hero-explore px-5 py-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
             V0.4 · Micro Designer
           </p>
@@ -45,12 +45,12 @@ export default function HomePage() {
             情境 → 任务 → 奖励 → 下一地点
           </h2>
           <p className="mt-3 text-[13px] leading-relaxed text-white/75">
-            这不是一款坐着玩的游戏。你需要真的走到地图上的地点，才能解锁下一个场景。
+            不是坐着答题，而是走进真实地点。你会发现线索、做出选择，并把游戏里的一个决定带回现实。
           </p>
         </div>
 
         <div className="p-5">
-          <ol className="space-y-2.5">
+          <div className="game-route mb-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span><i>→</i><span>带走</span></div>\n\n          <ol className="space-y-2.5">
             {[
               "允许浏览器获取你的位置",
               "在地图上看到自己与目标地点",
