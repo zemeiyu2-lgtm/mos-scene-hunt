@@ -61,6 +61,12 @@ interface GameMapProps {
   onMapClick?: (lat: number, lng: number) => void;
   onSceneDrag?: (sceneId: string, lat: number, lng: number) => void;
   onHuntAreaDrag?: (lat: number, lng: number) => void;
+  /**
+   * True while the designer is actively drawing a polygon boundary. Switches
+   * the cursor to a crosshair, shows numbered vertex dots for the points
+   * placed so far, and shows the "依次点击边界点" guidance overlay.
+   */
+  drawingMode?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -121,6 +127,7 @@ export default function GameMap({
   onMapClick,
   onSceneDrag,
   onHuntAreaDrag,
+  drawingMode = false,
 }: GameMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -134,6 +141,7 @@ export default function GameMap({
   const huntAreaRef = useRef<L.Circle | null>(null);
   const huntAreaPolygonRef = useRef<L.Polygon | null>(null);
   const huntAreaLineRef = useRef<L.Polyline | null>(null);
+  const areaVerticesRef = useRef<L.LayerGroup | null>(null);
 
   // Callbacks arriving via props must not become stale closures inside Leaflet
   // event handlers, so they are read through a ref at event time.
@@ -206,6 +214,9 @@ export default function GameMap({
       playerHaloRef.current = null;
       directionLineRef.current = null;
       huntAreaRef.current = null;
+      huntAreaPolygonRef.current = null;
+      huntAreaLineRef.current = null;
+      areaVerticesRef.current = null;
     };
     // Mount/unmount only. Everything else is synced below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -346,6 +357,53 @@ export default function GameMap({
       huntAreaRef.current.setRadius(huntArea.radiusMeters);
     }
   }, [huntArea?.shape, huntArea?.center.lat, huntArea?.center.lng, huntArea?.radiusMeters, JSON.stringify(huntArea?.points ?? []), editable]);
+
+  /* ------------------------------------------------ 绘制中的边界顶点 */
+  const verticesSignature = useMemo(
+    () =>
+      `${drawingMode ? 1 : 0}:` +
+      (huntArea?.shape === "polygon" ? huntArea.points ?? [] : [])
+        .map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`)
+        .join("|"),
+    [drawingMode, huntArea?.shape, huntArea?.points],
+  );
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Vertices only make sense while the designer is placing them; a committed
+    // area stays clean so the scene markers remain the visual focus.
+    if (!drawingMode || huntArea?.shape !== "polygon") {
+      if (areaVerticesRef.current) {
+        map.removeLayer(areaVerticesRef.current);
+        areaVerticesRef.current = null;
+      }
+      return;
+    }
+
+    if (!areaVerticesRef.current) {
+      areaVerticesRef.current = L.layerGroup().addTo(map);
+    }
+    const group = areaVerticesRef.current;
+    group.clearLayers();
+    (huntArea.points ?? []).forEach((p, i) => {
+      L.circleMarker([p.lat, p.lng], {
+        radius: 6,
+        color: "#ffffff",
+        weight: 2,
+        fillColor: "#f5a524",
+        fillOpacity: 1,
+        interactive: false,
+      })
+        .bindTooltip(String(i + 1), {
+          permanent: true,
+          direction: "center",
+          className: "area-vertex-label",
+        })
+        .addTo(group);
+    });
+  }, [verticesSignature, drawingMode, huntArea?.shape, huntArea?.points]);
 
   /* ------------------------------------------------ 场景标记 */
   useEffect(() => {
@@ -538,11 +596,21 @@ export default function GameMap({
   }, [player, activeEntry]);
 
   return (
-    <div className="map-root">
+    <div className={`map-root ${drawingMode ? "map-root--drawing" : ""}`}>
       <div ref={containerRef} className="h-full w-full" />
 
+      {/* Boundary-drawing guidance, kept in the DOM so it is readable by assistive tech. */}
+      {drawingMode ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[600] flex justify-center p-2">
+          <div className="rounded-full bg-[var(--card)]/95 px-3 py-1 text-[12px] font-semibold shadow-card backdrop-blur">
+            请在地图上依次点击游戏区域的边界点 · 已选择 {huntArea?.points?.length ?? 0} 个点
+            {(huntArea?.points?.length ?? 0) < 3 ? "（至少 3 个点）" : ""}
+          </div>
+        </div>
+      ) : null}
+
       {/* Direction hint overlay, kept in the DOM so it is readable by assistive tech. */}
-      {headingLabel && activeEntry ? (
+      {headingLabel && activeEntry && !drawingMode ? (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex justify-center p-2">
           <div className="rounded-full bg-[var(--card)]/95 px-3 py-1 text-[12px] font-medium shadow-card backdrop-blur">
             目标：{activeEntry.scene.location.name ?? activeEntry.scene.title}

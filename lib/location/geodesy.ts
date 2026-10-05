@@ -214,3 +214,82 @@ export function nearestLocation<T extends Location>(
   }
   return best;
 }
+
+/* ------------------------------------------------------------------ */
+/* Polygon geometry (authoring)                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Arithmetic centroid of a ring of points.
+ *
+ * The vertex average, not the area-weighted centroid: for the small, roughly
+ * convex spaces a micro-hunt covers the difference is centimetres, and the
+ * vertex average can never fall outside a concave ring the way the area
+ * centroid can. Closed rings may repeat the first point; that duplicate is
+ * ignored so it does not bias the result.
+ */
+export function polygonCentroid(points: Coordinate[]): Coordinate | null {
+  const ring = dedupeClosingPoint(points);
+  if (ring.length === 0) return null;
+  if (ring.length === 1) return { lat: ring[0].lat, lng: ring[0].lng };
+  const lat = ring.reduce((sum, p) => sum + p.lat, 0) / ring.length;
+  const lng = ring.reduce((sum, p) => sum + p.lng, 0) / ring.length;
+  return { lat, lng };
+}
+
+/**
+ * Radius of the smallest circle centred on the centroid that contains every
+ * vertex, in metres. Lets a polygon be summarised as centre+radius for the
+ * consumers that only speak circle.
+ */
+export function polygonBoundingRadius(points: Coordinate[]): number {
+  const ring = dedupeClosingPoint(points);
+  const center = polygonCentroid(ring);
+  if (!center) return 0;
+  let max = 0;
+  for (const p of ring) {
+    const d = calculateDistance(center, p);
+    if (d > max) max = d;
+  }
+  return max;
+}
+
+/** Drop a trailing point that repeats the first, so rings stay open for math. */
+function dedupeClosingPoint(points: Coordinate[]): Coordinate[] {
+  const clean = (points ?? []).filter((p) => isValidCoordinate(p));
+  if (clean.length >= 2) {
+    const first = clean[0];
+    const last = clean[clean.length - 1];
+    if (first.lat === last.lat && first.lng === last.lng) return clean.slice(0, -1);
+  }
+  return clean;
+}
+
+/**
+ * Is a coordinate inside a polygon ring? Ray-casting (even-odd rule), which is
+ * correct for the concave rings a designer can draw by hand and needs no
+ * triangulation. Boundary points are treated as inside via a small epsilon on
+ * the crossing test.
+ *
+ * Not wired into the unlock engine - it exists so the editor can tell a
+ * designer whether a scene they placed actually falls inside the area they
+ * drew, and so that check is unit-testable rather than eyeballed.
+ */
+export function isPointInPolygon(point: Coordinate, points: Coordinate[]): boolean {
+  const ring = dedupeClosingPoint(points);
+  if (ring.length < 3 || !isValidCoordinate(point)) return false;
+
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i].lng;
+    const yi = ring[i].lat;
+    const xj = ring[j].lng;
+    const yj = ring[j].lat;
+
+    const intersects =
+      yi > point.lat !== yj > point.lat &&
+      point.lng < ((xj - xi) * (point.lat - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}

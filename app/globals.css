@@ -275,6 +275,26 @@ body {
   outline-offset: 2px;
 }
 
+/* Area-authoring: numbered vertex labels shown while drawing a boundary. */
+.area-vertex-label {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #3a2400;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.area-vertex-label::before {
+  display: none;
+}
+
+/* A crosshair cursor tells the designer clicks now place boundary points. */
+.map-root--drawing .leaflet-container {
+  cursor: crosshair;
+}
+
 /* ------------------------------------------------------------------ */
 /* Motion                                                             */
 /* ------------------------------------------------------------------ */
