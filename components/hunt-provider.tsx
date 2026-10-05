@@ -67,7 +67,7 @@ interface HuntContextValue {
   loadError: string | null;
   /** Non-fatal authoring warnings from validation. */
   contentIssues: LoadedGame["issues"];
-  contentSource: "network" | "cache" | null;
+  contentSource: "network" | "cache" | "local" | null;
   loadProgress?: number;
 
   /** The scene the player should be heading to. */
