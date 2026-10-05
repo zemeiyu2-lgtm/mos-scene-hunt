@@ -49,7 +49,7 @@ export default function DesignPage() {
   const { settings } = useSettings();
   const [draft, setDraft] = useState<Game | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(false);\n  const [shareUrl, setShareUrl] = useState<string | null>(null);\n  const [shareBusy, setShareBusy] = useState(false);\n  const [shareMessage, setShareMessage] = useState<string | null>(null);
   // ① area-drawing session. While active, map clicks append boundary points.
   const [drawingArea, setDrawingArea] = useState(false);
   // One-shot circle placement: the next map click sets the area centre.
@@ -307,7 +307,7 @@ export default function DesignPage() {
 
   /* ---------------------------------------------------------------- ④ 保存 */
 
-  const save = () => {
+  const share = async () => {\n    if (!working || areaIncomplete || drawingArea) return;\n    setShareBusy(true);\n    setShareMessage(null);\n    try {\n      save();\n      const url = await createGameShareUrl(working);\n      setShareUrl(url);\n      if (navigator.share) {\n        try {\n          await navigator.share({ title: working.title, text: "邀请你来玩：" + working.title, url });\n          setShareMessage("已打开系统分享面板");\n        } catch {\n          // User cancelled native sharing; the link remains visible for copying.\n        }\n      } else {\n        await navigator.clipboard.writeText(url);\n        setShareMessage("分享链接已复制");\n      }\n    } catch (error) {\n      setShareMessage(error instanceof Error ? error.message : "生成分享链接失败");\n    } finally {\n      setShareBusy(false);\n    }\n  };\n\n  const copyShareUrl = async () => {\n    if (!shareUrl) return;\n    await navigator.clipboard.writeText(shareUrl);\n    setShareMessage("分享链接已复制，可以发给微信好友或群");\n  };\n\n  const save = () => {
     if (!working || areaIncomplete || drawingArea) return;
     if (saveAuthoredGame(working)) {
       // Point the app at this pack so 「立即试玩」 - and every screen after it -
@@ -741,7 +741,7 @@ export default function DesignPage() {
           >
             {saved ? "✓ 已保存到本机" : "仅保存到本机"}
           </button>
-          <button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button>
+          <button type="button" className="btn btn-primary btn-block" onClick={share} disabled={areaIncomplete || drawingArea || shareBusy}>\n            {shareBusy ? "正在生成分享链接…" : "🔗 发布并分享给朋友"}\n          </button>\n          {shareUrl ? (\n            <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">\n              <p className="text-[12px] font-semibold">分享链接已生成</p>\n              <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>\n              <div className="mt-2 grid grid-cols-2 gap-2">\n                <button type="button" className="btn btn-secondary" onClick={copyShareUrl}>复制链接</button>\n                <button type="button" className="btn btn-ghost" onClick={() => setShareUrl(null)}>收起</button>\n              </div>\n              <p className="mt-2 text-[10.5px] leading-relaxed text-[var(--muted)]">别人打开链接后会直接进入这个游戏，不需要你的浏览器存档，也不需要登录。</p>\n            </div>\n          ) : null}\n          {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}\n          <button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button>
           <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>恢复官方示范内容</button>
         </div>
       </section>
