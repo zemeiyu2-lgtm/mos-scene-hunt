@@ -19,10 +19,16 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MapView } from "@/components/map-view";
 import { useSettings } from "@/components/providers";
 import { Screen } from "@/components/ui";
-import { clearAuthoredGame, saveAuthoredGame } from "@/lib/content";
+import {
+  clearActiveAuthoredGame,
+  clearAuthoredGame,
+  markCurrentAuthoredGame,
+  saveAuthoredGame,
+} from "@/lib/content";
 import type { Game, HuntArea, Scene } from "@/lib/game/types";
 import {
   isPointInPolygon,
@@ -37,6 +43,7 @@ const MICRO_PRESETS = [30, 50, 75, 100, 150, 250];
 const MIN_POLYGON_POINTS = 3;
 
 export default function DesignPage() {
+  const router = useRouter();
   const { game, loading, loadError, reloadContent } = useHunt();
   const { settings } = useSettings();
   const [draft, setDraft] = useState<Game | null>(null);
@@ -302,13 +309,32 @@ export default function DesignPage() {
   const save = () => {
     if (!working || areaIncomplete || drawingArea) return;
     if (saveAuthoredGame(working)) {
+      // Point the app at this pack so 「立即试玩」 - and every screen after it -
+      // loads the game the author just built instead of the bundled demo.
+      markCurrentAuthoredGame(working.id);
       setDraft(working);
       setSaved(true);
     }
   };
 
+  /**
+   * 「立即试玩」 saves first, then navigates.
+   *
+   * Deliberately not a bare <Link>: an author who tunes a trigger radius and
+   * immediately hits play expects those edits to be in the hunt. Saving here
+   * makes that the only outcome, and marking the pack first guarantees the
+   * /select screen resolves to it.
+   */
+  const play = () => {
+    save();
+    router.push("/select");
+  };
+
   const resetOfficial = () => {
     clearAuthoredGame(working.id);
+    // Hand the title back to the bundled pack, otherwise /select would keep
+    // resolving to a pack that no longer exists.
+    clearActiveAuthoredGame();
     setDraft(null);
     setSaved(false);
     setDrawingArea(false);
@@ -674,12 +700,18 @@ export default function DesignPage() {
           <button
             type="button"
             className="btn btn-primary btn-block"
+            onClick={play}
+          >
+            {saved ? "✓ 已保存，立即试玩" : "保存并立即试玩"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-block"
             onClick={save}
             disabled={areaIncomplete || drawingArea}
           >
-            {saved ? "✓ 已保存到本机" : "保存我的游戏"}
+            {saved ? "✓ 已保存到本机" : "仅保存到本机"}
           </button>
-          <Link href="/select" className="btn btn-secondary btn-block">立即试玩</Link>
           <button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button>
           <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>恢复官方示范内容</button>
         </div>

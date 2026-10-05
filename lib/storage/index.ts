@@ -22,6 +22,14 @@ const ACTIVE_SAVE_KEY = "mos-scene-hunt:active-save";
 const SAVE_INDEX_KEY = "mos-scene-hunt:save-index";
 const SETTINGS_KEY = "mos-scene-hunt:settings";
 const CONTENT_CACHE_PREFIX = "mos-scene-hunt:content:";
+/**
+ * Points at the authored pack the player should be playing right now.
+ *
+ * Written by the designer on save, read by the root provider at boot. This is
+ * the seam that lets a locally authored game become the active hunt without a
+ * backend, an account, or a route parameter.
+ */
+const CURRENT_AUTHORED_KEY = "mos-scene-hunt:current-authored-game";
 
 export interface SaveEnvelope {
   schemaVersion: number;
@@ -166,6 +174,63 @@ export function loadGameState(gameId: string): GameState | null {
 
 export function clearGameState(): void {
   removeRaw(ACTIVE_SAVE_KEY);
+}
+
+/* ------------------------------------------------------------------ */
+/* Current authored pack pointer                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Change feed for the pointer.
+ *
+ * Two sources matter: our own writes (subscribeToCurrentAuthoredGame notifies
+ * listeners directly, because a same-document `localStorage.setItem` fires no
+ * `storage` event), and other tabs (which do fire one). Both are handled here
+ * so the provider only has to subscribe once.
+ */
+const currentAuthoredListeners = new Set<() => void>();
+
+function notifyCurrentAuthoredGame(): void {
+  for (const listener of currentAuthoredListeners) {
+    try {
+      listener();
+    } catch {
+      /* a broken listener must not break the write path */
+    }
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key === CURRENT_AUTHORED_KEY) notifyCurrentAuthoredGame();
+  });
+}
+
+/** Subscribe to pointer changes. Returns an unsubscribe function. */
+export function subscribeToCurrentAuthoredGame(listener: () => void): () => void {
+  currentAuthoredListeners.add(listener);
+  return () => {
+    currentAuthoredListeners.delete(listener);
+  };
+}
+
+/** Remember which authored pack should be played. Called by the designer. */
+export function setCurrentAuthoredGameId(gameId: string): void {
+  writeRaw(CURRENT_AUTHORED_KEY, gameId);
+  notifyCurrentAuthoredGame();
+}
+
+/** The authored pack the player should be playing, or null to use the default. */
+export function getCurrentAuthoredGameId(): string | null {
+  const raw = readRaw(CURRENT_AUTHORED_KEY);
+  if (typeof raw !== "string") return null;
+  const id = raw.trim();
+  return id.length > 0 ? id : null;
+}
+
+export function clearCurrentAuthoredGameId(): void {
+  removeRaw(CURRENT_AUTHORED_KEY);
+  notifyCurrentAuthoredGame();
 }
 
 /* ------------------------------------------------------------------ */

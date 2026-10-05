@@ -3,7 +3,13 @@
  */
 
 import { validateGame, type Game, type ValidationIssue } from "../game/types";
-import { cacheGameContent, readCachedGameContent } from "../storage";
+import {
+  cacheGameContent,
+  clearCurrentAuthoredGameId,
+  getCurrentAuthoredGameId,
+  readCachedGameContent,
+  setCurrentAuthoredGameId,
+} from "../storage";
 
 const CONTENT_BASE = "/content";
 const AUTHORING_PREFIX = "mos-scene-hunt:authoring:";
@@ -33,6 +39,47 @@ export function hasAuthoredGame(gameId: string): boolean {
   return Boolean(window.localStorage.getItem(authoringKey(gameId)));
 }
 
+/* ------------------------------------------------------------------ */
+/* Current authored pack                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Mark an authored pack as the one to play.
+ *
+ * This is what makes 「保存我的游戏 → 立即试玩」 show the game the author just
+ * built instead of the bundled demo: the root provider reads this pointer at
+ * boot and loads that pack everywhere (/select, /map, /scene, /challenge,
+ * /reward). Purely browser-local - no backend, no account.
+ */
+export function markCurrentAuthoredGame(gameId: string): void {
+  if (typeof window === "undefined") return;
+  setCurrentAuthoredGameId(gameId);
+}
+
+/** The authored pack currently selected for play, or null for the bundled default. */
+export function getActiveAuthoredGameId(): string | null {
+  if (typeof window === "undefined") return null;
+  return getCurrentAuthoredGameId();
+}
+
+/** Drop the pointer so the app falls back to the bundled pack (demo-hunt). */
+export function clearActiveAuthoredGame(): void {
+  if (typeof window === "undefined") return;
+  clearCurrentAuthoredGameId();
+}
+
+/** Read an authored pack directly from browser storage, if one exists and is valid. */
+export function readAuthoredGame(gameId: string): Game | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(authoringKey(gameId));
+    if (!raw) return null;
+    const { game } = validateGame(JSON.parse(raw));
+    return game;
+  } catch {
+    return null;
+  }
+}
 
 export interface LoadedGame {
   game: Game;
@@ -51,18 +98,38 @@ function packUrl(gameId: string): string {
 }
 
 /**
+ * Resolve which pack the app should actually load.
+ *
+ * Precedence:
+ *  1. An explicit id (a caller that already knows what it wants).
+ *  2. The authored pack the designer last saved, if it is still readable.
+ *  3. The bundled default.
+ *
+ * The pointer is only honoured when the authored pack actually parses, so a
+ * cleared or corrupt entry degrades to the demo instead of an empty screen.
+ */
+export function resolveActiveGameId(explicit?: string | null): string {
+  if (explicit) return explicit;
+  const authored = getActiveAuthoredGameId();
+  if (authored && readAuthoredGame(authored)) return authored;
+  return DEFAULT_GAME_ID;
+}
+
+/**
  * Load a content pack.
  *
  * Order of preference:
- *  1. The network, so authors see edits immediately.
- *  2. The IndexedDB / localStorage cache, so the hunt is playable offline.
+ *  1. Browser-local authored content (the designer's own pack), so
+ *     「保存我的游戏 → 立即试玩」 plays what the author just built.
+ *  2. The network, so authors see edits immediately.
+ *  3. The IndexedDB / localStorage cache, so the hunt is playable offline.
  *
  * A pack that fails validation is never cached and never played - a broken
  * content pack should fail loudly at build/authoring time, not silently at
  * scene 3 in a park.
  */
 export async function loadGame(
-  gameId: string = DEFAULT_GAME_ID,
+  gameId: string = resolveActiveGameId(),
   options: { forceNetwork?: boolean } = {},
 ): Promise<LoadedGame> {
   let networkError: unknown = null;

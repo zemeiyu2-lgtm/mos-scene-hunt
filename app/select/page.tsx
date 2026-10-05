@@ -12,13 +12,13 @@
 import { useRouter } from "next/navigation";
 import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
-import { HUNT_MANIFEST } from "@/lib/content";
+import { findManifestEntry } from "@/lib/content";
 import { ErrorState, Screen } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 
 export default function SelectPage() {
   const router = useRouter();
-  const { game, loadError, reloadContent, state, statuses, startHunt } = useHunt();
+  const { game, loadError, reloadContent, state, statuses, startHunt, contentSource } = useHunt();
   const { start, status, permission } = useGps();
 
   const begin = () => {
@@ -52,7 +52,15 @@ export default function SelectPage() {
     );
   }
 
-  const manifest = HUNT_MANIFEST.find((h) => h.id === game.id);
+  /**
+   * The manifest is presentation-only: it contributes a difficulty hint and,
+   * for bundled packs, nothing else. Everything factual on this screen -
+   * title, description, scene list, trigger distance - is read off the loaded
+   * `game`, which is the authored pack whenever one is active.
+   */
+  const manifest = findManifestEntry(game.id);
+  const isAuthored = contentSource === "local";
+  const triggerRange = formatTriggerRange(game.scenes.map((s) => s.location.radius));
 
   return (
     <>
@@ -60,19 +68,22 @@ export default function SelectPage() {
       <section className="card overflow-hidden">
         <div className="bg-gradient-to-br from-[#1d2542] to-[#2a3459] px-5 py-5 text-white">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
-            {manifest?.difficulty === "easy" ? "入门" : "进阶"} · {game.language}
+            {isAuthored ? "本机创作" : manifest?.difficulty === "easy" ? "入门" : "进阶"} ·{" "}
+            {game.language}
           </p>
           <h2 className="mt-1.5 text-[20px] font-bold leading-tight">{game.title}</h2>
         </div>
 
         <div className="p-5">
-          <p className="text-[13.5px] leading-relaxed text-[var(--muted)]">{game.description}</p>
+          {game.description ? (
+            <p className="text-[13.5px] leading-relaxed text-[var(--muted)]">{game.description}</p>
+          ) : null}
 
           <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { k: "地点", v: `${game.scenes.length} 个` },
               { k: "区域", v: formatArea(game.huntArea?.radiusMeters) },
-              { k: "触发", v: "30–50 m" },
+              { k: "触发", v: triggerRange },
               { k: "预计", v: `${game.estimatedMinutes ?? 20} 分钟` },
             ].map((item) => (
               <div key={item.k} className="rounded-xl bg-[var(--surface)] px-3 py-2">
@@ -84,8 +95,16 @@ export default function SelectPage() {
 
           {game.huntArea ? (
             <div className="mt-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[12px] leading-relaxed text-amber-900">
-              <p className="font-semibold">探索区域 · {game.huntArea.name ?? formatArea(game.huntArea.radiusMeters)}</p>
-              <p className="mt-0.5">整个寻宝在约 {formatArea(game.huntArea.radiusMeters)} 范围内展开；到达每个具体地点后，才会在约 30–50 米的触发圈内解锁任务。</p>
+              <p className="font-semibold">
+                探索区域 · {game.huntArea.name ?? formatArea(game.huntArea.radiusMeters)}
+                {game.huntArea.shape === "polygon"
+                  ? `（自定义多边形 · ${game.huntArea.points?.length ?? 0} 个顶点）`
+                  : ""}
+              </p>
+              <p className="mt-0.5">
+                整个寻宝在约 {formatArea(game.huntArea.radiusMeters)} 范围内展开；到达每个具体地点后，才会在
+                约 {triggerRange} 的触发圈内解锁任务。
+              </p>
             </div>
           ) : null}
 
@@ -165,6 +184,23 @@ function formatArea(radiusMeters?: number): string {
   if (!Number.isFinite(radiusMeters)) return "未设定";
   const km = (radiusMeters as number) / 1000;
   return km >= 1 ? `约 ${km.toFixed(km < 10 ? 1 : 0)} km` : `约 ${Math.round(radiusMeters as number)} m`;
+}
+
+/**
+ * The actual trigger radii in this pack, e.g. "15–30 m" or "15 m".
+ *
+ * Read from the scenes rather than hard-coded: an authored pack sets its own
+ * radii, and a briefing that claims "30–50 m" for a pack whose rings are 15 m
+ * sends the player looking in the wrong place.
+ */
+function formatTriggerRange(radii: Array<number | undefined>): string {
+  const values = radii
+    .map((r) => (typeof r === "number" && Number.isFinite(r) ? Math.round(r) : null))
+    .filter((r): r is number => r !== null);
+  if (values.length === 0) return "未设定";
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  return min === max ? `${min} m` : `${min}–${max} m`;
 }
 
 function challengeLabel(type: string): string {

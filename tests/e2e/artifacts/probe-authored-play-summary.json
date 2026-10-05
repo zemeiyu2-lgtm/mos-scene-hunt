@@ -1,0 +1,57 @@
+{
+  "results": [
+    {
+      "name": "1. 没有自定义游戏时，/select 回落到 demo-hunt",
+      "ok": true
+    },
+    {
+      "name": "2. /select 显示自定义游戏标题，不显示 Luneta",
+      "ok": true
+    },
+    {
+      "name": "3. /select 显示正确的场景数量（8 个）",
+      "ok": true
+    },
+    {
+      "name": "4. /select 场景名称逐一正确",
+      "ok": true
+    },
+    {
+      "name": "5. /select 触发距离来自实际数据而非硬编码 30–50m",
+      "ok": true
+    },
+    {
+      "name": "6. /select 标注为「本机创作」",
+      "ok": true
+    },
+    {
+      "name": "7. 开始寻宝后进入 /map",
+      "ok": true
+    },
+    {
+      "name": "8. /map 渲染 8 个自定义场景标记",
+      "ok": true
+    },
+    {
+      "name": "9. /quest 使用自定义场景名称",
+      "ok": true
+    },
+    {
+      "name": "10. /scene/chapel 加载自定义情境（非官方五站）",
+      "ok": true
+    },
+    {
+      "name": "11. /challenge/chapel 使用自定义题目",
+      "ok": true
+    },
+    {
+      "name": "12. /reward/chapel 使用自定义奖励",
+      "ok": true
+    },
+    {
+      "name": "13. 清空自定义游戏后 /select 回落到 demo-hunt",
+      "ok": true
+    }
+  ],
+  "errors": []
+}

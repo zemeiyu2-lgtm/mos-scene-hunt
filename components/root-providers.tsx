@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { SettingsProvider, useOnlineStatus } from "./providers";
 import { GpsProvider } from "./gps-provider";
 import { HuntProvider } from "./hunt-provider";
-import { DEFAULT_GAME_ID } from "@/lib/content";
+import { resolveActiveGameId } from "@/lib/content";
+import { subscribeToCurrentAuthoredGame } from "@/lib/storage";
 
 /**
  * Root provider stack.
@@ -18,14 +19,54 @@ import { DEFAULT_GAME_ID } from "@/lib/content";
  * position in the tree does not affect layout.
  */
 export function RootProviders({ children }: { children: React.ReactNode }) {
+  const gameId = useActiveGameId();
+
   return (
     <SettingsProvider>
       <ServiceWorkerRegistrar />
       <GpsProvider>
-        <HuntProvider gameId={DEFAULT_GAME_ID}>{children}</HuntProvider>
+        {/* Remounting (via key) is deliberate: the provider resolves its pack
+            once per identity, so a switch from the bundled demo to a freshly
+            authored pack must build a new one rather than patch the old. */}
+        <HuntProvider key={gameId} gameId={gameId}>
+          {children}
+        </HuntProvider>
       </GpsProvider>
     </SettingsProvider>
   );
+}
+
+/**
+ * Which pack the app should load.
+ *
+ * Starts from the server-rendered default (hydration is then deterministic:
+ * the pointer is browser-local and unknowable on the server) and swaps in the
+ * authored pack right after mount if the designer has saved one.
+ */
+function useActiveGameId(): string {
+  const subscribe = useCallback((onChange: () => void) => {
+    const unsubscribeStorage = subscribeToCurrentAuthoredGame(onChange);
+    window.addEventListener("focus", onChange);
+    return () => {
+      unsubscribeStorage();
+      window.removeEventListener("focus", onChange);
+    };
+  }, []);
+
+  // A non-null snapshot on both server and first client render keeps the
+  // markup identical; the authored id overwrites it in the commit phase.
+  const snapshot = useSyncExternalStore(
+    subscribe,
+    () => resolveActiveGameId(),
+    () => resolveActiveGameId(null),
+  );
+
+  const [active, setActive] = useState(snapshot);
+  useEffect(() => {
+    setActive(snapshot);
+  }, [snapshot]);
+
+  return active;
 }
 
 /**
