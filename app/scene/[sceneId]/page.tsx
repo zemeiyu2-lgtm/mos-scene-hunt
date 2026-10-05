@@ -73,9 +73,9 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
         </div>
       ) : null}
 
-      <article className="card p-5">
+      <article className="card story-card p-5">
         {scene.briefing ? (
-          <p className="mb-3 border-l-2 border-[var(--accent)] pl-3 text-[12.5px] italic leading-relaxed text-[var(--muted)]">
+          <p className="mb-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[12.5px] italic leading-relaxed text-amber-900">
             {scene.briefing}
           </p>
         ) : null}
@@ -83,7 +83,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
         {paragraphs.map((para, i) => (
           <p
             key={i}
-            className="mb-3 whitespace-pre-line text-[15.5px] leading-[1.75] last:mb-0"
+            className="mb-4 whitespace-pre-line text-[16px] leading-[1.8] last:mb-0"
           >
             {para}
           </p>
