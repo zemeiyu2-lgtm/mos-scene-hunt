@@ -144,6 +144,8 @@ export default function HomePage() {
                 </span>
                 {contentSource === "cache" ? (
                   <span className="chip bg-slate-200 text-[11px] text-slate-600">离线缓存</span>
+                ) : contentSource === "local" ? (
+                  <span className="chip bg-purple-100 text-[11px] text-purple-700">我的创作</span>
                 ) : null}
               </div>
             </Link>
