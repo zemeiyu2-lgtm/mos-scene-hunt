@@ -146,8 +146,12 @@ export interface HuntArea {
     lat: number;
     lng: number;
   };
-  /** Overall exploration radius in metres. */
+  /** Overall exploration radius in metres. Kept for backwards compatibility and compact-area hints. */
   radiusMeters: number;
+  /** "circle" is the legacy/default mode; "polygon" is a precise author-drawn boundary. */
+  shape?: "circle" | "polygon";
+  /** WGS84 vertices for a custom closed hunt boundary. Minimum 3 points when shape="polygon". */
+  points?: Array<{ lat: number; lng: number }>;
   /** Optional player-facing label. */
   name?: string;
 }
@@ -261,6 +265,20 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
         warn("$.huntArea.radiusMeters", "区域半径 " + r + "m 很小，请确认 GPS 环境适合此范围");
       } else if (r > 5000) {
         warn("$.huntArea.radiusMeters", "区域半径 " + r + "m 偏大，建议不超过 5km");
+      }
+      if (g.huntArea.shape !== undefined && g.huntArea.shape !== "circle" && g.huntArea.shape !== "polygon") {
+        err("$.huntArea.shape", "必须是 circle 或 polygon");
+      }
+      if (g.huntArea.shape === "polygon") {
+        if (!Array.isArray(g.huntArea.points) || g.huntArea.points.length < 3) {
+          err("$.huntArea.points", "自定义闭环至少需要 3 个地图点");
+        } else {
+          g.huntArea.points.forEach((point, i) => {
+            checkLatLng(point?.lat, point?.lng, `$.huntArea.points[${i}]`, err);
+          });
+        }
+      } else if (g.huntArea.points !== undefined && !Array.isArray(g.huntArea.points)) {
+        err("$.huntArea.points", "必须是坐标数组");
       }
     }
   }
