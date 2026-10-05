@@ -50,8 +50,8 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
   return (
     <Screen title="任务完成" subtitle={scene.title}>
       <section className="card overflow-hidden">
-        <div className="bg-gradient-to-br from-[#1c7d51] to-[#2ec27e] px-5 py-7 text-center text-white">
-          <p className="text-[40px] leading-none">{reward?.icon ?? "✓"}</p>
+        <div className="completion-hero px-5 py-8 text-center">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/15 text-[34px] shadow-lg">{reward?.icon ?? "✓"}</div>
           <p className="mt-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-white/75">
             获得{reward?.type === "keyword" ? "关键词" : reward?.type === "badge" ? "徽章" : "奖励"}
           </p>
