@@ -479,8 +479,10 @@ export function evaluateChallenge(
     if (typeof action.selectedIndex !== "number") {
       return { correct: false, method: "none" };
     }
+    if (challenge.reflective) return { correct: true, method: "exact" };
+    if (typeof challenge.answer !== "number") return { correct: false, method: "none" };
     return {
-      correct: matchChoiceAnswer(action.selectedIndex, challenge.answer as number, challenge.options ?? []),
+      correct: matchChoiceAnswer(action.selectedIndex, challenge.answer, challenge.options ?? []),
       method: "exact",
     };
   }
