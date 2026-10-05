@@ -161,15 +161,11 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
                   setSelected(index);
                   setFeedback("none");
                 }}
-                className={`card flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors ${
-                  active ? "border-[var(--accent)] bg-amber-50" : ""
-                }`}
+                className="choice-card flex w-full items-center gap-3 px-4 py-4 text-left" data-active={active}
                 aria-pressed={active}
               >
                 <span
-                  className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[12px] font-bold ${
-                    active ? "bg-[var(--accent)] text-[#3a2400]" : "bg-[var(--line)] text-[var(--muted)]"
-                  }`}
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-bold ${active ? "bg-[var(--accent)] text-[#3a2400]" : "bg-[var(--line)] text-[var(--muted)]"}`}
                 >
                   {String.fromCharCode(65 + index)}
                 </span>
