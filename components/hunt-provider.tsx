@@ -370,7 +370,7 @@ export function HuntProvider({
       loading,
       loadError,
       contentIssues: loaded?.issues ?? [],
-      contentSource: loaded?.source ?? null,
+      contentSource: loaded?.source === "shared" ? "network" : loaded?.source ?? null,
       current: derived.current,
       distances: derived.distances,
       available: derived.available,
