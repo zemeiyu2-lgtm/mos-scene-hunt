@@ -650,7 +650,13 @@ export default function DesignPage() {
                       }} />
                     ))}
                   </div>
-                  <label className="mt-2 block text-xs">正确答案<input className="input mt-1" type="number" min={0} max={Math.max(0, (selected.challenge.options?.length ?? 1) - 1)} value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : 0} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })} /></label>
+                  {selected.challenge?.reflective ? (
+                    <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
+                      这是<strong>反思型选择</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
+                    </div>
+                  ) : (
+                    <label className="mt-2 block text-xs">正确答案<input className="input mt-1" type="number" min={0} max={Math.max(0, (selected.challenge.options?.length ?? 1) - 1)} value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : 0} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })} /></label>
+                  )}
                 </>
               ) : null}
               <label className="mt-2 block text-xs">答案说明<textarea className="input mt-1 min-h-16" value={selected.challenge?.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
