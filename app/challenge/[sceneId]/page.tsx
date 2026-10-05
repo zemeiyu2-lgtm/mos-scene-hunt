@@ -87,7 +87,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       // Verify locally so the screen can distinguish "wrong" from "correct"
       // without waiting for a state round-trip; the engine re-verifies and is
       // the only thing that actually advances the game.
-      const isCorrect = selected === challenge.answer;
+      const isCorrect = Boolean(challenge.reflective) || selected === challenge.answer;
       submitAnswer(scene.id, { selectedIndex: selected });
       if (isCorrect) {
         setSolved(true);
