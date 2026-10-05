@@ -36,7 +36,7 @@ export async function createGameShareUrl(game: Game): Promise<string> {
   const raw = JSON.stringify(game);
   const compressed = await gzipText(raw);
   const payload = compressed ? "g." + toBase64Url(compressed) : "j." + toBase64Url(new TextEncoder().encode(raw));
-  return window.location.origin + "/?share=1" + PREFIX + payload;
+  return window.location.origin + "/select" + PREFIX + payload;
 }
 
 /** Reads a self-contained shared game from the current URL, if present. */
