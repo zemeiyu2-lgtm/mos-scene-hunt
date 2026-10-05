@@ -39,7 +39,7 @@ export interface LoadedGame {
   /** Non-fatal authoring problems worth surfacing in the dev panel. */
   issues: ValidationIssue[];
   /** Where the pack actually came from - drives the offline badge in the UI. */
-  source: "network" | "cache";
+  source: "network" | "cache" | "local";
   cachedAt?: number;
 }
 
@@ -75,7 +75,7 @@ export async function loadGame(
       if (authored) {
         const raw = JSON.parse(authored);
         const { game, issues } = validateGame(raw);
-        return { game, issues, source: "network" };
+        return { game, issues, source: "local" };
       }
     } catch {
       // Ignore a stale/broken local draft and fall back to the packaged content.
