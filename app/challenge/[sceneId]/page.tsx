@@ -139,7 +139,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
         </div>
       ) : null}
 
-      <section className="card p-4">
+      <section className="card story-card p-5">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
           {challenge.type === "choice" ? "选择题" : challenge.type === "keyword" ? "关键词题" : "简答题"}
         </p>
