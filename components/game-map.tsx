@@ -56,6 +56,11 @@ interface GameMapProps {
   fitToHunt?: boolean;
   /** Re-centre on the player when this value changes. */
   recenterToken?: number;
+  /** Optional authoring interactions. Gameplay never supplies these. */
+  editable?: boolean;
+  onMapClick?: (lat: number, lng: number) => void;
+  onSceneDrag?: (sceneId: string, lat: number, lng: number) => void;
+  onHuntAreaDrag?: (lat: number, lng: number) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -112,6 +117,10 @@ export default function GameMap({
   draggablePlayer = false,
   fitToHunt = false,
   recenterToken,
+  editable = false,
+  onMapClick,
+  onSceneDrag,
+  onHuntAreaDrag,
 }: GameMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -128,6 +137,12 @@ export default function GameMap({
   // event handlers, so they are read through a ref at event time.
   const dragCallbackRef = useRef(onSimulatedDrag);
   dragCallbackRef.current = onSimulatedDrag;
+  const mapClickCallbackRef = useRef(onMapClick);
+  mapClickCallbackRef.current = onMapClick;
+  const sceneDragCallbackRef = useRef(onSceneDrag);
+  sceneDragCallbackRef.current = onSceneDrag;
+  const huntAreaDragCallbackRef = useRef(onHuntAreaDrag);
+  huntAreaDragCallbackRef.current = onHuntAreaDrag;
 
   const tiles = TILE_PROVIDERS[tileProvider] ?? TILE_PROVIDERS["osm-hot"];
   const activeEntry = useMemo(() => entries.find((e) => e.isActive) ?? null, [entries]);
@@ -169,6 +184,10 @@ export default function GameMap({
       maxZoom: tiles.maxZoom,
     });
     mapRef.current = map;
+
+    if (editable) {
+      map.on("click", (event) => mapClickCallbackRef.current?.(event.latlng.lat, event.latlng.lng));
+    }
 
     const scale = L.control.scale({ imperial: false, position: "bottomleft" });
     scale.addTo(map);
@@ -289,8 +308,14 @@ export default function GameMap({
         fillColor: "#5b6b9a",
         fillOpacity: 0.035,
         dashArray: "8 8",
-        interactive: false,
+        interactive: editable,
       }).addTo(map);
+      if (editable) {
+        huntAreaRef.current.on("dragend", () => {
+          const center = huntAreaRef.current?.getLatLng();
+          if (center) huntAreaDragCallbackRef.current?.(center.lat, center.lng);
+        });
+      }
     } else {
       huntAreaRef.current.setLatLng(center);
       huntAreaRef.current.setRadius(huntArea.radiusMeters);
@@ -317,8 +342,16 @@ export default function GameMap({
       if (existing) {
         existing.setLatLng(latlng);
         existing.setIcon(icon);
+        if (editable && existing.dragging && !existing.dragging.enabled()) existing.dragging.enable();
+        if (!editable && existing.dragging?.enabled()) existing.dragging.disable();
       } else {
-        const marker = L.marker(latlng, { icon, interactive: false });
+        const marker = L.marker(latlng, { icon, interactive: editable, draggable: editable });
+        if (editable) {
+          marker.on("dragend", () => {
+            const pos = marker.getLatLng();
+            sceneDragCallbackRef.current?.(entry.scene.id, pos.lat, pos.lng);
+          });
+        }
         marker.addTo(map);
         store.set(entry.scene.id, marker);
       }
