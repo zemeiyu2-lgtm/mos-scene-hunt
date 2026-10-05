@@ -50,7 +50,10 @@ export default function DesignPage() {
   const { settings } = useSettings();
   const [draft, setDraft] = useState<Game | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);\n  const [shareUrl, setShareUrl] = useState<string | null>(null);\n  const [shareBusy, setShareBusy] = useState(false);\n  const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
   // ① area-drawing session. While active, map clicks append boundary points.
   const [drawingArea, setDrawingArea] = useState(false);
   // One-shot circle placement: the next map click sets the area centre.
@@ -308,7 +311,39 @@ export default function DesignPage() {
 
   /* ---------------------------------------------------------------- ④ 保存 */
 
-  const share = async () => {\n    if (!working || areaIncomplete || drawingArea) return;\n    setShareBusy(true);\n    setShareMessage(null);\n    try {\n      save();\n      const url = await createGameShareUrl(working);\n      setShareUrl(url);\n      if (navigator.share) {\n        try {\n          await navigator.share({ title: working.title, text: "邀请你来玩：" + working.title, url });\n          setShareMessage("已打开系统分享面板");\n        } catch {\n          // User cancelled native sharing; the link remains visible for copying.\n        }\n      } else {\n        await navigator.clipboard.writeText(url);\n        setShareMessage("分享链接已复制");\n      }\n    } catch (error) {\n      setShareMessage(error instanceof Error ? error.message : "生成分享链接失败");\n    } finally {\n      setShareBusy(false);\n    }\n  };\n\n  const copyShareUrl = async () => {\n    if (!shareUrl) return;\n    await navigator.clipboard.writeText(shareUrl);\n    setShareMessage("分享链接已复制，可以发给微信好友或群");\n  };\n\n  const save = () => {
+  const share = async () => {
+    if (!working || areaIncomplete || drawingArea) return;
+    setShareBusy(true);
+    setShareMessage(null);
+    try {
+      save();
+      const url = await createGameShareUrl(working);
+      setShareUrl(url);
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: working.title, text: "邀请你来玩：" + working.title, url });
+          setShareMessage("已打开系统分享面板");
+        } catch {
+          // User cancelled native sharing; the link remains visible for copying.
+        }
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareMessage("分享链接已复制");
+      }
+    } catch (error) {
+      setShareMessage(error instanceof Error ? error.message : "生成分享链接失败");
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const copyShareUrl = async () => {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setShareMessage("分享链接已复制，可以发给微信好友或群");
+  };
+
+  const save = () => {
     if (!working || areaIncomplete || drawingArea) return;
     if (saveAuthoredGame(working)) {
       // Point the app at this pack so 「立即试玩」 - and every screen after it -
