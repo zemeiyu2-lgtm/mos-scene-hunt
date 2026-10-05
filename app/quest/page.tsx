@@ -38,7 +38,7 @@ export default function QuestPage() {
         complete ? <span className="chip bg-emerald-100 text-emerald-700">全部完成</span> : null
       }
     >
-      <div className="card p-4">
+      <div className="card story-card p-5">
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-semibold">
             {complete ? "你已经走完整条路线" : current ? `当前目标：${current.title}` : "准备开始"}
@@ -57,7 +57,7 @@ export default function QuestPage() {
         )}
       </div>
 
-      <ul className="mt-4 space-y-2.5">
+      <ul className="mt-4 space-y-3">
         {statuses.map((row, index) => {
           const d = distances[row.scene.id];
           const isDone = row.status === "completed";
@@ -68,7 +68,7 @@ export default function QuestPage() {
           return (
             <li key={row.scene.id}>
               <div
-                className={`card p-4 ${isLocked ? "opacity-60" : ""} ${
+                className={`card p-4 transition-transform ${isLocked ? "opacity-60" : ""} ${
                   row.isActive ? "border-[var(--accent)]" : ""
                 }`}
               >
