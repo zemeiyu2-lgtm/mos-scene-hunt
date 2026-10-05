@@ -138,8 +138,8 @@ export interface StartLocation {
 /**
  * The overall playable area of a hunt.
  *
- * huntArea.radiusMeters (typically 1000-2000m) is the whole exploration zone,
- * while scene.location.radius (typically 30-50m) is the precise unlock ring.
+ * huntArea.radiusMeters is the whole exploration zone. Micro hunts may use
+ * compact radii (for example 50-100m); scene.location.radius is the precise unlock ring.
  */
 export interface HuntArea {
   center: {
@@ -257,8 +257,8 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
       const r = g.huntArea.radiusMeters;
       if (typeof r !== "number" || !Number.isFinite(r) || r <= 0) {
         err("$.huntArea.radiusMeters", "必须是正数");
-      } else if (r < 500) {
-        warn("$.huntArea.radiusMeters", "区域半径 " + r + "m 偏小，建议至少 500m");
+      } else if (r < 30) {
+        warn("$.huntArea.radiusMeters", "区域半径 " + r + "m 很小，请确认 GPS 环境适合此范围");
       } else if (r > 5000) {
         warn("$.huntArea.radiusMeters", "区域半径 " + r + "m 偏大，建议不超过 5km");
       }
