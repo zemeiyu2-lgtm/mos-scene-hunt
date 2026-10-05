@@ -30,6 +30,7 @@ import {
   saveAuthoredGame,
 } from "@/lib/content";
 import type { Game, HuntArea, Scene } from "@/lib/game/types";
+import { BSOP_CLASSIC_TEMPLATE } from "@/lib/game/templates";
 import {
   isPointInPolygon,
   polygonBoundingRadius,
@@ -330,6 +331,16 @@ export default function DesignPage() {
     router.push("/select");
   };
 
+  const loadBsopClassicTemplate = () => {
+    const template = structuredClone(BSOP_CLASSIC_TEMPLATE);
+    setDraft(template);
+    setSelectedId(template.scenes[0]?.id ?? null);
+    setSaved(false);
+    setDrawingArea(false);
+    setPlacingCircle(false);
+    setAreaSnapshot(undefined);
+  };
+
   const resetOfficial = () => {
     clearAuthoredGame(working.id);
     // Hand the title back to the bundled pack, otherwise /select would keep
@@ -375,6 +386,18 @@ export default function DesignPage() {
           </li>
         ))}
       </ol>
+
+      <section className="card mb-4 overflow-hidden">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#15233d] via-[#243b5d] to-[#3f6a68] px-5 py-5 text-white">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/60">CLASSIC 01 · BSOP CAMPUS</p>
+          <h2 className="mt-1.5 text-[21px] font-bold">《神学院的八个秘密》</h2>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-white/75">把真实校园变成一条会留下记忆的路：探索 → 选择 → 行动 → 反思 → 带走。</p>
+          <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadBsopClassicTemplate}>
+            载入 BSOP 经典母版
+          </button>
+          <p className="mt-2 text-[10.5px] text-white/55">载入后请把 8 个场景拖到校园真实位置，再绘制游戏区域。</p>
+        </div>
+      </section>
 
       {/* ------------------------------------------------ 地图 */}
       <section className="card overflow-hidden">
