@@ -39,6 +39,7 @@ import {
 import type { MapSceneEntry } from "@/components/game-map";
 import type { TileProviderId } from "@/lib/map/tiles";
 import { useHunt } from "@/components/hunt-provider";
+import { createGameShareUrl } from "@/lib/content/share";
 
 const MICRO_PRESETS = [30, 50, 75, 100, 150, 250];
 const MIN_POLYGON_POINTS = 3;
