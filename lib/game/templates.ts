@@ -1,0 +1,202 @@
+import type { Game } from "./types";
+
+/**
+ * MOS Scene Hunt · Classic 01
+ * 《神学院的八个秘密》— BSOP Campus Edition
+ *
+ * This is an authoring template, not a locked production pack.
+ * The eight locations intentionally start near the published BSOP campus
+ * coordinate and must be placed precisely on the actual campus map by the
+ * designer before saving/publishing.
+ */
+const BSOP_CENTER = { lat: 14.691516, lng: 120.98125 };
+
+const spot = (name: string): Game["scenes"][number]["location"] => ({
+  ...BSOP_CENTER,
+  radius: 15,
+  name,
+});
+
+export const BSOP_CLASSIC_TEMPLATE: Game = {
+  id: "bsop-classic-01",
+  language: "zh-CN",
+  title: "《神学院的八个秘密》",
+  description:
+    "BSOP 实境门训寻踪 · 经典母版。玩家在神学院真实校园中寻找八个“秘密”：每一站不是知识考试，而是一次观察、选择、关系与生命反思。",
+  author: "MOS Scene Hunt · Classic 01",
+  version: "1.0.0",
+  estimatedMinutes: 45,
+  difficulty: "medium",
+  startLocation: { ...BSOP_CENTER, radius: 30, name: "BSOP 校园集合点（待确认）" },
+  huntArea: {
+    center: { ...BSOP_CENTER },
+    radiusMeters: 150,
+    shape: "circle",
+    name: "BSOP 校园探索区（请在地图上重新绘制）",
+  },
+  entrySceneId: "secret-01",
+  aiProfile: {
+    tone: "现代、安静、有探索感；像一位同行的门训导师，而不是考试老师。",
+    canon: [
+      "BSOP 官方资料显示校园拥有图书馆、教室、学生休息空间、餐厅、宿舍、礼拜堂、户外空间等设施。",
+      "游戏任务必须尊重校园秩序与真实人物隐私，不偷拍陌生人，不进入限制区域。",
+      "八站主线是：呼召、真理、学习、群体、爱人、生命、使命、差派。",
+      "位置必须由游戏设计者根据真实校园地图重新放置后才可作为正式游戏使用。",
+    ],
+    allowGeneration: false,
+  },
+  scenes: [
+    {
+      id: "secret-01",
+      title: "秘密一 · 你为什么来到这里？",
+      story:
+        "你来到礼拜堂附近。先不要急着回答问题。找一个让自己安静下来的位置，停留三十秒。\n\n这里每天有人讲道、祷告、唱诗，也有人只是匆匆经过。真正的秘密不是“这里有什么”，而是：你为什么来到这里？",
+      briefing: "找到礼拜堂的真实位置。先观察，再回答。不要把这一站当成考试。",
+      location: spot("礼拜堂（请拖动到实际位置）"),
+      nextSceneId: "secret-02",
+      challenge: {
+        type: "choice",
+        question: "如果没有任何人看见你，你还愿意服事吗？",
+        options: ["仍然愿意", "要看事情是否重要", "可能不会", "我还没有想过"],
+        answer: 0,
+        prompt: "选择最接近你真实状态的答案，没有“属灵标准答案”。",
+        explanation: "真正的呼召，不只发生在被人看见的时候。",
+      },
+      reward: { type: "keyword", title: "呼召", value: "呼召", icon: "✦" },
+    },
+    {
+      id: "secret-02",
+      title: "秘密二 · 知识为什么没有改变你？",
+      story:
+        "走进图书馆附近。这里有大量书籍、课程资料与研究资源。\n\n但知识本身不会自动改变一个人。你需要找到一本圣经或神学书，在书架前停下来想一想：你学过的真理，最近一次真正改变你是什么时候？",
+      briefing: "前往图书馆。找到一本你愿意拿起来看的书，然后再继续任务。",
+      location: spot("图书馆（请拖动到实际位置）"),
+      nextSceneId: "secret-03",
+      challenge: {
+        type: "choice",
+        question: "你最希望神学学习首先改变你的哪一部分？",
+        options: ["思想", "品格", "关系", "事奉与使命"],
+        answer: 1,
+        prompt: "没有统一答案；选择以后，与同伴说一句为什么。",
+        explanation: "神学教育的目标不只是增加知识，而是让真理进入真实生命。",
+      },
+      reward: { type: "keyword", title: "真理", value: "真理", icon: "◈" },
+    },
+    {
+      id: "secret-03",
+      title: "秘密三 · 你究竟在学习什么？",
+      story:
+        "来到教室。这里通常是神学知识被传递的地方。\n\n但如果三年以后，你记住了很多术语，却没有更会爱人、更会服事、更愿意顺服基督，那么你究竟学到了什么？",
+      briefing: "在教室外或允许进入的公共区域完成讨论，不影响正在上课的人。",
+      location: spot("教室（请拖动到实际位置）"),
+      nextSceneId: "secret-04",
+      challenge: {
+        type: "choice",
+        question: "如果今天学到的一条真理必须在本周变成一个行动，你会选什么？",
+        options: ["改变一个习惯", "主动修复一段关系", "开始一项服事", "向一个人分享所学"],
+        answer: 1,
+        prompt: "先选，再告诉队友一个具体行动。",
+        explanation: "学习进入实践，才开始成为生命的一部分。",
+      },
+      reward: { type: "keyword", title: "学习", value: "学习", icon: "◎" },
+    },
+    {
+      id: "secret-04",
+      title: "秘密四 · 一个人能成为门徒吗？",
+      story:
+        "来到学生中心或学生休息空间。这里不是讲台，却常常最能看见一个群体真正的样子。\n\n这一站需要团队完成：每个人先安静十秒，再轮流说出自己认为门训最不可缺少的一项：真理、祷告、关系、实践、反馈或使命。",
+      briefing: "找到学生中心/学生休息空间。请先确认这里适合小组交流，不要打扰别人。",
+      location: spot("学生中心 / 学生休息空间（请拖动到实际位置）"),
+      nextSceneId: "secret-05",
+      challenge: {
+        type: "choice",
+        question: "如果只能保留一项，哪一项最能让门训继续发生？",
+        options: ["真理", "关系", "实践", "反馈"],
+        answer: 1,
+        prompt: "每个人先选，再听完队友以后重新思考。",
+        explanation: "门训不是孤立的知识消费；真实关系让真理进入共同生活。",
+      },
+      reward: { type: "keyword", title: "群体", value: "群体", icon: "◉" },
+    },
+    {
+      id: "secret-05",
+      title: "秘密五 · 你真正看见谁？",
+      story:
+        "来到餐厅。这里是一个神学院最真实的地方之一：人一起吃饭、聊天、忙碌，也可能有人被忽略。\n\n这一站没有知识题。你的任务是：注意一个平时不会主动注意的人。不要偷拍，不要打扰，只是真正看见。",
+      briefing: "到餐厅附近。先观察人群，再完成一个不打扰他人的真实行动。",
+      location: spot("餐厅 / Dining Hall（请拖动到实际位置）"),
+      nextSceneId: "secret-06",
+      challenge: {
+        type: "choice",
+        question: "你愿意用哪一个动作回应“看见一个人”？",
+        options: ["主动问候", "主动倾听", "给一句鼓励", "在不打扰的情况下默默为他祷告"],
+        answer: 0,
+        prompt: "真正完成这个动作以后再提交。不要为了游戏表演。",
+        explanation: "爱人首先需要看见人，而不是只看见任务。",
+      },
+      reward: { type: "keyword", title: "爱人", value: "爱人", icon: "♡" },
+    },
+    {
+      id: "secret-06",
+      title: "秘密六 · 没有讲台的时候，你是谁？",
+      story:
+        "来到宿舍或宿舍公共区域附近。这里没有讲台，没有观众，也没有人要求你表现得属灵。\n\n真正的生命形成，往往发生在没有人注意的时候。想一想：你最希望神改变自己哪一个地方？",
+      briefing: "请只在允许进入的公共区域完成这一站。尊重住宿者的隐私。",
+      location: spot("宿舍 / 住宿区公共区域（请拖动到实际位置）"),
+      nextSceneId: "secret-07",
+      challenge: {
+        type: "choice",
+        question: "没有人评分的时候，你最需要面对自己的哪一方面？",
+        options: ["时间与纪律", "情绪与压力", "人际关系", "隐藏的动机"],
+        answer: 3,
+        prompt: "这是私人反思；不要求你把答案告诉别人。",
+        explanation: "生命形成不只发生在讲台上，更发生在无人看见的日常。",
+      },
+      reward: { type: "keyword", title: "生命", value: "生命", icon: "⌁" },
+    },
+    {
+      id: "secret-07",
+      title: "秘密七 · 神学院之外还有什么？",
+      story:
+        "走到校园户外、花园、树荫步道或其他开放空间。停下来，看向校园之外。\n\n神学院不是终点。你现在学到的东西，最终必须进入教会、城市、家庭、职场、校园或跨文化处境。",
+      briefing: "选择安全、开放的户外位置。停下来，看一眼校园以外的世界。",
+      location: spot("校园户外 / 花园 / 步道（请拖动到实际位置）"),
+      nextSceneId: "secret-08",
+      challenge: {
+        type: "choice",
+        question: "如果今天是你离开神学院的最后一天，你最想把什么带出去？",
+        options: ["一项真理", "一种生活方式", "一段关系", "一个使命"],
+        answer: 3,
+        prompt: "选一个你愿意真正带进未来生活的东西。",
+        explanation: "神学教育最终要走出校园，进入真实世界与真实使命。",
+      },
+      reward: { type: "keyword", title: "使命", value: "使命", icon: "↗" },
+    },
+    {
+      id: "secret-08",
+      title: "秘密八 · 你准备带什么出去？",
+      story:
+        "回到礼拜堂或预先约定的集合点。现在把前面七站得到的关键词放在一起：呼召、真理、学习、群体、爱人、生命、使命。\n\n最后的秘密不是一个地点，而是一个决定：你准备从这里带什么出去？",
+      briefing: "回到礼拜堂/集合点。团队一起完成最后回应，然后每个人留下一个自己的下一步。",
+      location: spot("礼拜堂 / 最终集合点（请拖动到实际位置）"),
+      nextSceneId: null,
+      challenge: {
+        type: "choice",
+        question: "今天离开神学院以后，你最愿意带走哪一个下一步？",
+        options: ["忠于一项真理", "开始一个具体习惯", "修复一段关系", "采取一个使命行动"],
+        answer: 3,
+        prompt: "选择一件你愿意在未来七天真正做的事情。",
+        explanation: "游戏的终点不是最后一个地图点，而是离开地图以后仍然发生的行动。",
+      },
+      reward: {
+        type: "badge",
+        title: "走出神学院",
+        value: "bsop-classic-01",
+        description: "八个秘密走到最后，只留下一个问题：你准备带什么出去？",
+        icon: "✦",
+      },
+    },
+  ],
+};
+
+export default BSOP_CLASSIC_TEMPLATE;
