@@ -72,10 +72,10 @@ export default function HomePage() {
       <section className="card mt-4 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[13px] font-semibold">自己设计一个寻宝</p>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">地图范围、地点、故事、挑战、奖励都可以编辑。</p>
+            <p className="text-[13px] font-semibold">经典案例 · BSOP 神学院</p>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">《神学院的八个秘密》：用真实校园走一条“呼召 → 真理 → 群体 → 使命”的生命形成之路。</p>
           </div>
-          <Link href="/design" className="btn btn-primary h-9 min-h-0 px-3 text-xs">创建游戏</Link>
+          <Link href="/design" className="btn btn-primary h-9 min-h-0 px-3 text-xs">进入设计</Link>
         </div>
       </section>
 
