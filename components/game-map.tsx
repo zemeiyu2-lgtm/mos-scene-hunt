@@ -132,6 +132,8 @@ export default function GameMap({
   const playerHaloRef = useRef<L.Circle | null>(null);
   const directionLineRef = useRef<L.Polyline | null>(null);
   const huntAreaRef = useRef<L.Circle | null>(null);
+  const huntAreaPolygonRef = useRef<L.Polygon | null>(null);
+  const huntAreaLineRef = useRef<L.Polyline | null>(null);
 
   // Callbacks arriving via props must not become stale closures inside Leaflet
   // event handlers, so they are read through a ref at event time.
@@ -290,25 +292,48 @@ export default function GameMap({
     const map = mapRef.current;
     if (!map) return;
 
-    if (!huntArea) {
-      if (huntAreaRef.current) {
-        map.removeLayer(huntAreaRef.current);
-        huntAreaRef.current = null;
+    const isPolygon = huntArea?.shape === "polygon";
+    const points = huntArea?.points ?? [];
+
+    if (!huntArea || (isPolygon && points.length === 0)) {
+      if (huntAreaRef.current) { map.removeLayer(huntAreaRef.current); huntAreaRef.current = null; }
+      if (huntAreaPolygonRef.current) { map.removeLayer(huntAreaPolygonRef.current); huntAreaPolygonRef.current = null; }
+      if (huntAreaLineRef.current) { map.removeLayer(huntAreaLineRef.current); huntAreaLineRef.current = null; }
+      return;
+    }
+
+    if (isPolygon) {
+      if (huntAreaRef.current) { map.removeLayer(huntAreaRef.current); huntAreaRef.current = null; }
+      const latlngs: L.LatLngExpression[] = points.map((p) => [p.lat, p.lng]);
+      const style: L.PolylineOptions = {
+        color: "#5b6b9a", weight: 2, opacity: 0.7, dashArray: "8 8", interactive: editable,
+      };
+      if (points.length >= 3) {
+        if (huntAreaLineRef.current) { map.removeLayer(huntAreaLineRef.current); huntAreaLineRef.current = null; }
+        if (!huntAreaPolygonRef.current) {
+          huntAreaPolygonRef.current = L.polygon(latlngs, { ...style, fillColor: "#5b6b9a", fillOpacity: 0.06 }).addTo(map);
+        } else {
+          huntAreaPolygonRef.current.setLatLngs(latlngs);
+        }
+      } else {
+        if (huntAreaPolygonRef.current) { map.removeLayer(huntAreaPolygonRef.current); huntAreaPolygonRef.current = null; }
+        if (!huntAreaLineRef.current) {
+          huntAreaLineRef.current = L.polyline(latlngs, style).addTo(map);
+        } else {
+          huntAreaLineRef.current.setLatLngs(latlngs);
+        }
       }
       return;
     }
 
+    if (huntAreaPolygonRef.current) { map.removeLayer(huntAreaPolygonRef.current); huntAreaPolygonRef.current = null; }
+    if (huntAreaLineRef.current) { map.removeLayer(huntAreaLineRef.current); huntAreaLineRef.current = null; }
+
     const center: L.LatLngExpression = [huntArea.center.lat, huntArea.center.lng];
     if (!huntAreaRef.current) {
       huntAreaRef.current = L.circle(center, {
-        radius: huntArea.radiusMeters,
-        color: "#5b6b9a",
-        weight: 2,
-        opacity: 0.55,
-        fillColor: "#5b6b9a",
-        fillOpacity: 0.035,
-        dashArray: "8 8",
-        interactive: editable,
+        radius: huntArea.radiusMeters, color: "#5b6b9a", weight: 2, opacity: 0.55,
+        fillColor: "#5b6b9a", fillOpacity: 0.035, dashArray: "8 8", interactive: editable,
       }).addTo(map);
       if (editable) {
         huntAreaRef.current.on("dragend", () => {
@@ -320,7 +345,7 @@ export default function GameMap({
       huntAreaRef.current.setLatLng(center);
       huntAreaRef.current.setRadius(huntArea.radiusMeters);
     }
-  }, [huntArea?.center.lat, huntArea?.center.lng, huntArea?.radiusMeters]);
+  }, [huntArea?.shape, huntArea?.center.lat, huntArea?.center.lng, huntArea?.radiusMeters, JSON.stringify(huntArea?.points ?? []), editable]);
 
   /* ------------------------------------------------ 场景标记 */
   useEffect(() => {
