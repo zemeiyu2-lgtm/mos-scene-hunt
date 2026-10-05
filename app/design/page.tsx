@@ -777,7 +777,22 @@ export default function DesignPage() {
           >
             {saved ? "✓ 已保存到本机" : "仅保存到本机"}
           </button>
-          <button type="button" className="btn btn-primary btn-block" onClick={share} disabled={areaIncomplete || drawingArea || shareBusy}>\n            {shareBusy ? "正在生成分享链接…" : "🔗 发布并分享给朋友"}\n          </button>\n          {shareUrl ? (\n            <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">\n              <p className="text-[12px] font-semibold">分享链接已生成</p>\n              <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>\n              <div className="mt-2 grid grid-cols-2 gap-2">\n                <button type="button" className="btn btn-secondary" onClick={copyShareUrl}>复制链接</button>\n                <button type="button" className="btn btn-ghost" onClick={() => setShareUrl(null)}>收起</button>\n              </div>\n              <p className="mt-2 text-[10.5px] leading-relaxed text-[var(--muted)]">别人打开链接后会直接进入这个游戏，不需要你的浏览器存档，也不需要登录。</p>\n            </div>\n          ) : null}\n          {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}\n          <button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button>
+          <button type="button" className="btn btn-primary btn-block" onClick={share} disabled={areaIncomplete || drawingArea || shareBusy}>
+            {shareBusy ? "正在生成分享链接…" : "🔗 发布并分享给朋友"}
+          </button>
+          {shareUrl ? (
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
+              <p className="text-[12px] font-semibold">分享链接已生成</p>
+              <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button type="button" className="btn btn-secondary" onClick={copyShareUrl}>复制链接</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setShareUrl(null)}>收起</button>
+              </div>
+              <p className="mt-2 text-[10.5px] leading-relaxed text-[var(--muted)]">别人打开链接后会直接进入这个游戏，不需要你的浏览器存档，也不需要登录。</p>
+            </div>
+          ) : null}
+          {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}
+          <button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button>
           <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>恢复官方示范内容</button>
         </div>
       </section>
