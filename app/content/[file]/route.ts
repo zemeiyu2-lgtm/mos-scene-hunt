@@ -60,6 +60,20 @@ export async function GET(
         { status: 404 },
       );
     }
+    if (code) {
+      // Filesystem-level failure (permissions, directory, I/O...). This is a
+      // server fault, not invalid content: 422 must be reserved for packs
+      // that genuinely fail JSON.parse, so failures stay diagnosable.
+      return NextResponse.json(
+        {
+          error: "content_unreadable",
+          message: `服务器无法读取内容包「${name}」。`,
+          code,
+          detail: err instanceof Error ? err.message : String(err),
+        },
+        { status: 500 },
+      );
+    }
     return NextResponse.json(
       {
         error: "content_invalid",

@@ -10,7 +10,7 @@
  * Characters stripped before comparison.
  *
  * The interpunct family (·, ‧, •) matters more than it looks: the game's own UI
- * renders titles as "Demo Hunt · 记忆之路", so a player who copies text out of
+ * renders titles as "Luneta · 看见这座城市", so a player who copies text out of
  * the screen will paste an interpunct into their answer. Failing them for that
  * would be a self-inflicted bug.
  */

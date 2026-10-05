@@ -26,15 +26,19 @@ const ARTIFACTS = path.join(process.cwd(), "tests", "e2e", "artifacts");
 const SETTINGS_KEY = "mos-scene-hunt:settings";
 const SAVE_KEY = "mos-scene-hunt:active-save";
 
-/** 与 content/demo-hunt.json 保持一致的坐标镜像。 */
+/**
+ * 与 content/demo-hunt.json（V0.3，五站）保持一致的坐标镜像。
+ * 内容包改版时必须同步更新这里，否则传送点会落在错误的半径上，
+ * 产生「在半径内却提示已离开任务区域」之类的假失败。
+ */
 const SCENES = {
-  /** 起点，距 scene-a 约 97m，刻意落在所有触发半径之外。 */
+  /** 集合点（与包内 startLocation 相同），距 scene-a 约 145m，刻意落在所有触发半径之外。 */
   start: { lat: 14.584481, lng: 120.9794 },
-  sceneA: { lat: 14.583604, lng: 120.9794 },
-  sceneB: { lat: 14.5832, lng: 120.979883 },
-  sceneC: { lat: 14.582679, lng: 120.9794 },
-  /** 距 scene-a 约 120m：在半径外，但仍能在地图上看到目标。 */
-  nearAOutside: { lat: 14.582525, lng: 120.9794 },
+  sceneA: { lat: 14.58376, lng: 120.9805337 },
+  sceneB: { lat: 14.58315, lng: 120.97757 },
+  sceneC: { lat: 14.58331, lng: 120.97902 },
+  /** 距 scene-a 约 120m：在 30m 触发半径之外，但仍能在地图上看到目标。 */
+  nearAOutside: { lat: 14.582676, lng: 120.9805337 },
   /** 远离所有场景，用于验证「不进入就不解锁」。 */
   farAway: { lat: 14.6, lng: 121.0 },
 };
@@ -66,6 +70,11 @@ const COPY = {
   submit: "提交答案",
   /** 判定失败 */
   wrongAnswer: "答案不正确",
+  /** demo-hunt（V0.3）scene-a 选择题：错误选项 / 正确选项（answer 索引 1） */
+  wrongOption: "正在奔跑",
+  correctOption: "站立守卫",
+  /** demo-hunt（V0.3）scene-a 奖励关键词 */
+  rewardKeyword: "自由",
 };
 
 /* ------------------------------------------------------------------ 测试框架 */
@@ -299,9 +308,9 @@ async function main() {
       assert(tiles > 0, `瓦片数量为 ${tiles}`);
     });
 
-    await check("地图渲染 3 个场景标记", async () => {
+    await check("地图渲染 5 个场景标记", async () => {
       const markers = await page.$$eval('[data-role="scene-marker"]', (n) => n.length);
-      assert(markers >= 3, `场景标记数量为 ${markers}，期望 ≥3`);
+      assert(markers >= 5, `场景标记数量为 ${markers}，期望 ≥5`);
     });
 
     /* 这条在修复前是失败的：玩家标记依赖 fix，而 fix 依赖模拟器读对字段。 */
@@ -361,7 +370,7 @@ async function main() {
       );
     });
 
-    await check(`距 scene-a 半径外（约 75m）不可进入`, async () => {
+    await check(`距 scene-a 半径外（约 120m）不可进入`, async () => {
       await teleport(page, SCENES.nearAOutside);
       await page.goto(`${BASE}/quest`, { waitUntil: "networkidle2" });
       await sleep(1200);
@@ -410,8 +419,8 @@ async function main() {
     await sleep(900);
 
     await check("错误答案不推进进度", async () => {
-      // 正确答案是索引 1（"灰色"）。故意先选一个错的。
-      await clickByText(page, "button", "红色");
+      // 正确答案是索引 1（"站立守卫"）。故意先选一个错的。
+      await clickByText(page, "button", COPY.wrongOption);
       await clickByText(page, "button", COPY.submit);
       await waitFor(async () => (await bodyText(page)).includes(COPY.wrongAnswer), {
         timeout: 8000,
@@ -438,7 +447,7 @@ async function main() {
     await check("正确答案推进并跳转到奖励页", async () => {
       await page.goto(`${BASE}/challenge/scene-a`, { waitUntil: "networkidle2" });
       await sleep(700);
-      await clickByText(page, "button", "灰色");
+      await clickByText(page, "button", COPY.correctOption);
       await clickByText(page, "button", COPY.submit);
       await waitFor(
         async () => page.url().includes("/reward/"),
@@ -446,10 +455,13 @@ async function main() {
       );
     });
 
-    await check("奖励页展示关键词奖励「记忆」", async () => {
+    await check(`奖励页展示关键词奖励「${COPY.rewardKeyword}」`, async () => {
       await sleep(700);
       const t = await bodyText(page);
-      assert(t.includes("记忆"), `奖励页未显示关键词「记忆」：\n${t.slice(0, 400)}`);
+      assert(
+        t.includes(COPY.rewardKeyword),
+        `奖励页未显示关键词「${COPY.rewardKeyword}」：\n${t.slice(0, 400)}`,
+      );
     });
 
     await shot(page, "04-reward");
@@ -517,7 +529,7 @@ async function main() {
       assert(res.status === 200, `状态码 ${res.status}`);
       const json = await res.json();
       assert(json.id === "demo-hunt", `id=${json.id}`);
-      assert(Array.isArray(json.scenes) && json.scenes.length === 3, "场景数不为 3");
+      assert(Array.isArray(json.scenes) && json.scenes.length === 5, "场景数不为 5");
       pack = json;
     });
 

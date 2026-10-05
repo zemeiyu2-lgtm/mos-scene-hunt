@@ -91,7 +91,27 @@ export async function loadGame(
       cache: "no-cache",
       headers: { Accept: "application/json" },
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      // Surface the server's contract payload (error/message/detail) instead of
+      // a bare status code, so a broken pack is diagnosable from the UI.
+      const bodyText = await res.text().catch(() => "");
+      let serverDetail = "";
+      try {
+        const body = JSON.parse(bodyText) as {
+          error?: string;
+          message?: string;
+          detail?: string;
+        };
+        serverDetail = [body.error, body.message, body.detail]
+          .filter((s): s is string => typeof s === "string" && s.length > 0)
+          .join(" - ");
+      } catch {
+        serverDetail = bodyText.slice(0, 200).trim();
+      }
+      throw new Error(
+        serverDetail ? `HTTP ${res.status}（${serverDetail}）` : `HTTP ${res.status}`,
+      );
+    }
     const raw = await res.json();
     const { game, issues } = validateGame(raw);
     // Fire and forget: a cache write failure must not break gameplay.
@@ -137,13 +157,13 @@ export interface HuntManifestEntry {
 export const HUNT_MANIFEST: HuntManifestEntry[] = [
   {
     id: DEFAULT_GAME_ID,
-    title: "Demo Hunt · 记忆之路",
+    title: "Luneta · 看见这座城市",
     description:
-      "一条三站式的城市微寻宝。在三个真实地点之间移动，解开观察题，收集关键词，走完一条被遗忘的记忆之路。",
+      "一条真实地点驱动的五站城市寻宝。你将在 Rizal Park（Luneta）约 1.5 公里的探索区域内，走到真实的纪念碑、花园与公共空间，在现场观察、历史记忆与信仰反思之间移动。每一站都必须先到现场，再解锁任务。",
     language: "zh-CN",
-    estimatedMinutes: 25,
+    estimatedMinutes: 55,
     difficulty: "easy",
-    sceneCount: 3,
+    sceneCount: 5,
     accent: "signal",
     featured: true,
   },
