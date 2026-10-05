@@ -26,7 +26,9 @@ async function gzipText(text: string): Promise<Uint8Array | null> {
 
 async function gunzipText(bytes: Uint8Array): Promise<string | null> {
   if (typeof DecompressionStream === "undefined") return null;
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  const safeBytes = new Uint8Array(bytes.length);
+  safeBytes.set(bytes);
+  const stream = new Blob([safeBytes.buffer]).stream().pipeThrough(new DecompressionStream("gzip"));
   return new Response(stream).text();
 }
 
