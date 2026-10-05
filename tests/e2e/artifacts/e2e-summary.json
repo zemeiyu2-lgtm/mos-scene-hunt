@@ -1,6 +1,6 @@
 {
   "base": "http://127.0.0.1:3100",
-  "ranAt": "2026-10-05T03:04:55.802Z",
+  "ranAt": "2026-10-05T03:34:55.290Z",
   "total": 40,
   "passed": 40,
   "failed": 0,
@@ -19,72 +19,72 @@
     {
       "name": "PWA manifest 可访问且声明 standalone",
       "ok": true,
-      "ms": 225
+      "ms": 124
     },
     {
       "name": "Service Worker 脚本可访问且注册成功",
       "ok": true,
-      "ms": 76
+      "ms": 47
     },
     {
       "name": "GPS 自动启动，无需手动点击（规范 §6）",
       "ok": true,
-      "ms": 1981
+      "ms": 1794
     },
     {
       "name": "地图页渲染 Leaflet 瓦片",
       "ok": true,
-      "ms": 149
+      "ms": 44
     },
     {
       "name": "地图渲染 5 个场景标记",
       "ok": true,
-      "ms": 37
+      "ms": 10
     },
     {
       "name": "地图显示玩家自己的位置标记",
       "ok": true,
-      "ms": 3
+      "ms": 1
     },
     {
       "name": "玩家标记为模拟器模式（DEV 模拟器生效）",
       "ok": true,
-      "ms": 2
+      "ms": 1
     },
     {
       "name": "地图页不再显示「等待定位」",
       "ok": true,
-      "ms": 3
+      "ms": 1
     },
     {
       "name": "地图页显示距离读数或已进入提示",
       "ok": true,
-      "ms": 2
+      "ms": 1
     },
     {
       "name": "远离所有场景时，scene-a 仍为未解锁或待前往",
       "ok": true,
-      "ms": 4086
+      "ms": 4046
     },
     {
       "name": "距 scene-a 半径外（约 120m）不可进入",
       "ok": true,
-      "ms": 4263
+      "ms": 4202
     },
     {
       "name": "进入 scene-a 半径后自动解锁（规范 §6 核心闭环）",
       "ok": true,
-      "ms": 3081
+      "ms": 3019
     },
     {
       "name": "进入半径后 scene 页可开始任务",
       "ok": true,
-      "ms": 2011
+      "ms": 2000
     },
     {
       "name": "错误答案不推进进度",
       "ok": true,
-      "ms": 126
+      "ms": 50
     },
     {
       "name": "错误答案不会跳转到奖励页",
@@ -94,32 +94,32 @@
     {
       "name": "正确答案推进并跳转到奖励页",
       "ok": true,
-      "ms": 1723
+      "ms": 1652
     },
     {
       "name": "奖励页展示关键词奖励「自由」",
       "ok": true,
-      "ms": 714
+      "ms": 704
     },
     {
       "name": "完成后 scene-b 被解锁（可在半径内进入）",
       "ok": true,
-      "ms": 4437
+      "ms": 4326
     },
     {
       "name": "刷新页面后进度仍在（规范 §17）",
       "ok": true,
-      "ms": 1311
+      "ms": 1297
     },
     {
       "name": "重新进入已完成位置不重复发奖励",
       "ok": true,
-      "ms": 3843
+      "ms": 3787
     },
     {
       "name": "内容包可从独立路由读取",
       "ok": true,
-      "ms": 21
+      "ms": 10
     },
     {
       "name": "起点落在所有场景的触发半径之外",
@@ -134,67 +134,67 @@
     {
       "name": "场景坐标互不重合",
       "ok": true,
-      "ms": 0
+      "ms": 1
     },
     {
       "name": "场景链的 nextSceneId 形成单一线性路径",
       "ok": true,
-      "ms": 1
+      "ms": 0
     },
     {
       "name": "内容路由拒绝路径穿越",
       "ok": true,
-      "ms": 33
+      "ms": 11
     },
     {
       "name": "不存在的内容包返回 404",
       "ok": true,
-      "ms": 10
+      "ms": 3
     },
     {
       "name": "Service Worker 已注册并接管页面",
       "ok": true,
-      "ms": 799
+      "ms": 639
     },
     {
       "name": "Service Worker 已缓存应用外壳",
       "ok": true,
-      "ms": 3348
+      "ms": 3280
     },
     {
       "name": "Service Worker 已缓存游戏内容包",
       "ok": true,
-      "ms": 41
+      "ms": 15
     },
     {
       "name": "缓存中的外壳是一份可解析的 HTML",
       "ok": true,
-      "ms": 6
+      "ms": 3
     },
     {
       "name": "360px 下无横向溢出",
       "ok": true,
-      "ms": 6925
+      "ms": 6673
     },
     {
       "name": "390px 下无横向溢出",
       "ok": true,
-      "ms": 6883
+      "ms": 6644
     },
     {
       "name": "430px 下无横向溢出",
       "ok": true,
-      "ms": 6831
+      "ms": 6505
     },
     {
       "name": "底部导航在三主页面可用（规范 §12：地图/任务/背包）",
       "ok": true,
-      "ms": 5133
+      "ms": 4841
     },
     {
       "name": "情境流程页不显示底部导航（保持专注）",
       "ok": true,
-      "ms": 4087
+      "ms": 4030
     },
     {
       "name": "全程无未捕获的 JS 错误",

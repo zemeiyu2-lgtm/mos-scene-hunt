@@ -352,7 +352,11 @@ export default function DesignPage() {
 
       {/* ------------------------------------------------ 地图 */}
       <section className="card overflow-hidden">
-        <div className="h-[46vh] min-h-[300px]">
+        {/* `relative` is load-bearing: .map-root is position:absolute/inset:0
+            (built for the full-screen /map page), so without a positioned
+            ancestor here the map escapes this 46vh box, paints over the whole
+            screen and swallows every click on the cards below. */}
+        <div className="relative h-[46vh] min-h-[300px]">
           <MapView
             player={null}
             entries={entries}
