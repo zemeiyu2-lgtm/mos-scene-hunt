@@ -69,8 +69,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {hasProgress && game ? (
-        <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[13px] font-semibold">自己设计一个寻宝</p>
@@ -80,7 +79,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="card mt-4 p-4">
+      {hasProgress && game ? (
+        <section className="card mt-4 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[13px] text-[var(--muted)]">进行中的寻宝</p>
