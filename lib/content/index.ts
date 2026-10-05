@@ -6,6 +6,33 @@ import { validateGame, type Game, type ValidationIssue } from "../game/types";
 import { cacheGameContent, readCachedGameContent } from "../storage";
 
 const CONTENT_BASE = "/content";
+const AUTHORING_PREFIX = "mos-scene-hunt:authoring:";
+
+function authoringKey(gameId: string): string {
+  return `${AUTHORING_PREFIX}${gameId}`;
+}
+
+/** Save a locally authored pack. It is intentionally browser-local until a future backend exists. */
+export function saveAuthoredGame(game: Game): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(authoringKey(game.id), JSON.stringify(game));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearAuthoredGame(gameId: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(authoringKey(gameId));
+}
+
+export function hasAuthoredGame(gameId: string): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(window.localStorage.getItem(authoringKey(gameId)));
+}
+
 
 export interface LoadedGame {
   game: Game;
@@ -39,6 +66,21 @@ export async function loadGame(
   options: { forceNetwork?: boolean } = {},
 ): Promise<LoadedGame> {
   let networkError: unknown = null;
+
+  // Browser-local authored content takes precedence. This makes the designer
+  // immediately playable without requiring an account or backend.
+  if (typeof window !== "undefined") {
+    try {
+      const authored = window.localStorage.getItem(authoringKey(gameId));
+      if (authored) {
+        const raw = JSON.parse(authored);
+        const { game, issues } = validateGame(raw);
+        return { game, issues, source: "network" };
+      }
+    } catch {
+      // Ignore a stale/broken local draft and fall back to the packaged content.
+    }
+  }
 
   if (!options.forceNetwork) {
     /* fall through to cached-first only if explicitly requested */
