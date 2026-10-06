@@ -92,7 +92,33 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
           </p>
         ))}
 
+        {scene.place?.observationFocus ? (
+          <div className="scene-observation mt-4">
+            <div className="scene-observation__icon">◉</div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">现场观察</p>
+              <p className="mt-0.5 text-[13px] font-semibold">{scene.place.observationFocus}</p>
+              {scene.place.accessNote ? (
+                <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">{scene.place.accessNote}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         <MediaGallery media={scene.media} />
+
+        {scene.place?.source ? (
+          <a
+            href={scene.place.source.url}
+            target="_blank"
+            rel="noreferrer"
+            className="scene-source mt-2"
+          >
+            <span>资料来源</span>
+            <span className="min-w-0 flex-1 truncate">{scene.place.source.name}</span>
+            <span aria-hidden="true">↗</span>
+          </a>
+        ) : null}
 
         {scene.npc ? (
           <div className="mt-4 flex items-center gap-3 rounded-xl bg-[var(--surface)] px-3 py-2.5">
