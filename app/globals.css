@@ -480,3 +480,128 @@ body {
   color: var(--accent-deep);
   font-size: 19px;
 }
+
+
+/* ------------------------------------------------------------------ */
+/* V0.5-B polish: BSOP reference experience                           */
+/* ------------------------------------------------------------------ */
+.bsop-reference__cover {
+  position: relative;
+  aspect-ratio: 16 / 7;
+  overflow: hidden;
+  background: #15233d;
+}
+.bsop-reference__image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  opacity: .9;
+}
+.bsop-reference__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(10,18,35,.52), transparent 55%, rgba(10,18,35,.18));
+}
+.bsop-key-rail {
+  border: 1px solid #f1d18f;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff8e8, #fffdf7);
+  padding: 12px;
+}
+.bsop-key-rail__item {
+  min-width: 62px;
+  padding: 8px 7px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.86);
+  border: 1px solid #f1e2bd;
+  text-align: center;
+}
+.bsop-key-rail__item span {
+  display: block;
+  font-size: 10px;
+  color: #c47c0a;
+}
+.bsop-key-rail__item b {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.scene-observation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #f1d18f;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff8e8, #fffdf7);
+}
+.scene-observation__icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: #f5a524;
+  color: #3a2400;
+  font-size: 12px;
+  font-weight: 800;
+}
+.scene-source {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11.5px;
+  text-decoration: none;
+}
+.scene-source:hover {
+  color: var(--text);
+}
+.bsop-keys {
+  padding: 12px;
+  border: 1px solid #f1d18f;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff8e8, #fffdf7);
+}
+.bsop-key {
+  display: grid;
+  place-items: center;
+  min-height: 50px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid #eadfca;
+  color: #a3a8b2;
+  font-size: 11px;
+  text-align: center;
+}
+.bsop-key span {
+  font-size: 10px;
+}
+.bsop-key b {
+  margin-top: 2px;
+}
+.bsop-key--on {
+  background: #fff4d9;
+  border-color: #e7b75e;
+  color: #8a5700;
+  box-shadow: 0 6px 18px -14px rgba(196,124,10,.8);
+}
+.bsop-final-card {
+  border-color: #e7d3a2;
+  background: linear-gradient(135deg, #fffaf0, #ffffff);
+}
+@media (max-width: 390px) {
+  .bsop-key-rail__item { min-width: 56px; padding-inline: 5px; }
+  .bsop-key { min-height: 46px; font-size: 10px; }
+}
