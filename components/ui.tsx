@@ -10,6 +10,7 @@
 import type { ReactNode } from "react";
 import type { SceneStatus } from "@/lib/game/state";
 import { formatDistance } from "@/lib/location";
+import { SoundToggle } from "@/components/sound";
 
 /* ------------------------------------------------------------------ */
 /* Status presentation                                                */
@@ -118,7 +119,7 @@ export function Screen({
               <p className="mt-0.5 text-[13px] leading-snug text-[var(--muted)]">{subtitle}</p>
             ) : null}
           </div>
-          {headerRight}
+          <div className="flex shrink-0 items-center gap-1.5"><SoundToggle />{headerRight}</div>
         </div>
       </header>
       <div className="scroll-area">
