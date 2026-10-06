@@ -27,18 +27,13 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
   const progress = state?.scenes[sceneId] ?? null;
   const distance = scene ? distances[scene.id] ?? null : null;
 
-  // Opening the scene also opens its challenge, so the transition to the
-  // question screen has no extra round-trip.
+  // Arrival is now a real discovery beat: reaching the ring unlocks the
+  // scene, but the player chooses when to move from story to task.
   useEffect(() => {
     if (!scene || !state) return;
-    if (progress?.status === "completed") return;
-    if (distance && !distance.inRange && progress?.status !== "challenging") return;
-    if (progress?.status !== "challenging") {
-      playSound("arrive");
-      openChallenge(scene.id);
-    }
-    // Intentionally keyed on identity + status only: re-running on every fix
-    // would dispatch on each GPS tick.
+    if (progress?.status === "arrived") playSound("unlock");
+    // Intentionally keyed on identity + status only: GPS fixes must not retrigger
+    // the discovery cue on every update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene?.id, progress?.status, state?.gameId]);
 
@@ -76,7 +71,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
         </div>
       ) : null}
 
-      <article className="card story-card p-5">
+      <article className="card story-card p-5 scene-reveal">
         {scene.briefing ? (
           <p className="mb-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[12.5px] italic leading-relaxed text-amber-900">
             {scene.briefing}
