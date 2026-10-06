@@ -480,3 +480,31 @@ body {
   color: var(--accent-deep);
   font-size: 19px;
 }
+
+
+/* V0.5-B: reference-game and discovery polish */
+.classic-template {
+  border-color: rgba(196,124,10,.22);
+  background: var(--card);
+  box-shadow: 0 12px 30px -22px rgba(21,35,61,.32);
+}
+.classic-template__top {
+  background: linear-gradient(135deg, #18263f 0%, #2e4967 60%, #486f6b 100%);
+}
+.discovery-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-deep);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.discovery-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(245,165,36,.13);
+}

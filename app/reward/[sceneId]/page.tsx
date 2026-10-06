@@ -84,7 +84,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
             </p>
           ) : null}
 
-          <div className="mt-4">
+          <div className="mt-4 p-5">
             <div className="flex items-center justify-between text-[12px]">
               <span className="text-[var(--muted)]">整体进度</span>
               <span className="tabular font-semibold">

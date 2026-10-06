@@ -37,20 +37,20 @@ export default function HomePage() {
       <section className="card overflow-hidden">
         <div className="hero-explore px-5 py-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
-            V0.4 · Micro Designer
+            V0.5 · 探索体验
           </p>
           <h2 className="mt-2 text-[22px] font-bold leading-tight">
-            现实移动 → GPS → 地点触发
+            走进真实地点，
             <br />
-            情境 → 任务 → 奖励 → 下一地点
+            让故事发生在你脚下
           </h2>
           <p className="mt-3 text-[13px] leading-relaxed text-white/75">
-            不是坐着答题，而是走进真实地点。你会发现线索、做出选择，并把游戏里的一个决定带回现实。
+            不是坐着答题，而是走出去。到达、观察、思考、行动，然后把一个真实的决定带回生活。
           </p>
         </div>
 
         <div className="p-5">
-          <div className="game-route mb-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span><i>→</i><span>带走</span></div>\n\n          <ol className="space-y-2.5">
+          <div className="game-route mb-4"><span>到达</span><i>→</i><span>发现</span><i>→</i><span>行动</span><i>→</i><span>反思</span><i>→</i><span>带走</span></div>\n\n          <ol className="space-y-2.5">
             {[
               "允许浏览器获取你的位置",
               "在地图上看到自己与目标地点",
@@ -69,13 +69,19 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="card mt-4 p-4">
-        <div className="flex items-center justify-between gap-3">
+      <section className="card classic-template mt-4 overflow-hidden">
+        <div className="classic-template__top px-4 py-3">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/65">REFERENCE GAME · 01</p>
+          <p className="mt-1 text-[15px] font-bold text-white">BSOP 神学院 · 《神学院的八个秘密》</p>
+        </div>
+        <div className="p-4">
+          <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[13px] font-semibold">经典案例 · BSOP 神学院</p>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">《神学院的八个秘密》：用真实校园走一条“呼召 → 真理 → 群体 → 使命”的生命形成之路。</p>
+            <p className="text-[12px] font-semibold text-[var(--muted)]">经典案例母版</p>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">用真实校园走一条“呼召 → 真理 → 群体 → 使命”的生命形成之路。以后所有寻宝，都可以从这个母版开始。</p>
           </div>
-          <Link href="/design" className="btn btn-primary h-9 min-h-0 px-3 text-xs">进入设计</Link>
+          <Link href="/design" className="btn btn-primary h-9 min-h-0 px-3 text-xs">用它设计</Link>
+        </div>
         </div>
       </section>
 

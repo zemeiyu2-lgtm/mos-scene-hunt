@@ -4,10 +4,22 @@
   "title": "MOS Scene Hunt 游戏数据包",
   "description": "一个寻宝内容包的完整数据结构。结构层校验；语义层校验由 lib/game/types.ts 的 validateGame() 执行。",
   "type": "object",
-  "required": ["id", "language", "title", "description", "author", "version", "startLocation", "entrySceneId", "scenes"],
+  "required": [
+    "id",
+    "language",
+    "title",
+    "description",
+    "author",
+    "version",
+    "startLocation",
+    "entrySceneId",
+    "scenes"
+  ],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$",
@@ -17,146 +29,333 @@
       "type": "string",
       "description": "内容语言，BCP 47，如 zh-CN"
     },
-    "title": { "type": "string", "minLength": 1 },
-    "description": { "type": "string", "minLength": 1 },
-    "author": { "type": "string", "minLength": 1 },
-    "version": { "type": "string", "minLength": 1 },
-    "estimatedMinutes": { "type": "integer", "minimum": 1 },
-    "difficulty": { "enum": ["easy", "normal", "hard"] },
-    "startLocation": { "$ref": "#/$defs/locatedPoint" },
-    "huntArea": { "$ref": "#/$defs/huntArea" },
-    "entrySceneId": { "type": "string", "minLength": 1 },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "estimatedMinutes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "difficulty": {
+      "enum": [
+        "easy",
+        "normal",
+        "hard"
+      ]
+    },
+    "startLocation": {
+      "$ref": "#/$defs/locatedPoint"
+    },
+    "huntArea": {
+      "$ref": "#/$defs/huntArea"
+    },
+    "entrySceneId": {
+      "type": "string",
+      "minLength": 1
+    },
     "aiProfile": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "tone": { "type": "string" },
-        "canon": { "type": "array", "items": { "type": "string" } },
-        "allowGeneration": { "type": "boolean" }
+        "tone": {
+          "type": "string"
+        },
+        "canon": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowGeneration": {
+          "type": "boolean"
+        }
       }
     },
     "scenes": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/scene" }
+      "items": {
+        "$ref": "#/$defs/scene"
+      }
     }
   },
   "$defs": {
     "locatedPoint": {
       "type": "object",
-      "required": ["lat", "lng", "name"],
+      "required": [
+        "lat",
+        "lng",
+        "name"
+      ],
       "additionalProperties": false,
       "properties": {
-        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
-        "lng": { "type": "number", "minimum": -180, "maximum": 180 },
-        "name": { "type": "string", "minLength": 1 },
-        "radius": { "type": "number", "exclusiveMinimum": 0, "maximum": 500 },
-        "_note": { "type": "string" }
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lng": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 500
+        },
+        "_note": {
+          "type": "string"
+        }
       }
     },
     "huntArea": {
       "type": "object",
-      "required": ["center", "radiusMeters"],
+      "required": [
+        "center",
+        "radiusMeters"
+      ],
       "additionalProperties": false,
       "properties": {
         "center": {
           "type": "object",
-          "required": ["lat", "lng"],
+          "required": [
+            "lat",
+            "lng"
+          ],
           "additionalProperties": false,
           "properties": {
-            "lat": { "type": "number", "minimum": -90, "maximum": 90 },
-            "lng": { "type": "number", "minimum": -180, "maximum": 180 }
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lng": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
           }
         },
-        "radiusMeters": { "type": "number", "exclusiveMinimum": 0 },
-        "name": { "type": "string" }
+        "radiusMeters": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "name": {
+          "type": "string"
+        }
       }
     },
     "sceneLocation": {
       "type": "object",
-      "required": ["lat", "lng"],
+      "required": [
+        "lat",
+        "lng"
+      ],
       "additionalProperties": false,
       "properties": {
-        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
-        "lng": { "type": "number", "minimum": -180, "maximum": 180 },
-        "name": { "type": "string" },
-        "radius": { "type": "number", "exclusiveMinimum": 0, "maximum": 500 }
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lng": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "name": {
+          "type": "string"
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 500
+        }
       }
     },
     "npc": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "minLength": 1 },
-        "role": { "type": "string" },
-        "avatar": { "type": "string" },
-        "persona": { "type": "string" }
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "persona": {
+          "type": "string"
+        }
       }
     },
     "dialogueLine": {
       "type": "object",
-      "required": ["speaker", "text"],
+      "required": [
+        "speaker",
+        "text"
+      ],
       "additionalProperties": false,
       "properties": {
         "speaker": {
           "oneOf": [
-            { "enum": ["narrator", "player"] },
-            { "type": "string", "minLength": 1 }
+            {
+              "enum": [
+                "narrator",
+                "player"
+              ]
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
           ]
         },
-        "text": { "type": "string", "minLength": 1 }
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "challenge": {
       "type": "object",
-      "required": ["type", "question", "answer"],
+      "required": [
+        "type",
+        "question",
+        "answer"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "enum": ["text", "choice", "keyword"] },
-        "question": { "type": "string", "minLength": 1 },
-        "prompt": { "type": "string" },
-        "hint": { "type": "string" },
+        "type": {
+          "enum": [
+            "text",
+            "choice",
+            "keyword"
+          ]
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "hint": {
+          "type": "string"
+        },
         "answer": {
           "description": "text/keyword 为字符串数组（任一命中即对）；choice 为正确项下标",
           "oneOf": [
-            { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-            { "type": "integer", "minimum": 0 }
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
           ]
         },
         "options": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
           "minItems": 2,
           "maxItems": 8,
           "description": "仅 choice 需要"
         },
         "acceptedKeywords": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
           "description": "仅 keyword：额外的宽容匹配词"
+        },
+        "media": {
+          "$ref": "#/$defs/mediaList"
         }
       },
       "allOf": [
         {
-          "if": { "properties": { "type": { "const": "choice" } } },
-          "then": { "required": ["options"] }
-        },
-        {
-          "if": { "properties": { "type": { "const": "choice" } } },
+          "if": {
+            "properties": {
+              "type": {
+                "const": "choice"
+              }
+            }
+          },
           "then": {
-            "properties": { "answer": { "type": "integer", "minimum": 0 } }
+            "required": [
+              "options"
+            ]
           }
         },
         {
           "if": {
-            "properties": { "type": { "enum": ["text", "keyword"] } }
+            "properties": {
+              "type": {
+                "const": "choice"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "answer": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "text",
+                  "keyword"
+                ]
+              }
+            }
           },
           "then": {
             "properties": {
               "answer": {
                 "type": "array",
-                "items": { "type": "string", "minLength": 1 },
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "minItems": 1
               }
             }
@@ -166,60 +365,141 @@
     },
     "reward": {
       "type": "object",
-      "required": ["type", "title"],
+      "required": [
+        "type",
+        "title"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "enum": ["keyword", "badge", "item"] },
-        "title": { "type": "string", "minLength": 1 },
-        "value": { "type": "string", "description": "keyword 奖励为收集词；badge/item 为资产引用" },
-        "description": { "type": "string" },
-        "icon": { "type": "string" }
+        "type": {
+          "enum": [
+            "keyword",
+            "badge",
+            "item"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string",
+          "description": "keyword 奖励为收集词；badge/item 为资产引用"
+        },
+        "description": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        }
       }
     },
     "place": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "minLength": 1 },
-        "type": { "enum": ["monument", "garden", "memorial", "landmark", "public-space"] },
-        "observationFocus": { "type": "string" },
-        "accessNote": { "type": "string" },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "monument",
+            "garden",
+            "memorial",
+            "landmark",
+            "public-space"
+          ]
+        },
+        "observationFocus": {
+          "type": "string"
+        },
+        "accessNote": {
+          "type": "string"
+        },
         "source": {
           "type": "object",
-          "required": ["name", "url"],
+          "required": [
+            "name",
+            "url"
+          ],
           "additionalProperties": false,
           "properties": {
-            "name": { "type": "string", "minLength": 1 },
-            "url": { "type": "string", "format": "uri" }
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         }
       }
     },
     "scene": {
       "type": "object",
-      "required": ["id", "title", "story", "location", "challenge", "reward", "nextSceneId"],
+      "required": [
+        "id",
+        "title",
+        "story",
+        "location",
+        "challenge",
+        "reward",
+        "nextSceneId"
+      ],
       "additionalProperties": false,
       "properties": {
         "id": {
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9-]*$"
         },
-        "title": { "type": "string", "minLength": 1 },
-        "story": { "type": "string", "minLength": 1 },
-        "briefing": { "type": "string" },
-        "location": { "$ref": "#/$defs/sceneLocation" },
-        "challenge": { "$ref": "#/$defs/challenge" },
-        "reward": { "$ref": "#/$defs/reward" },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "story": {
+          "type": "string",
+          "minLength": 1
+        },
+        "briefing": {
+          "type": "string"
+        },
+        "location": {
+          "$ref": "#/$defs/sceneLocation"
+        },
+        "challenge": {
+          "$ref": "#/$defs/challenge"
+        },
+        "reward": {
+          "$ref": "#/$defs/reward"
+        },
         "nextSceneId": {
           "oneOf": [
-            { "type": "string", "minLength": 1 },
-            { "type": "null" }
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "npc": { "$ref": "#/$defs/npc" },
-        "dialogue": { "type": "array", "items": { "$ref": "#/$defs/dialogueLine" } },
-        "place": { "$ref": "#/$defs/place" },
+        "npc": {
+          "$ref": "#/$defs/npc"
+        },
+        "dialogue": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dialogueLine"
+          }
+        },
+        "place": {
+          "$ref": "#/$defs/place"
+        },
         "ar": {
           "type": "object",
           "description": "AR 扩展位，V0.1 不消费",
@@ -229,11 +509,63 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "icon": { "type": "string", "minLength": 1, "maxLength": 4 },
-            "color": { "type": "string" }
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4
+            },
+            "color": {
+              "type": "string"
+            }
           }
+        },
+        "media": {
+          "$ref": "#/$defs/mediaList"
         }
       }
+    },
+    "mediaItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "url"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "image",
+            "document"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mimeType": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "mediaList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/mediaItem"
+      },
+      "maxItems": 8
     }
   }
 }
