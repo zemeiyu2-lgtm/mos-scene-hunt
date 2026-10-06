@@ -15,6 +15,7 @@ import { useHunt } from "@/components/hunt-provider";
 import { Screen, StatusChip } from "@/components/ui";
 import { formatDistance } from "@/lib/location";
 import { playSound } from "@/components/sound";
+import { MediaGallery } from "@/components/media-gallery";
 import { playSound } from "@/components/sound";
 
 export default function ScenePage({ params }: { params: Promise<{ sceneId: string }> }) {
@@ -90,6 +91,8 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
             {para}
           </p>
         ))}
+
+        <MediaGallery media={scene.media} />
 
         {scene.npc ? (
           <div className="mt-4 flex items-center gap-3 rounded-xl bg-[var(--surface)] px-3 py-2.5">
