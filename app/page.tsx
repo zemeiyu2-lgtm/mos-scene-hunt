@@ -69,13 +69,34 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="card mt-4 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold">经典案例 · BSOP 神学院</p>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">《神学院的八个秘密》：用真实校园走一条“呼召 → 真理 → 群体 → 使命”的生命形成之路。</p>
+      <section className="card mt-4 overflow-hidden bsop-reference">
+        <div className="bsop-reference__cover">
+          {/* Official BSOP handbook thumbnail; the game itself can replace this with licensed field photography later. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://bsop.edu.ph/wp-content/uploads/2026/04/BSOP-Student-Handbook-2025-2026-thumnail.png"
+            alt="BSOP 神学院校园资料图"
+            className="bsop-reference__image"
+          />
+          <div className="bsop-reference__overlay">
+            <span className="chip bg-white/15 text-white">REFERENCE GAME · 01</span>
           </div>
-          <Link href="/design" className="btn btn-primary h-9 min-h-0 px-3 text-xs">进入设计</Link>
+        </div>
+        <div className="p-4">
+          <p className="text-[13px] font-semibold">经典案例 · BSOP 神学院</p>
+          <h3 className="mt-1 text-[18px] font-bold leading-tight">《神学院的八个秘密》</h3>
+          <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--muted)]">
+            不是把新功能堆在模板上，而是让图片、官方资料、声音、GPS 与任务共同服务一条生命形成路线：
+            <span className="font-semibold text-[var(--text)]"> 呼召 → 真理 → 实践 → 敬拜 → 群体 → 生命 → 忠心 → 使命</span>。
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Link href="/select?game=bsop-eight-secrets" className="btn btn-primary h-10 min-h-0 flex-1 px-3 text-[13px]">
+              试玩示范 →
+            </Link>
+            <Link href="/design" className="btn btn-secondary h-10 min-h-0 px-3 text-[13px]">
+              进入设计
+            </Link>
+          </div>
         </div>
       </section>
 
