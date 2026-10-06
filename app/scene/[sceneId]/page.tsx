@@ -60,7 +60,8 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
 
   // Split the story on blank lines so authors can control paragraph rhythm with
   // plain text instead of embedding markup.
-  const paragraphs = scene.story.split(/\n{2,}/).filter(Boolean);
+  const paragraphs = scene.story.split(/
+{2,}/).filter(Boolean);
 
   return (
     <Screen
