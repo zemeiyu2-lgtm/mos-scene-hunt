@@ -90,9 +90,12 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
 
   return L.divIcon({
     className: "",
-    html: `<div class="scene-marker ${statusClass} ${entry.isActive ? "scene-marker--active" : ""}" data-role="scene-marker" data-scene-id="${entry.scene.id}" data-status="${entry.status}">${glyph}</div>`,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
+    html: `<div class="scene-marker-wrap ${entry.isActive ? "scene-marker-wrap--active" : ""}">
+      <div class="scene-marker ${statusClass} ${entry.isActive ? "scene-marker--active" : ""}" data-role="scene-marker" data-scene-id="${entry.scene.id}" data-status="${entry.status}">${glyph}</div>
+      ${entry.isActive ? '<div class="scene-marker__beacon"></div>' : ""}
+    </div>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
   });
 }
 
@@ -427,6 +430,16 @@ export default function GameMap({
         existing.setIcon(icon);
         if (editable && existing.dragging && !existing.dragging.enabled()) existing.dragging.enable();
         if (!editable && existing.dragging?.enabled()) existing.dragging.disable();
+        if (entry.isActive) {
+          existing.bindTooltip(entry.scene.title, {
+            permanent: true,
+            direction: "top",
+            offset: [0, -22],
+            className: "scene-target-tooltip",
+          });
+        } else if (existing.getTooltip()) {
+          existing.unbindTooltip();
+        }
       } else {
         const marker = L.marker(latlng, { icon, interactive: editable, draggable: editable });
         if (editable) {
@@ -436,6 +449,14 @@ export default function GameMap({
           });
         }
         marker.addTo(map);
+        if (entry.isActive) {
+          marker.bindTooltip(entry.scene.title, {
+            permanent: true,
+            direction: "top",
+            offset: [0, -22],
+            className: "scene-target-tooltip",
+          });
+        }
         store.set(entry.scene.id, marker);
       }
     });
@@ -523,9 +544,9 @@ export default function GameMap({
       if (!directionLineRef.current) {
         const line = L.polyline(points, {
           color: "#f5a524",
-          weight: 3,
-          opacity: 0.75,
-          dashArray: "2 8",
+          weight: 2,
+          opacity: 0.5,
+          dashArray: "3 10",
         });
         line.addTo(map);
         directionLineRef.current = line;

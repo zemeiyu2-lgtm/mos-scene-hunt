@@ -636,3 +636,78 @@ body {
   55% { opacity: 1; transform: scale(1.015); }
   100% { opacity: 1; transform: scale(1); }
 }
+
+
+/* ------------------------------------------------------------------ */
+/* V0.5 third polish: spatial immersion                               */
+/* ------------------------------------------------------------------ */
+.map-hud {
+  animation: hud-in .35s ease-out both;
+}
+.map-hud__kicker {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #fff4d9;
+  color: #8a5700;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.map-bottom-sheet {
+  border-color: rgba(245,165,36,.28);
+  box-shadow: 0 12px 34px -18px rgba(15,23,42,.32);
+}
+.scene-marker-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+.scene-marker {
+  position: absolute;
+  inset: 5px;
+  width: 34px;
+  height: 34px;
+  z-index: 2;
+}
+.scene-marker-wrap--active .scene-marker {
+  animation: target-float 1.8s ease-in-out infinite;
+  box-shadow: 0 4px 14px rgba(196,124,10,.32);
+}
+.scene-marker__beacon {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(245,165,36,.6);
+  border-radius: 999px;
+  animation: target-beacon 1.8s ease-out infinite;
+}
+.scene-target-tooltip {
+  border: 1px solid #ead8ae !important;
+  border-radius: 10px !important;
+  background: rgba(255,252,244,.96) !important;
+  color: #4a340d !important;
+  box-shadow: 0 8px 24px -14px rgba(15,23,42,.4) !important;
+  padding: 5px 8px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+.scene-target-tooltip::before {
+  border-top-color: #ead8ae !important;
+}
+@keyframes target-beacon {
+  0% { transform: scale(.8); opacity: .7; }
+  70% { transform: scale(1.65); opacity: 0; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+@keyframes target-float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+@keyframes hud-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
