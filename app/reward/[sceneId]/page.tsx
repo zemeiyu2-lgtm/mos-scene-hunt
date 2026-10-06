@@ -105,16 +105,49 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
               </span>
             ) : null}
           </div>
+
+          {isBsop ? (
+            <div className="bsop-keys mt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">八个秘密</p>
+                  <p className="mt-0.5 text-[12px] text-amber-900/70">你已经把这一站带进了整条路线</p>
+                </div>
+                <span className="text-[12px] font-bold text-amber-900">{state.keywords.length}/7</span>
+              </div>
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                {["呼召","真理","实践","敬拜","群体","生命","忠心"].map((word) => {
+                  const collected = state.keywords.includes(word);
+                  return (
+                    <div key={word} className={`bsop-key ${collected ? "bsop-key--on" : ""}`}>
+                      <span>{collected ? "◆" : "·"}</span>
+                      <b>{word}</b>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 
       {complete ? (
-        <section className="card mt-4 p-5 text-center">
-          <p className="text-[30px]">🏁</p>
-          <p className="mt-2 text-[16px] font-bold">你已走完全部地点</p>
-          <p className="mt-1 text-[13px] leading-relaxed text-[var(--muted)]">
-            这就是 V0.1 的完整闭环：现实移动 → GPS → 地点触发 → 情境 → 任务 → 奖励 → 下一地点。
+        <section className={`card mt-4 p-5 text-center ${isBsop ? "bsop-final-card" : ""}`}>
+          <p className="text-[30px]">{isBsop ? "🎓" : "🏁"}</p>
+          <p className="mt-2 text-[16px] font-bold">
+            {isBsop ? "八把钥匙已经交到你手里" : "你已走完全部地点"}
           </p>
+          <p className="mt-1 text-[13px] leading-relaxed text-[var(--muted)]">
+            {isBsop
+              ? "神学院不是终点。请把最后一把钥匙变成一个真实行动：这一周，你准备去哪里服事、陪伴或门训一个人？"
+              : "现实移动 → GPS → 地点触发 → 情境 → 任务 → 奖励 → 下一地点。"}
+          </p>
+          {isBsop ? (
+            <div className="mt-4 rounded-xl bg-white/70 px-3.5 py-3 text-left">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">最后任务 · 带走</p>
+              <p className="mt-1 text-[13px] font-semibold">把一个具体行动写下来，然后离开地图。</p>
+            </div>
+          ) : null}
         </section>
       ) : nextScene ? (
         <section className="card mt-4 p-4">
