@@ -93,7 +93,7 @@ export default function MapPage() {
           style={{ paddingTop: "calc(var(--safe-top) + 8px)" }}
         >
           <div className="page">
-            <div className="pointer-events-auto flex items-center gap-2">
+            <div className="map-hud pointer-events-auto flex items-center gap-2">
               <Link
                 href="/quest"
                 className="card flex min-w-0 flex-1 items-center gap-3 px-3 py-2"
@@ -229,7 +229,7 @@ export default function MapPage() {
                     {currentDistance ? (
                       currentDistance.inRange ? (
                         <p className="text-[15px] font-bold text-emerald-600">
-                          ✓ 已进入任务区域
+                          ◉ 你已经找到这里
                         </p>
                       ) : (
                         <div className="flex items-baseline gap-2">
