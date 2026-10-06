@@ -224,6 +224,18 @@ export interface HuntManifestEntry {
  */
 export const HUNT_MANIFEST: HuntManifestEntry[] = [
   {
+    id: "bsop-eight-secrets",
+    title: "神学院的八个秘密",
+    description:
+      "BSOP Reference Game 01：在真实校园中体验呼召、真理、实践、敬拜、群体、生命与忠心，并以一个具体行动结束。示范图片、PDF/网页资料、声音反馈与多种任务类型。",
+    language: "zh-CN",
+    estimatedMinutes: 35,
+    difficulty: "easy",
+    sceneCount: 8,
+    accent: "signal",
+    featured: true,
+  },
+  {
     id: DEFAULT_GAME_ID,
     title: "Luneta · 看见这座城市",
     description:

@@ -57,7 +57,10 @@ function useActiveGameId(): string {
   // markup identical; the authored id overwrites it in the commit phase.
   const snapshot = useSyncExternalStore(
     subscribe,
-    () => resolveActiveGameId(),
+    () => {
+      const requested = new URLSearchParams(window.location.search).get("game");
+      return requested ? resolveActiveGameId(requested) : resolveActiveGameId();
+    },
     () => resolveActiveGameId(null),
   );
 
