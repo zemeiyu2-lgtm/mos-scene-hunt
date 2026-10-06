@@ -79,6 +79,26 @@ export default function SelectPage() {
             <p className="text-[13.5px] leading-relaxed text-[var(--muted)]">{game.description}</p>
           ) : null}
 
+          {game.id === "bsop-eight-secrets" ? (
+            <div className="bsop-key-rail mt-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">生命形成路线</p>
+                  <p className="mt-0.5 text-[12px] text-amber-900/70">七把钥匙，最后汇成一个行动</p>
+                </div>
+                <span className="chip bg-white/70 text-amber-900">8 站</span>
+              </div>
+              <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+                {["呼召","真理","实践","敬拜","群体","生命","忠心","使命"].map((word, i) => (
+                  <div key={word} className="bsop-key-rail__item">
+                    <span>{i < 7 ? "◆" : "★"}</span>
+                    <b>{word}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { k: "地点", v: `${game.scenes.length} 个` },
