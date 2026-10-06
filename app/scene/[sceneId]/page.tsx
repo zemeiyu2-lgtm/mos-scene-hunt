@@ -14,6 +14,8 @@ import { use } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { Screen, StatusChip } from "@/components/ui";
 import { formatDistance } from "@/lib/location";
+import { playSound } from "@/components/sound";
+import { MediaGallery } from "@/components/media-gallery";
 
 export default function ScenePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -32,6 +34,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
     if (progress?.status === "completed") return;
     if (distance && !distance.inRange && progress?.status !== "challenging") return;
     if (progress?.status !== "challenging") {
+      playSound("arrive");
       openChallenge(scene.id);
     }
     // Intentionally keyed on identity + status only: re-running on every fix
@@ -57,7 +60,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
 
   // Split the story on blank lines so authors can control paragraph rhythm with
   // plain text instead of embedding markup.
-  const paragraphs = scene.story.split(/\n{2,}/).filter(Boolean);
+  const paragraphs = scene.story.split(/\\n{2,}/).filter(Boolean);
 
   return (
     <Screen
@@ -88,6 +91,8 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
             {para}
           </p>
         ))}
+
+        <MediaGallery media={scene.media} />
 
         {scene.npc ? (
           <div className="mt-4 flex items-center gap-3 rounded-xl bg-[var(--surface)] px-3 py-2.5">

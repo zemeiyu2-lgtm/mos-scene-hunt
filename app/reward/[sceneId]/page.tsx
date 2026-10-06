@@ -7,12 +7,14 @@
  * makes the newly unlocked next location immediately actionable.
  */
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
 import { ProgressBar, Screen } from "@/components/ui";
 import { formatDistance } from "@/lib/location";
+import { playSound } from "@/components/sound";
 
 export default function RewardPage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -31,6 +33,9 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
   const nextDistance = nextScene ? distances[nextScene.id] ?? null : null;
 
   const totalCollected = state?.inventory.length ?? 0;
+  const granted = progress?.status === "completed";
+
+  useEffect(() => { if (granted) playSound(nextScene ? "reward" : "finish"); }, [granted, nextScene]);
 
   if (!scene || !state) {
     return (
@@ -44,8 +49,6 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
       </Screen>
     );
   }
-
-  const granted = progress?.status === "completed";
 
   return (
     <Screen title="任务完成" subtitle={scene.title}>

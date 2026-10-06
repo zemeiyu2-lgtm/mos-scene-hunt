@@ -20,6 +20,17 @@ export const SUPPORTED_CHALLENGE_TYPES: readonly ChallengeType[] = ["text", "cho
 
 export type RewardType = "keyword" | "item" | "badge" | "story";
 
+export type MediaKind = "image" | "document";
+export interface MediaItem {
+  id: string;
+  kind: MediaKind;
+  title: string;
+  /** Data URL for local authoring, or a normal https/http asset URL for packaged content. */
+  url: string;
+  mimeType?: string;
+  description?: string;
+}
+
 export interface Reward {
   type: RewardType;
   title: string;
@@ -44,6 +55,8 @@ export interface Challenge {
    * Matching is normalised (case, width, whitespace, punctuation) - see `answers.ts`.
    */
   answer?: number | string | string[];
+  /** Optional visual/resource material shown with the question. */
+  media?: MediaItem[];
   /** Reflective choice: every deliberate selection is valid; the response is for self-reflection, not grading. */
   reflective?: boolean;
   hint?: string;
@@ -97,6 +110,8 @@ export interface Scene {
   nextSceneId: string | null;
   challenge?: Challenge;
   reward?: Reward;
+  /** Optional visual/resource material shown after arrival. */
+  media?: MediaItem[];
   /** AI-facing narrative scaffolding. Purely presentational in V0.1. */
   hint?: string;
   npc?: NPC;
