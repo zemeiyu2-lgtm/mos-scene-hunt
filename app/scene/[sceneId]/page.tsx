@@ -16,7 +16,6 @@ import { Screen, StatusChip } from "@/components/ui";
 import { formatDistance } from "@/lib/location";
 import { playSound } from "@/components/sound";
 import { MediaGallery } from "@/components/media-gallery";
-import { playSound } from "@/components/sound";
 
 export default function ScenePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -35,6 +34,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
     if (progress?.status === "completed") return;
     if (distance && !distance.inRange && progress?.status !== "challenging") return;
     if (progress?.status !== "challenging") {
+      playSound("arrive");
       openChallenge(scene.id);
     }
     // Intentionally keyed on identity + status only: re-running on every fix
