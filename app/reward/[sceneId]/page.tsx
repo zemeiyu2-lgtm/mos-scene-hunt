@@ -34,6 +34,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
 
   const totalCollected = state?.inventory.length ?? 0;
   const granted = progress?.status === "completed";
+  const isBsop = game?.id === "bsop-eight-secrets";
 
   useEffect(() => { if (granted) playSound(nextScene ? "reward" : "finish"); }, [granted, nextScene]);
 
