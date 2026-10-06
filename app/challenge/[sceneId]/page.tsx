@@ -16,6 +16,7 @@ import { useHunt } from "@/components/hunt-provider";
 import { Screen, StatusChip } from "@/components/ui";
 import { matchTextAnswer } from "@/lib/game/answers";
 import { playSound } from "@/components/sound";
+import { MediaGallery } from "@/components/media-gallery";
 
 export default function ChallengePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -149,6 +150,8 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
           <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted)]">{challenge.prompt}</p>
         ) : null}
       </section>
+
+      <MediaGallery media={challenge.media} />
 
       {challenge.type === "choice" && challenge.options ? (
         <section className="mt-3 space-y-2">
