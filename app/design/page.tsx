@@ -40,6 +40,7 @@ import type { MapSceneEntry } from "@/components/game-map";
 import type { TileProviderId } from "@/lib/map/tiles";
 import { useHunt } from "@/components/hunt-provider";
 import { createGameShareUrl } from "@/lib/content/share";
+import { MediaEditor } from "@/components/media-gallery";
 
 const MICRO_PRESETS = [30, 50, 75, 100, 150, 250];
 const MIN_POLYGON_POINTS = 3;
@@ -666,6 +667,7 @@ export default function DesignPage() {
             <label className="mt-3 block text-xs font-semibold">现场名称<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达后故事<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达提示<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
+            <MediaEditor media={selected.media} onChange={(media) => updateScene(selected.id, { media })} />
 
             <div className="mt-3 grid grid-cols-2 gap-2">
               <label className="text-xs font-semibold">纬度<input className="input mt-1" inputMode="decimal" value={selected.location.lat} onChange={(e) => updateLocation(selected.id, Number(e.target.value), selected.location.lng)} /></label>
@@ -696,6 +698,7 @@ export default function DesignPage() {
                 </>
               ) : null}
               <label className="mt-2 block text-xs">答案说明<textarea className="input mt-1 min-h-16" value={selected.challenge?.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
+              <MediaEditor media={selected.challenge?.media} onChange={(media) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, media } : undefined })} />
             </div>
 
             <div className="mt-4 rounded-xl bg-[var(--surface)] p-3">
