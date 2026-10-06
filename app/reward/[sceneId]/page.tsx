@@ -184,17 +184,9 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           className="btn btn-primary btn-block"
           onClick={() => router.push("/map")}
         >
-          在地图上继续 →
+          {nextScene ? "去寻找下一站 →" : "回到地图 →"}
         </button>
-        {nextScene ? (
-          <button
-            type="button"
-            className="btn btn-secondary btn-block"
-            onClick={() => router.push(`/scene/${nextScene.id}`)}
-          >
-            查看下一个地点的情境
-          </button>
-        ) : null}
+
         <button
           type="button"
           className="btn btn-ghost btn-block"
