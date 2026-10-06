@@ -30,9 +30,10 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
 
   const [selected, setSelected] = useState<number | null>(null);
   const [text, setText] = useState("");
-  const [feedback, setFeedback] = useState<"none" | "wrong">("none");
+  const [feedback, setFeedback] = useState<"none" | "wrong" | "correct">("none");
   /** Local echo of a correct answer, so the screen can hand off without a reload. */
   const [solved, setSolved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const attempts = progress?.attempts ?? 0;
   const alreadyComplete = progress?.status === "completed";
@@ -84,6 +85,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
   }
 
   const submit = () => {
+    if (submitting) return;
     if (challenge.type === "choice") {
       if (selected === null) return;
       // Verify locally so the screen can distinguish "wrong" from "correct"
@@ -93,7 +95,10 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       submitAnswer(scene.id, { selectedIndex: selected });
       if (isCorrect) {
         setSolved(true);
-        router.push(`/reward/${scene.id}`);
+        setSubmitting(true);
+        setFeedback("correct");
+        playSound("success");
+        window.setTimeout(() => router.push(`/reward/${scene.id}`), 620);
       } else {
         setFeedback("wrong");
         setSelected(null);
@@ -116,7 +121,10 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
     submitAnswer(scene.id, { text: trimmed });
     if (result.correct) {
       setSolved(true);
-      router.push(`/reward/${scene.id}`);
+      setSubmitting(true);
+      setFeedback("correct");
+      playSound("success");
+      window.setTimeout(() => router.push(`/reward/${scene.id}`), 620);
     } else {
       setFeedback("wrong");
       setText("");
@@ -141,7 +149,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
         </div>
       ) : null}
 
-      <section className="card story-card p-5">
+      <section className="card story-card p-5 challenge-reveal">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
           {challenge.type === "choice" ? "选择题" : challenge.type === "keyword" ? "关键词题" : "简答题"}
         </p>
@@ -208,7 +216,12 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
         </section>
       )}
 
-      {feedback === "wrong" ? (
+      {feedback === "correct" ? (
+        <div className="success-pulse mt-3">
+          <p className="text-[15px] font-bold text-emerald-800">✓ 完成了</p>
+          <p className="mt-0.5 text-[12px] text-emerald-700">这一站的钥匙正在交到你手里…</p>
+        </div>
+      ) : feedback === "wrong" ? (
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
           <p className="text-[13px] font-semibold text-red-800">答案不正确</p>
           <p className="mt-0.5 text-[12px] leading-snug text-red-700">
@@ -229,9 +242,9 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
           type="button"
           className="btn btn-primary btn-block"
           onClick={submit}
-          disabled={challenge.type === "choice" ? selected === null : text.trim().length === 0}
+          disabled={submitting || (challenge.type === "choice" ? selected === null : text.trim().length === 0)}
         >
-          提交答案
+          {submitting ? "完成中…" : "提交答案"}
         </button>
         <button
           type="button"
