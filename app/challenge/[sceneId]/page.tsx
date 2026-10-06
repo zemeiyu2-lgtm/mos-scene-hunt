@@ -15,6 +15,7 @@ import { use } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { Screen, StatusChip } from "@/components/ui";
 import { matchTextAnswer } from "@/lib/game/answers";
+import { playSound } from "@/components/sound";
 
 export default function ChallengePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
