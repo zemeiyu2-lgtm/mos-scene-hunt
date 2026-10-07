@@ -12,8 +12,8 @@ export function parseWordText(text: string): Game {
   const normalized = text.replace(/\r/g, "").replace(/[\u200b\ufeff]/g, "").trim();
   const title = (normalized.match(/《([^》]+)》/)?.[1] || normalized.match(/游戏名称\s*[：:]\s*([^\n]+)/)?.[1] || "未命名游戏").trim();
   const description = between(normalized, "游戏简介", ["游戏时间","预计时间","游戏难度","建议玩家","游戏目标","游戏区域"]) || between(normalized, "游戏目标", ["游戏时间","预计时间","游戏难度","建议玩家","游戏区域"]) || "由 Word 游戏设计稿生成的场景探索游戏。";
-  const timeMatch = normalized.match(/(?:预计时间|游戏时间)\s*[：:]\s*(\d+)/);
-  const dm = normalized.match(/(?:难度|游戏难度)\s*[：:]\s*(简单|中等|困难)/);
+  const timeMatch = normalized.match(/(?:预计时间|游戏时间)\s*(?:[：:]\s*)?(?:\\n\s*)?约?\s*(\d+)/);
+  const dm = normalized.match(/(?:难度|游戏难度)\s*(?:[：:]\s*)?(?:\\n\s*)?(简单|中等|困难)/);
   const difficulty = dm ? ({简单:"easy",中等:"medium",困难:"hard"} as const)[dm[1] as "简单"|"中等"|"困难"] : "medium";
   const matches = [...normalized.matchAll(/(?:^|\n)\s*第(\d+)站：([^\n]+)/g)];
   if (!matches.length) throw new Error("没有找到“第1站：标题”。请使用 MOS Scene Hunt Word 模板。");
