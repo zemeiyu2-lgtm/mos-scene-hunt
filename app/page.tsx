@@ -177,6 +177,16 @@ export default function HomePage() {
       <section className="card mt-4 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
+            <p className="text-[13px] font-semibold">🎮 游戏中心</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">从官方云端游戏库选择游戏，下载到本机后直接游玩。</p>
+          </div>
+          <Link href="/games" className="btn btn-primary shrink-0">进入</Link>
+        </div>
+      </section>
+
+      <section className="card mt-4 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
             <p className="text-[13px] font-semibold">📦 游戏包中心</p>
             <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">设计者负责制作游戏包；玩家平台负责导入、安装和游玩。两者可以完全分开。</p>
           </div>
