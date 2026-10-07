@@ -330,7 +330,7 @@ export default function DesignPage() {
   /* ---------------------------------------------------------------- ④ 保存 */
 
   const share = async () => {
-    if (!working || areaIncomplete || drawingArea) return;
+    if (!working || areaIncomplete || drawingArea) return false;
     setShareBusy(true);
     setShareMessage(null);
     try {
@@ -361,7 +361,7 @@ export default function DesignPage() {
     setShareMessage("分享链接已复制，可以发给微信好友或群");
   };
 
-  const save = () => {
+  const save = (): boolean => {
     if (!working || areaIncomplete || drawingArea) return;
     if (saveAuthoredGame(working)) {
       // Point the app at this pack so 「立即试玩」 - and every screen after it -
