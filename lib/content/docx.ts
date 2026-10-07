@@ -32,9 +32,7 @@ export async function docxToText(file:File):Promise<string>{
   const xml=bytesToString(xmlBytes); const doc=new DOMParser().parseFromString(xml,"application/xml");
   if(doc.querySelector("parsererror")) throw new Error("Word 文档内容无法读取。");
   const paragraphs=[...doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","p")];
-  return paragraphs.map(p=>[...p.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","t")].map(n=>n.textContent||"").join("")).join("
-").replace(/
-{3,}/g,"
-
-").trim();
+  const text = paragraphs.map(p => [...p.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","t")].map(n => n.textContent || "").join("")).join("\n");
+  return text.replace(/\n{3,}/g, "\n\n").trim();
+}
 }
