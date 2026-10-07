@@ -44,7 +44,8 @@ export default function CreatePage() {
       setReport(null);
       setMessage(error instanceof Error ? `导入失败：${error.message}` : "文件无法解析");
     }
-  };\n  const saveLibrary = () => { if (!working) return; saveAuthoredGame(working); markCurrentAuthoredGame(working.id); localStorage.setItem(LIBRARY_KEY, JSON.stringify([...readLibrary().filter((g) => g.id !== working.id), working])); refreshLibrary(); setMessage("已保存到本机游戏库"); };
+  };
+  const saveLibrary = () => { if (!working) return; saveAuthoredGame(working); markCurrentAuthoredGame(working.id); localStorage.setItem(LIBRARY_KEY, JSON.stringify([...readLibrary().filter((g) => g.id !== working.id), working])); refreshLibrary(); setMessage("已保存到本机游戏库"); };
   const activateGame = (game: Game) => { saveAuthoredGame(game); markCurrentAuthoredGame(game.id); setDraft(game); setReport(validateGamePackage(game)); setMessage("已切换到「" + game.title + "」，现在可以试玩或继续设计。"); };
   const renameGame = (game: Game) => { const title = window.prompt("给游戏换一个显示名称：", game.title); if (!title?.trim()) return; const next = renameAuthoredGame(game.id, title); if (next) { setLibrary(listAuthoredGames()); if (working?.id === next.id) setDraft(next); setMessage("已重命名。"); } };
   const removeGame = (game: Game) => { if (!window.confirm("确定删除「" + game.title + "」？删除后需要重新导入游戏包才能恢复。")) return; deleteAuthoredGame(game.id); localStorage.removeItem(LIBRARY_KEY); setLibrary(listAuthoredGames()); if (working?.id === game.id) setDraft(null); setMessage("已删除「" + game.title + "」。"); };
