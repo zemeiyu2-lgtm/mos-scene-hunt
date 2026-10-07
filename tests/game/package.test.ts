@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateGamePackage, summarizeSpatial } from "@/lib/game/package";
+import { validateGamePackage, summarizeSpatial, gameToMarkdown, markdownToGame } from "@/lib/game/package";
 import type { Game } from "@/lib/game/types";
 const base: Game = {
  id:"test-package", language:"zh-CN", title:"测试游戏", description:"测试", version:"1.0.0",
@@ -17,4 +17,14 @@ describe("V0.6 game package",()=>{
   const report=validateGamePackage({...base,scenes:[...base.scenes.slice(0,1),{...base.scenes[1],location:{...base.scenes[1].location,lat:14.70}}]});
   expect(report.issues.some(i=>i.message.includes("探索区域之外"))).toBe(true);
  });
+  it("round-trips the exported Markdown design package",()=> {
+  const imported = markdownToGame(gameToMarkdown(base));
+  const report = validateGamePackage(imported);
+  expect(report.canPlaytest).toBe(true);
+  expect(report.game?.title).toBe(base.title);
+  expect(report.game?.scenes).toHaveLength(2);
+  expect(report.game?.scenes[0].challenge?.type).toBe("text");
+  expect(report.game?.scenes[0].challenge?.answer).toEqual(["x"]);
+  expect(report.game?.scenes[1].nextSceneId).toBeNull();
+});
 });
