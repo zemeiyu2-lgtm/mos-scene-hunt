@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateGamePackage, summarizeSpatial } from "@/lib/game/package";
+import { validateGamePackage, summarizeSpatial, gameToMarkdown, markdownToGame } from "@/lib/game/package";
 import type { Game } from "@/lib/game/types";
 const base: Game = {
  id:"test-package", language:"zh-CN", title:"测试游戏", description:"测试", version:"1.0.0",
