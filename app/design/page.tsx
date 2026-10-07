@@ -362,7 +362,7 @@ export default function DesignPage() {
   };
 
   const save = (): boolean => {
-    if (!working || areaIncomplete || drawingArea) return;
+    if (!working || areaIncomplete || drawingArea) return false;
     if (saveAuthoredGame(working)) {
       // Point the app at this pack so 「立即试玩」 - and every screen after it -
       // loads the game the author just built instead of the bundled demo.
