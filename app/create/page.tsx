@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { Screen } from "@/components/ui";
 import { useHunt } from "@/components/hunt-provider";
+import { markCurrentAuthoredGame, saveAuthoredGame } from "@/lib/content";
 import type { Game } from "@/lib/game/types";
 import { exportGameJson, gameToMarkdown, validateGamePackage, type PackageReport } from "@/lib/game/package";
 
@@ -15,11 +16,13 @@ export default function CreatePage() {
   const working = draft ?? game;
   const download = (filename: string, text: string, type: string) => { const blob = new Blob([text], { type }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); };
   const importFile = (file: File) => { const reader = new FileReader(); reader.onload = () => { try { const next = validateGamePackage(JSON.parse(String(reader.result))); setReport(next); if (next.game) {
+        saveAuthoredGame(next.game);
+        markCurrentAuthoredGame(next.game.id);
         setDraft(next.game);
         setReport(next);
         setMessage(next.canPlaytest ? "导入成功，已载入设计器" : "已导入，但需要修正问题");
       } } catch { setMessage("文件不是有效的 JSON 游戏包"); } }; reader.readAsText(file); };
-  const saveLibrary = () => { if (!working) return; localStorage.setItem(LIBRARY_KEY, JSON.stringify([...readLibrary().filter((g) => g.id !== working.id), working])); setMessage("已保存到本机游戏库"); };
+  const saveLibrary = () => { if (!working) return; saveAuthoredGame(working); markCurrentAuthoredGame(working.id); localStorage.setItem(LIBRARY_KEY, JSON.stringify([...readLibrary().filter((g) => g.id !== working.id), working])); setMessage("已保存到本机游戏库"); };
   if (!working) return <Screen title="创建游戏" subtitle="等待游戏内容加载"><div className="card p-5">正在加载……</div></Screen>;
   const spatial = report?.spatial ?? validateGamePackage(working).spatial;
   return <Screen title="创建游戏" subtitle="手机优先 · 电脑增强">
