@@ -59,8 +59,38 @@ export function summarizeSpatial(game: Game): SpatialSummary {
 export function exportGameJson(game: Game): string { return JSON.stringify(game, null, 2); }
 export function gameToMarkdown(game: Game): string {
   const spatial = summarizeSpatial(game);
-  const lines = [`# ${game.title}`, "", "## 游戏信息", `- ID：${game.id}`, `- 版本：${game.version}`, `- 预计时间：${game.estimatedMinutes ?? ""} 分钟`, `- 难度：${game.difficulty ?? ""}`, `- 目的：${game.description}`, "", "## 空间设计", `- 探索区域：${game.huntArea?.name ?? "未设置"}`, `- 区域半径：${game.huntArea?.radiusMeters ?? ""} m`, `- 总路线：${Math.round(spatial.totalMeters)} m`, `- 粗略步行：${spatial.walkingMinutes} 分钟`, "", "## 体验点"];
-  game.scenes.forEach((scene,i)=>lines.push(`### ${i+1}. ${scene.title}`,`- 地点：${scene.location.name ?? ""}`,`- GPS：${scene.location.lat}, ${scene.location.lng}`,`- 触发半径：${scene.location.radius ?? 15} m`,`- 故事：${scene.story}`,`- 到达提示：${scene.briefing ?? ""}`,`- 任务：${scene.challenge?.question ?? ""}`,`- 奖励：${scene.reward?.title ?? ""} / ${scene.reward?.value ?? ""}`,""));
+  const area = game.huntArea;
+  const lines = [
+    `# ${game.title}`, "",
+    "## 游戏信息",
+    `- ID：${game.id}`, `- 语言：${game.language ?? "zh-CN"}`, `- 版本：${game.version}`,
+    `- 作者：${game.author ?? ""}`, `- 预计时间：${game.estimatedMinutes ?? ""} 分钟`,
+    `- 难度：${game.difficulty ?? ""}`, `- 目的：${game.description}`,
+    "", "## 空间设计",
+    `- 探索区域：${area?.name ?? "未设置"}`, `- 区域形状：${area?.shape ?? "circle"}`,
+    `- 区域中心：${area ? `${area.center.lat}, ${area.center.lng}` : ""}`,
+    `- 区域半径：${area?.radiusMeters ?? ""} m`,
+    `- 区域顶点：${area?.points?.map((p) => `${p.lat}, ${p.lng}`).join(" | ") ?? ""}`,
+    `- 总路线：${Math.round(spatial.totalMeters)} m`, `- 粗略步行：${spatial.walkingMinutes} 分钟`,
+    "", "## 体验点"
+  ];
+  game.scenes.forEach((scene, i) => {
+    const challenge = scene.challenge;
+    const reward = scene.reward;
+    lines.push(
+      `### ${i + 1}. ${scene.title}`,
+      `- ID：${scene.id}`, `- 地点：${scene.location.name ?? ""}`,
+      `- GPS：${scene.location.lat}, ${scene.location.lng}`,
+      `- 触发半径：${scene.location.radius ?? 15} m`,
+      `- 故事：${scene.story}`, `- 到达提示：${scene.briefing ?? ""}`,
+      `- 任务类型：${challenge?.type ?? "text"}`, `- 任务：${challenge?.question ?? ""}`,
+      `- 任务选项：${challenge?.options?.join(" | ") ?? ""}`,
+      `- 答案：${Array.isArray(challenge?.answer) ? challenge.answer.join(" | ") : challenge?.answer ?? ""}`,
+      `- 答案说明：${challenge?.explanation ?? ""}`,
+      `- 奖励类型：${reward?.type ?? "keyword"}`, `- 奖励名称：${reward?.title ?? ""}`,
+      `- 奖励内容：${reward?.value ?? ""}`, ""
+    );
+  });
   return lines.join("\n");
 }
 
