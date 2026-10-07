@@ -21,8 +21,8 @@ export default function CreatePage() {
   const download = (filename: string, text: string, type: string) => { const blob = new Blob([text], { type }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); };
   const importFile = async (file: File) => {
     try {
-      const isDocx = /\\.docx$/i.test(file.name);
-      const isMarkdown = /\\.(md|markdown)$/i.test(file.name);
+      const isDocx = /\.docx$/i.test(file.name);
+      const isMarkdown = /\.(md|markdown)$/i.test(file.name);
       let raw: unknown;
       if (isDocx) {
         raw = parseWordText(await docxToText(file));
