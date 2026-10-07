@@ -1,5 +1,5 @@
 import { validateGame, type Game, type ValidationIssue } from "./types";
-import { calculateDistance } from "@/lib/location";
+import { calculateDistance, isPointInPolygon } from "@/lib/location";
 
 export interface SpatialSummary {
   distances: Array<{ from: string; to: string; meters: number }>;
@@ -25,9 +25,15 @@ export function validateSpatial(game: Game): ValidationIssue[] {
     const radius = scene.location.radius ?? 15;
     if (!Number.isFinite(scene.location.lat) || !Number.isFinite(scene.location.lng)) issues.push({ path: `scenes.${scene.id}.location`, message: "缺少有效 GPS 坐标", severity: "error" });
     if (radius < 5 || radius > 200) issues.push({ path: `scenes.${scene.id}.location.radius`, message: `触发半径 ${radius}m 不在建议范围 5–200m 内`, severity: "warning" });
-    if (game.huntArea && game.huntArea.shape !== "polygon") {
-      const d = calculateDistance(scene.location, game.huntArea.center);
-      if (d > game.huntArea.radiusMeters) issues.push({ path: `scenes.${scene.id}.location`, message: "点位位于探索区域之外", severity: "warning" });
+    if (game.huntArea) {
+      if (game.huntArea.shape === "polygon" && (game.huntArea.points?.length ?? 0) >= 3) {
+        if (!isPointInPolygon({ lat: scene.location.lat, lng: scene.location.lng }, game.huntArea.points!)) {
+          issues.push({ path: `scenes.${scene.id}.location`, message: "点位位于自定义探索区域之外", severity: "warning" });
+        }
+      } else {
+        const d = calculateDistance(scene.location, game.huntArea.center);
+        if (d > game.huntArea.radiusMeters) issues.push({ path: `scenes.${scene.id}.location`, message: "点位位于探索区域之外", severity: "warning" });
+      }
     }
   }
   for (let i = 0; i < game.scenes.length; i++) for (let j = i + 1; j < game.scenes.length; j++) {
@@ -38,6 +44,11 @@ export function validateSpatial(game: Game): ValidationIssue[] {
   if (game.scenes.length === 0) issues.push({ path: "scenes", message: "至少需要一个体验点", severity: "error" });
   else if (!game.entrySceneId || !game.scenes.some((s) => s.id === game.entrySceneId)) issues.push({ path: "entrySceneId", message: "起始场景不存在", severity: "error" });
   if (game.scenes.length > 1 && !game.scenes.some((s) => s.nextSceneId === null)) issues.push({ path: "scenes", message: "没有终点场景", severity: "error" });
+  if (game.scenes.length > 1) {
+    const total = summarizeSpatial(game).totalMeters;
+    if (total < 30) issues.push({ path: "spatial.route", message: "路线总长度小于 30m，多个体验点可能过于集中", severity: "warning" });
+    if (total > 5000) issues.push({ path: "spatial.route", message: "路线总长度超过 5km，移动端体验可能过长", severity: "warning" });
+  }
   return issues;
 }
 export function summarizeSpatial(game: Game): SpatialSummary {
