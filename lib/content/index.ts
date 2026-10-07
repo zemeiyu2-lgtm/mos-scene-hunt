@@ -40,6 +40,39 @@ export function hasAuthoredGame(gameId: string): boolean {
   return Boolean(window.localStorage.getItem(authoringKey(gameId)));
 }
 
+/** List all locally installed/authored game packs. */
+export function listAuthoredGames(): Game[] {
+  if (typeof window === "undefined") return [];
+  const games: Game[] = [];
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (!key?.startsWith(AUTHORING_PREFIX)) continue;
+      const gameId = key.slice(AUTHORING_PREFIX.length);
+      const game = readAuthoredGame(gameId);
+      if (game) games.push(game);
+    }
+  } catch {
+    return games;
+  }
+  return games.sort((a, b) => a.title.localeCompare(b.title, "zh-CN"));
+}
+
+/** Remove a locally installed/authored game pack. */
+export function deleteAuthoredGame(gameId: string): void {
+  clearAuthoredGame(gameId);
+  if (getActiveAuthoredGameId() === gameId) clearActiveAuthoredGame();
+}
+
+/** Update the human-facing title of a local game without changing its ID. */
+export function renameAuthoredGame(gameId: string, title: string): Game | null {
+  const game = readAuthoredGame(gameId);
+  const nextTitle = title.trim();
+  if (!game || !nextTitle) return null;
+  const next = { ...game, title: nextTitle };
+  return saveAuthoredGame(next) ? next : null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Current authored pack                                              */
 /* ------------------------------------------------------------------ */
