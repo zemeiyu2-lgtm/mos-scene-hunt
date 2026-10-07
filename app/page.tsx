@@ -50,7 +50,9 @@ export default function HomePage() {
         </div>
 
         <div className="p-5">
-          <div className="game-route mb-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span><i>→</i><span>带走</span></div>\n\n          <ol className="space-y-2.5">
+          <div className="game-route mb-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span><i>→</i><span>带走</span></div>
+
+          <ol className="space-y-2.5">
             {[
               "允许浏览器获取你的位置",
               "在地图上看到自己与目标地点",
@@ -171,6 +173,16 @@ export default function HomePage() {
               </div>
             </Link>
           ) : null}
+        </div>
+      </section>
+
+      <section className="card mt-4 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[13px] font-semibold">📦 游戏包中心</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">设计者负责制作游戏包；玩家平台负责导入、安装和游玩。两者可以完全分开。</p>
+          </div>
+          <Link href="/create" className="btn btn-secondary shrink-0">打开</Link>
         </div>
       </section>
 
