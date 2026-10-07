@@ -236,6 +236,18 @@ export const HUNT_MANIFEST: HuntManifestEntry[] = [
     featured: true,
   },
   {
+    id: "igsl-eight-transformations",
+    title: "IGSL的八个转化现场",
+    description:
+      "IGSL 备用母版：从呼召、真理与行动，走向群体、服事、生命与城市使命。八站全部采用反思式任务，重点体验“从知道到成为”。",
+    language: "zh-CN",
+    estimatedMinutes: 50,
+    difficulty: "medium",
+    sceneCount: 8,
+    accent: "signal",
+    featured: true,
+  },
+  {
     id: DEFAULT_GAME_ID,
     title: "Luneta · 看见这座城市",
     description:
