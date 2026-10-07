@@ -1,4 +1,4 @@
-import { validateGame, type Game, type ValidationIssue } from "./types";
+import { validateGame, type Game, type ValidationIssue, type Challenge, type ChallengeType, type Reward, type Scene } from "./types";
 import { calculateDistance, isPointInPolygon } from "@/lib/location";
 
 export interface SpatialSummary {
