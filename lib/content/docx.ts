@@ -28,11 +28,12 @@ async function readZipEntry(buf:ArrayBuffer,name:string){
   throw new Error("Word 文件中没有找到 word/document.xml。");
 }
 export async function docxToText(file:File):Promise<string>{
-  const buf=await file.arrayBuffer(); const xmlBytes=await readZipEntry(buf,"word/document.xml");
-  const xml=bytesToString(xmlBytes); const doc=new DOMParser().parseFromString(xml,"application/xml");
+  const buf=await file.arrayBuffer();
+  const xmlBytes=await readZipEntry(buf,"word/document.xml");
+  const xml=bytesToString(xmlBytes);
+  const doc=new DOMParser().parseFromString(xml,"application/xml");
   if(doc.querySelector("parsererror")) throw new Error("Word 文档内容无法读取。");
   const paragraphs=[...doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","p")];
-  const text = paragraphs.map(p => [...p.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","t")].map(n => n.textContent || "").join("")).join("\n");
-  return text.replace(/\n{3,}/g, "\n\n").trim();
-}
+  const text=paragraphs.map(p=>[...p.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","t")].map(n=>n.textContent||"").join("")).join("\\n");
+  return text.replace(/\\n{3,}/g,"\\n\\n").trim();
 }
