@@ -1,0 +1,296 @@
+{
+  "id": "igsl-eight-transformations",
+  "language": "zh-CN",
+  "title": "《IGSL的八个转化现场》",
+  "description": "IGSL 实境领导力与门训寻踪备用母版。玩家不是寻找答案，而是在八个现场经历从“知道”到“成为”、从校园到城市、从个人成长到群体与使命的转变。",
+  "author": "MOS Scene Hunt · IGSL Backup 01",
+  "version": "1.0.0",
+  "estimatedMinutes": 50,
+  "difficulty": "medium",
+  "startLocation": {
+    "lat": 14.687912,
+    "lng": 121.032952,
+    "radius": 30,
+    "name": "IGSL 校园集合点（待现场确认）"
+  },
+  "huntArea": {
+    "center": {
+      "lat": 14.687912,
+      "lng": 121.032952
+    },
+    "radiusMeters": 180,
+    "shape": "circle",
+    "name": "IGSL 校园探索区（请根据实际校园地图重新绘制）"
+  },
+  "entrySceneId": "transform-01",
+  "aiProfile": {
+    "tone": "成熟、安静、具有领导力反思感；像一位同行的导师，而不是校园导览员。",
+    "canon": [
+      "IGSL 官方使命强调培养 servant-steward leaders，以战略性影响参与大使命。",
+      "IGSL 官方资料强调 head、heart、hands 的整全教育，并强调在群体中学习、信仰、学术与服事。",
+      "IGSL 官方资料强调 Christ-like leaders、门徒训练、圣经根基、处境反思与长期忠心服事。",
+      "游戏必须尊重校园秩序、住宿者隐私与学校管理；不得偷拍、擅自进入限制区域或干扰课程。",
+      "本母版使用 IGSL 校园地址附近的公开地理参考点，仅用于初始地图定位；正式使用前必须由设计者根据实际校园地图逐站重新定位。"
+    ],
+    "allowGeneration": false
+  },
+  "scenes": [
+    {
+      "id": "transform-01",
+      "title": "转化一 · 你为什么要成为一个领袖？",
+      "story": "你刚刚进入 IGSL。先不要急着想“我要学什么”。先问一个更深的问题：如果没有职位、头衔和别人对你的期待，你为什么仍然愿意承担领导责任？\n\n这一站不是测领导力，而是寻找你的动机。",
+      "briefing": "找到校园入口或集合点附近一个安静的位置，独自停留三十秒。",
+      "location": {
+        "lat": 14.687912,
+        "lng": 121.032952,
+        "radius": 15,
+        "name": "校园入口 / 集合点（待确认）"
+      },
+      "nextSceneId": "transform-02",
+      "challenge": {
+        "type": "choice",
+        "question": "如果领导意味着长期承担，而不是获得地位，你仍然愿意吗？",
+        "options": [
+          "愿意，我看重使命",
+          "愿意，但我需要同行者",
+          "我还在分辨",
+          "我过去更看重结果"
+        ],
+        "reflective": true,
+        "prompt": "选择最接近你真实状态的答案。",
+        "explanation": "成熟领导力首先面对的不是方法，而是动机。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "呼召",
+        "value": "呼召",
+        "icon": "✦"
+      }
+    },
+    {
+      "id": "transform-02",
+      "title": "转化二 · 头脑知道，生命真的相信吗？",
+      "story": "来到学习空间。这里代表知识、圣经研究、神学训练与思考。\n\nIGSL 的训练不是单纯把更多知识装进头脑。真正的问题是：你所相信的真理，是否已经开始改变你看人、看自己、看世界的方式？",
+      "briefing": "找到图书馆、学习空间或允许停留的公共学习区域。",
+      "location": {
+        "lat": 14.687912,
+        "lng": 121.032952,
+        "radius": 15,
+        "name": "图书馆 / 学习空间（待确认）"
+      },
+      "nextSceneId": "transform-03",
+      "challenge": {
+        "type": "choice",
+        "question": "最近哪一种改变最能证明你的学习已经进入生命？",
+        "options": [
+          "我的判断改变了",
+          "我的品格改变了",
+          "我的关系改变了",
+          "我的服事方式改变了"
+        ],
+        "reflective": true,
+        "prompt": "不要选择最属灵的答案，选择最真实的答案。",
+        "explanation": "知识真正进入生命，会改变人的判断、品格、关系与行动。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "真理",
+        "value": "真理",
+        "icon": "◈"
+      }
+    },
+    {
+      "id": "transform-03",
+      "title": "转化三 · 你会做什么，而不只是知道什么？",
+      "story": "来到课堂或教学空间附近。\n\n想象你刚刚学到一项重要的神学真理。现在规定自己：七天之内必须把它变成一个具体行动。没有行动，知识仍然只是知识。",
+      "briefing": "在不打扰课程的前提下，到教室外或允许进入的公共区域完成任务。",
+      "location": {
+        "lat": 14.687912,
+        "lng": 121.032952,
+        "radius": 15,
+        "name": "教室 / 教学空间（待确认）"
+      },
+      "nextSceneId": "transform-04",
+      "challenge": {
+        "type": "choice",
+        "question": "你最愿意把学习转化为什么？",
+        "options": [
+          "一个新的生活习惯",
+          "一次关系修复",
+          "一项实际服事",
+          "一次进入处境的行动"
+        ],
+        "reflective": true,
+        "prompt": "选一个，并说出具体到时间和对象的下一步。",
+        "explanation": "真正的领导力训练必须从课堂走向实践。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "行动",
+        "value": "行动",
+        "icon": "◎"
+      }
+    },
+    {
+      "id": "transform-04",
+      "title": "转化四 · 没有群体，你能走多远？",
+      "story": "来到公共交流空间。IGSL 的学习并不是孤立完成的。不同文化、不同背景、不同事奉经验的人一起生活、学习和服事，本身就是训练的一部分。\n\n这一站，请真正听一个与你不同的人，而不是准备回应。",
+      "briefing": "找到适合两三人交流的公共空间。先确认不会打扰别人。",
+      "location": {
+        "lat": 14.687912,
+        "lng": 121.032952,
+        "radius": 15,
+        "name": "学生公共空间 / 交流区（待确认）"
+      },
+      "nextSceneId": "transform-05",
+      "challenge": {
+        "type": "choice",
+        "question": "面对与你不同的人，你最需要成长的是什么？",
+        "options": [
+          "倾听",
+          "谦卑",
+          "耐心",
+          "理解文化差异"
+        ],
+        "reflective": true,
+        "prompt": "与同伴分享一个自己最近需要学习的地方。",
+        "explanation": "群体不是训练之外的环境，群体本身就是生命形成的场所。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "群体",
+        "value": "群体",
+        "icon": "◉"
+      }
+    },
+    {
+      "id": "transform-05",
+      "title": "转化五 · 你领导人，还是服事人？",
+      "story": "这一站不在讲台上。请找到校园中一个普通的服务、清洁、用餐或后勤场景。\n\n观察那些让校园正常运行、却很少站在聚光灯下的人。真正的 servant-steward leadership，会怎样看待这些人？",
+      "briefing": "在不偷拍、不打扰工作人员的情况下完成观察。",
+      "location": {
+        "lat": 14.687912,
+        "lng": 121.032952,
+        "radius": 15,
+        "name": "餐饮 / 后勤 / 服务区域（待确认）"
+      },
+      "nextSceneId": "transform-06",
+      "challenge": {
+        "type": "choice",
+        "question": "如果没有人知道你做了这件事，你最愿意做什么？",
+        "options": [
+          "主动帮助一个人",
+          "完成一项没人愿意做的事",
+          "感谢一位常被忽略的人",
+          "默默承担一项责任"
+        ],
+        "reflective": true,
+        "prompt": "选择后真正完成一个小行动。",
+        "explanation": "servant-steward 不是领导口号，而是在无人喝彩时仍然忠心。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "服事",
+        "value": "服事",
+        "icon": "♡"
+      }
+    },
+    {
+      "id": "transform-06",
+      "title": "转化六 · 你真正面对自己了吗？",
+      "story": "找到一个安静、私人的公共区域。\n\n领导者最危险的盲点，往往不是不知道别人有什么问题，而是不愿面对自己的问题。现在不要分析别人，只问自己：我最容易在哪一种情况下失去基督的样式？",
+      "briefing": "找一个安全、安静、不影响他人的位置。此站答案不需要公开。",
+      "location": {
+        "lat": 14.687912,
+        "lng": 121.032952,
+        "radius": 15,
+        "name": "安静反思区（待确认）"
+      },
+      "nextSceneId": "transform-07",
+      "challenge": {
+        "type": "choice",
+        "question": "哪一种情况最容易暴露你的生命弱点？",
+        "options": [
+          "压力很大时",
+          "没人监督时",
+          "被批评时",
+          "权力或成功增加时"
+        ],
+        "reflective": true,
+        "prompt": "这是个人反思，不要求向队友解释。",
+        "explanation": "生命形成不仅是能力增长，也是越来越诚实地面对自己的过程。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "生命",
+        "value": "生命",
+        "icon": "⌁"
+      }
+    },
+    {
+      "id": "transform-07",
+      "title": "转化七 · 神学院之外，你看见谁？",
+      "story": "走向校园边界、开放户外区域或能够看见社区的安全位置。\n\nIGSL 的训练不是为了让人永远停留在校园。想象你今天毕业：你会把所学带向哪里？带给谁？",
+      "briefing": "选择安全的校园户外位置，不进入限制区域。",
+      "location": {
+        "lat": 14.687912,
+        "lng": 121.032952,
+        "radius": 15,
+        "name": "校园边界 / 户外观察点（待确认）"
+      },
+      "nextSceneId": "transform-08",
+      "challenge": {
+        "type": "choice",
+        "question": "你最希望神学院训练最终影响哪一个处境？",
+        "options": [
+          "教会与门训",
+          "城市与社区",
+          "跨文化宣教",
+          "职场与公共领域"
+        ],
+        "reflective": true,
+        "prompt": "选择后说出一个具体的人群或地方。",
+        "explanation": "领导力的价值最终要在真实处境中产生属灵与社会影响。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "使命",
+        "value": "使命",
+        "icon": "↗"
+      }
+    },
+    {
+      "id": "transform-08",
+      "title": "转化八 · 你要带什么离开？",
+      "story": "回到集合点。现在把前面的关键词放在一起：呼召、真理、行动、群体、服事、生命、使命。\n\n最后的问题不是“这次游戏你得了多少分”，而是：如果明天就离开 IGSL，你准备把什么带进自己的教会、家庭、城市和世界？",
+      "briefing": "回到最终集合点。团队一起完成最后回应。",
+      "location": {
+        "lat": 14.687912,
+        "lng": 121.032952,
+        "radius": 15,
+        "name": "最终集合点（待确认）"
+      },
+      "nextSceneId": null,
+      "challenge": {
+        "type": "choice",
+        "question": "未来七天，你最愿意采取哪一个具体行动？",
+        "options": [
+          "开始一个新的属灵习惯",
+          "修复一段重要关系",
+          "主动服事一个人",
+          "迈出一个使命行动"
+        ],
+        "reflective": true,
+        "prompt": "选择一件七天内真的会发生的事，并记在手机里。",
+        "explanation": "真正的转化不是游戏结束时产生的感觉，而是离开校园以后仍继续发生的行动。"
+      },
+      "reward": {
+        "type": "badge",
+        "title": "为转化而受训",
+        "value": "igsl-eight-transformations",
+        "description": "八个现场结束，但真正的游戏从离开校园以后开始。",
+        "icon": "✦"
+      }
+    }
+  ]
+}
