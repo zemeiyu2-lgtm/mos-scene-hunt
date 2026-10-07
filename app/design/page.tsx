@@ -41,6 +41,7 @@ import type { TileProviderId } from "@/lib/map/tiles";
 import { useHunt } from "@/components/hunt-provider";
 import { createGameShareUrl } from "@/lib/content/share";
 import { MediaEditor } from "@/components/media-gallery";
+import { summarizeSpatial, validateGamePackage } from "@/lib/game/package";
 
 const MICRO_PRESETS = [30, 50, 75, 100, 150, 250];
 const MIN_POLYGON_POINTS = 3;
@@ -86,6 +87,10 @@ export default function DesignPage() {
   // A polygon still being drawn cannot be saved as a playable pack: the
   // validator requires at least three vertices.
   const areaIncomplete = isPolygon && polygonPoints.length < MIN_POLYGON_POINTS;
+  const spatial = useMemo(() => (working ? summarizeSpatial(working) : null), [working]);
+  const packageReport = useMemo(() => (working ? validateGamePackage(working) : null), [working]);
+  const spatialWarnings = packageReport?.issues.filter((issue) => issue.severity === "warning") ?? [];
+  const spatialErrors = packageReport?.issues.filter((issue) => issue.severity === "error") ?? [];
 
   /** Does the selected scene fall inside the drawn polygon? Cheap ray-cast. */
   const selectedOutsideArea = useMemo(() => {
@@ -295,6 +300,18 @@ export default function DesignPage() {
     setSaved(false);
   };
 
+  const moveScene = (sceneId: string, direction: -1 | 1) => {
+    const index = working.scenes.findIndex((scene) => scene.id === sceneId);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= working.scenes.length) return;
+    const scenes = [...working.scenes];
+    [scenes[index], scenes[target]] = [scenes[target], scenes[index]];
+    for (let i = 0; i < scenes.length; i++) scenes[i] = { ...scenes[i], nextSceneId: i < scenes.length - 1 ? scenes[i + 1].id : null };
+    setDraft({ ...working, scenes, entrySceneId: scenes[0]?.id, version: bumpVersion(working.version) });
+    setSelectedId(sceneId);
+    setSaved(false);
+  };
+
   const deleteSelected = () => {
     if (!selected || working.scenes.length <= 1) return;
     const nextId = selected.nextSceneId;
@@ -313,7 +330,7 @@ export default function DesignPage() {
   /* ---------------------------------------------------------------- ④ 保存 */
 
   const share = async () => {
-    if (!working || areaIncomplete || drawingArea) return;
+    if (!working || areaIncomplete || drawingArea) return false;
     setShareBusy(true);
     setShareMessage(null);
     try {
@@ -344,7 +361,7 @@ export default function DesignPage() {
     setShareMessage("分享链接已复制，可以发给微信好友或群");
   };
 
-  const save = () => {
+  const save = (): boolean => {
     if (!working || areaIncomplete || drawingArea) return;
     if (saveAuthoredGame(working)) {
       // Point the app at this pack so 「立即试玩」 - and every screen after it -
@@ -478,6 +495,24 @@ export default function DesignPage() {
             </span>
           </div>
         </div>
+      </section>
+
+      {/* ------------------------------------------------ 空间摘要 */}
+      <section className="card mt-4 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[15px] font-bold">空间设计总览</p>
+            <p className="mt-1 text-[11.5px] text-[var(--muted)]">地图决定玩家在哪里经历故事；系统只提示问题，不替你改点位。</p>
+          </div>
+          <span className="chip bg-[var(--surface)]">{working.scenes.length} 个体验点</span>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(spatial?.totalMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">总路线</div></div>
+          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{spatial?.walkingMinutes ?? 0}′</div><div className="text-[10.5px] text-[var(--muted)]">粗略步行</div></div>
+          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(area?.radiusMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">区域尺度</div></div>
+        </div>
+        {working.scenes.length > 1 ? <div className="mt-3 overflow-x-auto pb-1"><div className="flex min-w-max items-center gap-1">{working.scenes.map((scene, i) => <span key={scene.id} className="flex items-center gap-1">{i > 0 ? <span className="text-[var(--muted)]">→</span> : null}<button type="button" className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${scene.id === selected?.id ? "border-[var(--accent)] bg-[var(--accent)]/10" : "border-[var(--line)]"}`} onClick={() => setSelectedId(scene.id)}>{i + 1}. {scene.title}</button></span>)}</div></div> : null}
+        {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}><strong>{issue.severity === "error" ? "需要修正：" : "空间提示："}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-semibold text-emerald-800">空间检查通过，可以继续设计。</p>}
       </section>
 
       {/* ------------------------------------------------ ① 选择游戏区域 */}
@@ -663,7 +698,7 @@ export default function DesignPage() {
               </p>
             ) : null}
 
-            <label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
+                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">路线顺序</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>\n\n<label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">现场名称<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达后故事<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达提示<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
