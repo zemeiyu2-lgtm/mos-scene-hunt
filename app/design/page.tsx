@@ -369,7 +369,9 @@ export default function DesignPage() {
       markCurrentAuthoredGame(working.id);
       setDraft(working);
       setSaved(true);
+      return true;
     }
+    return false;
   };
 
   /**
@@ -381,8 +383,7 @@ export default function DesignPage() {
    * /select screen resolves to it.
    */
   const play = () => {
-    save();
-    router.push("/select");
+    if (save()) router.push("/select");
   };
 
   const loadBsopClassicTemplate = () => {
@@ -411,6 +412,15 @@ export default function DesignPage() {
   const copyJson = async () => {
     await navigator.clipboard.writeText(JSON.stringify(working, null, 2));
     setSaved(true);
+  };
+
+  const exportPackage = () => {
+    const report = validateGamePackage(working);
+    if (!report.game || report.issues.some((issue) => issue.severity === "error")) return;
+    const blob = new Blob([JSON.stringify(report.game, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${working.id}.json`; a.click(); URL.revokeObjectURL(url);
   };
 
   return (
