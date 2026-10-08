@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateGamePackage, summarizeSpatial, gameToMarkdown, markdownToGame } from "@/lib/game/package";
+import { validateGamePackage, summarizeSpatial, gameToMarkdown, markdownToGame, exportGameJson, unwrapGamePackage } from "@/lib/game/package";
 import type { Game } from "@/lib/game/types";
 const base: Game = {
  id:"test-package", language:"zh-CN", title:"测试游戏", description:"测试", version:"1.0.0",
@@ -13,6 +13,14 @@ const base: Game = {
 describe("V0.6 game package",()=>{
  it("calculates route summary",()=>expect(summarizeSpatial(base).totalMeters).toBeGreaterThan(40));
  it("accepts a valid package",()=>expect(validateGamePackage(base).canPlaytest).toBe(true));
+ it("round-trips the V1 JSON envelope",()=> {
+  const exported = exportGameJson(base);
+  const raw = JSON.parse(exported);
+  expect(raw.format).toBe("mos-scene-hunt-game");
+  expect(raw.formatVersion).toBe("1.0");
+  expect(unwrapGamePackage(raw)).toEqual(base);
+  expect(validateGamePackage(raw).canPlaytest).toBe(true);
+ });
  it("warns when a point is outside the circle",()=>{
   const report=validateGamePackage({...base,scenes:[...base.scenes.slice(0,1),{...base.scenes[1],location:{...base.scenes[1].location,lat:14.70}}]});
   expect(report.issues.some(i=>i.message.includes("探索区域之外"))).toBe(true);
