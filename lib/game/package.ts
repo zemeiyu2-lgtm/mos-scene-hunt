@@ -82,7 +82,10 @@ export function summarizeSpatial(game: Game): SpatialSummary {
   for (let i = 1; i < game.scenes.length; i++) { const from = game.scenes[i-1], to = game.scenes[i]; const meters = calculateDistance(from.location, to.location); distances.push({from:from.id,to:to.id,meters}); totalMeters += meters; }
   return { distances, totalMeters, walkingMinutes: Math.max(1, Math.round(totalMeters / 75)) };
 }
-export function exportGameJson(game: Game): string {\n  const pack: MOSGamePackage = { format: MOS_GAME_PACKAGE_FORMAT, formatVersion: MOS_GAME_PACKAGE_VERSION, game };\n  return JSON.stringify(pack, null, 2);\n}
+export function exportGameJson(game: Game): string {
+  const pack: MOSGamePackage = { format: MOS_GAME_PACKAGE_FORMAT, formatVersion: MOS_GAME_PACKAGE_VERSION, game };
+  return JSON.stringify(pack, null, 2);
+}
 export function gameToMarkdown(game: Game): string {
   const spatial = summarizeSpatial(game);
   const area = game.huntArea;
