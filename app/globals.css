@@ -711,3 +711,167 @@ body {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ------------------------------------------------------------------ */
+/* V2 exploration game layer — map is the game stage                    */
+/* ------------------------------------------------------------------ */
+.map-root .leaflet-tile-pane {
+  filter: saturate(.78) contrast(1.04) brightness(.97);
+}
+.map-root .leaflet-control-attribution {
+  font-size: 8px;
+  opacity: .52;
+  background: rgba(255,255,255,.58);
+  backdrop-filter: blur(4px);
+}
+.map-root .leaflet-control-scale {
+  margin-bottom: 94px;
+  margin-left: 12px;
+}
+.map-root .leaflet-control-scale-line {
+  border: 1px solid rgba(21,35,61,.42);
+  border-top: 0;
+  background: rgba(255,255,255,.58);
+  color: #26364e;
+  font-size: 8px;
+  line-height: 11px;
+  padding: 0 4px;
+}
+.explorer-marker {
+  position: relative;
+  width: 46px;
+  height: 46px;
+}
+.explorer-marker__dot {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  width: 18px;
+  height: 18px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: #172c4d;
+  box-shadow: 0 3px 12px rgba(15,23,42,.42);
+  z-index: 3;
+}
+.explorer-marker__arrow {
+  position: absolute;
+  left: 17px;
+  top: 3px;
+  color: #f5a524;
+  font-size: 12px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.45);
+  z-index: 4;
+}
+.explorer-marker__pulse {
+  position: absolute;
+  inset: 5px;
+  border: 2px solid rgba(245,165,36,.58);
+  border-radius: 50%;
+  animation: explorer-pulse 2s ease-out infinite;
+}
+.explorer-marker--sim .explorer-marker__dot { background: #6d3db8; }
+.hunt-node {
+  position: relative;
+  width: 76px;
+  height: 76px;
+}
+.hunt-node__core {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: #697386;
+  color: white;
+  box-shadow: 0 4px 14px rgba(15,23,42,.32);
+  z-index: 4;
+}
+.hunt-node__core b { font-size: 10px; letter-spacing: .05em; }
+.hunt-node__core i { position: absolute; right: -4px; bottom: -3px; width: 17px; height: 17px; display:grid; place-items:center; border-radius:50%; background:#fff; color:#8a5700; font-size:9px; font-style:normal; box-shadow:0 2px 5px rgba(0,0,0,.18); }
+.hunt-node--open .hunt-node__core { background: #f5a524; color:#3a2400; }
+.hunt-node--target .hunt-node__core { background: #17375d; color:#fff8e8; transform:scale(1.08); box-shadow:0 5px 18px rgba(23,55,93,.42); }
+.hunt-node--done .hunt-node__core { background:#247a61; }
+.hunt-node--locked .hunt-node__core { background:#9aa1ad; opacity:.7; }
+.hunt-node__ring {
+  position:absolute; left:13px; top:13px; width:50px; height:50px; border:1px solid rgba(245,165,36,.45); border-radius:50%;
+}
+.hunt-node--target .hunt-node__ring { border:2px solid rgba(245,165,36,.72); animation: target-orbit 1.8s ease-out infinite; }
+.hunt-node__pulse {
+  position:absolute; left:13px; top:13px; width:50px; height:50px; border-radius:50%;
+}
+.hunt-node--target .hunt-node__pulse { border:2px solid rgba(245,165,36,.38); animation: target-expand 1.8s ease-out infinite; }
+.hunt-node__distance {
+  position:absolute;
+  top:-3px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:3px 7px;
+  border-radius:999px;
+  background:rgba(23,55,93,.92);
+  color:white;
+  font-size:9px;
+  font-weight:800;
+  white-space:nowrap;
+  box-shadow:0 4px 10px rgba(15,23,42,.25);
+  z-index:5;
+}
+.map-compass-hud {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 11px;
+  border:1px solid rgba(255,255,255,.72);
+  border-radius:999px;
+  background:rgba(20,31,48,.78);
+  color:white;
+  box-shadow:0 8px 22px rgba(15,23,42,.24);
+  backdrop-filter:blur(10px);
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.05em;
+}
+.map-compass-hud b { color:#f5c86a; font-size:10px; }
+.map-compass-hud__dot { width:7px; height:7px; border-radius:50%; background:#f5a524; box-shadow:0 0 0 4px rgba(245,165,36,.18); }
+.map-explore-hint {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:9px 11px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:15px;
+  background:rgba(15,25,38,.72);
+  color:white;
+  box-shadow:0 10px 28px rgba(15,23,42,.26);
+  backdrop-filter:blur(9px);
+}
+.map-explore-hint__icon { display:grid; place-items:center; width:28px; height:28px; border-radius:10px; background:#f5a524; color:#3a2400; }
+.map-explore-hint p { font-size:11px; font-weight:800; }
+.map-explore-hint small { display:block; margin-top:2px; color:rgba(255,255,255,.62); font-size:9px; }
+@keyframes explorer-pulse { 0%{transform:scale(.65);opacity:.7} 70%{transform:scale(1.5);opacity:0} 100%{opacity:0} }
+@keyframes target-expand { 0%{transform:scale(.7);opacity:.65} 70%{transform:scale(1.5);opacity:0} 100%{opacity:0} }
+@keyframes target-orbit { 0%{transform:scale(.8);opacity:.8} 100%{transform:scale(1.45);opacity:0} }
+
+
+.game-how-card { border:1px solid rgba(245,165,36,.24); border-radius:22px; padding:18px; background:linear-gradient(145deg,#fffaf0,#fff); box-shadow:0 14px 30px -24px rgba(23,55,93,.35); }
+.game-how-card__title { font-size:12px; font-weight:800; letter-spacing:.12em; color:#8a5700; }
+.game-how-card__steps { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:center; gap:6px; margin-top:14px; text-align:center; }
+.game-how-card__steps div { display:grid; gap:4px; }
+.game-how-card__steps b { font-size:10px; color:#c47c0a; }
+.game-how-card__steps span { font-size:11px; font-weight:700; }
+.game-how-card__steps i { color:#c6a96c; font-style:normal; }
+.game-how-card > p { margin-top:13px; text-align:center; font-size:11.5px; color:var(--muted); }
+.game-meta { display:flex; justify-content:center; gap:18px; margin-top:20px; font-size:10.5px; color:var(--muted); }
+.game-meta b { color:var(--text); font-size:12px; }
+.scene-core-question { margin-top:16px; padding:16px 15px; border-left:3px solid #f5a524; border-radius:0 16px 16px 0; background:#fff9ed; }
+.scene-core-question span { font-size:10px; font-weight:800; letter-spacing:.12em; color:#a96d09; }
+.scene-core-question p { margin-top:6px; font-size:18px; font-weight:800; line-height:1.45; }
+.scene-action { display:flex; gap:11px; align-items:flex-start; margin-top:13px; padding:13px 14px; border-radius:16px; background:#eef5f2; border:1px solid #d7e9e2; }
+.scene-action > span { display:grid; place-items:center; width:30px; height:30px; flex:0 0 auto; border-radius:10px; background:#247a61; color:white; font-size:14px; }
+.scene-action b { font-size:10px; letter-spacing:.12em; color:#247a61; }
+.scene-action p { margin-top:3px; font-size:13px; line-height:1.55; font-weight:650; color:#18352d; }
