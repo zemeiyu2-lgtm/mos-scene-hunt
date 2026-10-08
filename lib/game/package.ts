@@ -1,6 +1,32 @@
 import { validateGame, type Game, type ValidationIssue, type Challenge, type ChallengeType, type Reward, type Scene } from "./types";
 import { calculateDistance, isPointInPolygon } from "@/lib/location";
 
+export const MOS_GAME_PACKAGE_FORMAT = "mos-scene-hunt-game";
+export const MOS_GAME_PACKAGE_VERSION = "1.0";
+
+export interface MOSGamePackage {
+  format: typeof MOS_GAME_PACKAGE_FORMAT;
+  formatVersion: typeof MOS_GAME_PACKAGE_VERSION;
+  game: Game;
+  assets?: Array<{
+    id: string;
+    kind: "image" | "document" | "audio";
+    url: string;
+    mimeType?: string;
+    title?: string;
+  }>;
+}
+
+export function unwrapGamePackage(raw: unknown): unknown {
+  if (raw && typeof raw === "object" && "format" in raw && "game" in raw) {
+    const pack = raw as { format?: unknown; formatVersion?: unknown; game?: unknown };
+    if (pack.format !== MOS_GAME_PACKAGE_FORMAT) throw new Error("不是 MOS Scene Hunt 游戏包");
+    if (pack.formatVersion !== MOS_GAME_PACKAGE_VERSION) throw new Error(`不支持的游戏包版本：${String(pack.formatVersion ?? "未知")}`);
+    return pack.game;
+  }
+  return raw;
+}
+
 export interface SpatialSummary {
   distances: Array<{ from: string; to: string; meters: number }>;
   totalMeters: number;
@@ -10,7 +36,7 @@ export interface PackageReport { game: Game | null; issues: ValidationIssue[]; s
 
 export function validateGamePackage(raw: unknown): PackageReport {
   try {
-    const { game, issues } = validateGame(raw);
+    const { game, issues } = validateGame(unwrapGamePackage(raw));
     const all = [...issues, ...validateSpatial(game)];
     return { game, issues: all, spatial: summarizeSpatial(game), canPlaytest: !all.some((i) => i.severity === "error") };
   } catch (error) {
@@ -56,7 +82,7 @@ export function summarizeSpatial(game: Game): SpatialSummary {
   for (let i = 1; i < game.scenes.length; i++) { const from = game.scenes[i-1], to = game.scenes[i]; const meters = calculateDistance(from.location, to.location); distances.push({from:from.id,to:to.id,meters}); totalMeters += meters; }
   return { distances, totalMeters, walkingMinutes: Math.max(1, Math.round(totalMeters / 75)) };
 }
-export function exportGameJson(game: Game): string { return JSON.stringify(game, null, 2); }
+export function exportGameJson(game: Game): string {\n  const pack: MOSGamePackage = { format: MOS_GAME_PACKAGE_FORMAT, formatVersion: MOS_GAME_PACKAGE_VERSION, game };\n  return JSON.stringify(pack, null, 2);\n}
 export function gameToMarkdown(game: Game): string {
   const spatial = summarizeSpatial(game);
   const area = game.huntArea;
