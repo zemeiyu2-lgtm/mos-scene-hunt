@@ -309,7 +309,7 @@ export interface ImportedGamePackage {
 export function importGamePackage(text: string): ImportedGamePackage {
   let raw: unknown;
   try { raw = JSON.parse(text); } catch { throw new Error("游戏包不是有效的 JSON 文件"); }
-  const { game, issues } = validateGame(raw);
+  const { game, issues } = validateGame(unwrapGamePackage(raw));
   const errors = issues.filter((issue) => issue.severity === "error");
   if (errors.length > 0) throw new Error("游戏包校验失败：" + errors[0].message);
   if (!saveAuthoredGame(game)) throw new Error("游戏包无法保存到本机，请检查浏览器存储权限");
