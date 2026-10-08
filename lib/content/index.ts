@@ -4,6 +4,7 @@
 
 import { validateGame, type Game, type ValidationIssue } from "../game/types";
 import { readSharedGameFromUrl } from "./share";
+import { unwrapGamePackage } from "../game/package";
 import {
   cacheGameContent,
   clearCurrentAuthoredGameId,
