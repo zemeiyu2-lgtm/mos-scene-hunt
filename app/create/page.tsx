@@ -8,10 +8,11 @@ import type { Game } from "@/lib/game/types";
 import { exportGameJson, gameToMarkdown, markdownToGame, validateGamePackage, type PackageReport } from "@/lib/game/package";
 import { docxToText } from "@/lib/content/docx";
 import { parseWordText } from "@/lib/content/word";
+import { parseAIText } from "@/lib/content/ai";
 
 export default function CreatePage() {
   const { game } = useHunt(); const inputRef = useRef<HTMLInputElement>(null);
-  const [draft, setDraft] = useState<Game | null>(null); const [report, setReport] = useState<PackageReport | null>(null); const [message, setMessage] = useState(""); const [library, setLibrary] = useState<Game[]>([]);
+  const [draft, setDraft] = useState<Game | null>(null); const [report, setReport] = useState<PackageReport | null>(null); const [message, setMessage] = useState(""); const [library, setLibrary] = useState<Game[]>([]); const [aiText, setAiText] = useState(""); const [aiWarnings, setAiWarnings] = useState<string[]>([]);
   const working = draft ?? game;
   const refreshLibrary = () => setLibrary(listAuthoredGames());
   useEffect(() => { refreshLibrary(); }, []);
@@ -40,6 +41,27 @@ export default function CreatePage() {
     } catch (error) {
       setReport(null);
       setMessage(error instanceof Error ? `导入失败：${error.message}` : "文件无法解析");
+    }
+  };
+  const importAI = () => {
+    try {
+      const result = parseAIText(aiText);
+      const next = validateGamePackage(result.game);
+      setAiWarnings(result.warnings);
+      setReport(next);
+      if (!next.game || !next.canPlaytest) {
+        setMessage("AI 内容已解析，但需要先修正结构问题。");
+        return;
+      }
+      saveAuthoredGame(next.game);
+      markCurrentAuthoredGame(next.game.id);
+      setDraft(next.game);
+      refreshLibrary();
+      setMessage("AI 游戏已生成并保存，现在可以立即试玩。");
+    } catch (error) {
+      setAiWarnings([]);
+      setReport(null);
+      setMessage(error instanceof Error ? `AI 导入失败：${error.message}` : "AI 内容无法解析");
     }
   };
   const saveLibrary = () => { if (!working) return; if (!saveAuthoredGame(working)) { setMessage("保存失败：浏览器存储空间不可用。"); return; } markCurrentAuthoredGame(working.id); refreshLibrary(); setMessage("已保存到本机游戏库"); };
