@@ -59,103 +59,52 @@ export function speak(text: string): void {
   window.speechSynthesis.speak(u);
 }
 
-function createLayer(audio: AudioContext, master: GainNode, frequency: number, volume: number, type: OscillatorType) {
-  const osc = audio.createOscillator();
-  const gain = audio.createGain();
-  const filter = audio.createBiquadFilter();
-  osc.type = type;
-  osc.frequency.value = frequency;
-  filter.type = "lowpass";
-  filter.frequency.value = type === "sine" ? 900 : 1600;
-  gain.gain.value = volume;
-  osc.connect(filter).connect(gain).connect(master);
-  osc.start();
-  return { osc, gain, filter };
-}
+const MUSIC_URLS: Record<MusicKind, string> = {
+  // CC0 soundtrack sources hosted by Wikimedia Commons.
+  intro: "https://commons.wikimedia.org/wiki/Special:Redirect/file/John_Bartmann_-_ethereal-moments-master.webm",
+  explore: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Komiku_-_05_-_Down_the_river.ogg",
+};
 
-/**
- * Lightweight original ambient score.
- * It is generated in-browser: no audio files, no third-party music and no package bloat.
- * A slow chord bed + moving fifth/arpeggio creates an actual musical pulse without
- * competing with GPS, voice guidance or the real-world environment.
- */
+let activeAudio: HTMLAudioElement | null = null;
+
 export function playMusic(kind: MusicKind = "intro"): () => void {
   if (typeof window === "undefined" || window.localStorage.getItem(KEY) === "off") return () => {};
-  const audio = getContext();
-  if (!audio) return () => {};
-  resume(audio);
 
   activeMusicStop?.();
 
-  const master = audio.createGain();
-  const filter = audio.createBiquadFilter();
-  master.gain.setValueAtTime(0.0001, audio.currentTime);
-  master.gain.exponentialRampToValueAtTime(kind === "intro" ? 0.026 : 0.021, audio.currentTime + 1.8);
-  filter.type = "lowpass";
-  filter.frequency.value = kind === "intro" ? 1250 : 1450;
-  master.connect(filter).connect(audio.destination);
+  const audio = new Audio(MUSIC_URLS[kind]);
+  audio.loop = true;
+  audio.preload = "auto";
+  audio.volume = 0;
+  activeAudio = audio;
 
-  const chords = kind === "intro"
-    ? [[220, 277.18, 329.63], [196, 246.94, 293.66], [174.61, 220, 261.63], [196, 246.94, 329.63]]
-    : [[196, 246.94, 293.66], [220, 277.18, 329.63], [174.61, 220, 261.63], [196, 246.94, 293.66]];
+  const fadeIn = window.setInterval(() => {
+    if (audio.paused) return;
+    audio.volume = Math.min(0.18, audio.volume + 0.015);
+    if (audio.volume >= 0.18) window.clearInterval(fadeIn);
+  }, 120);
 
-  const layers = [
-    createLayer(audio, master, chords[0][0], 0.42, "sine"),
-    createLayer(audio, master, chords[0][1], 0.11, "triangle"),
-    createLayer(audio, master, chords[0][2], 0.08, "triangle"),
-  ];
-
-  const pulse = audio.createOscillator();
-  const pulseGain = audio.createGain();
-  pulse.type = "sine";
-  pulse.frequency.value = kind === "intro" ? 110 : 98;
-  pulseGain.gain.value = 0.018;
-  pulse.connect(pulseGain).connect(master);
-  pulse.start();
-
-  const arpeggio = audio.createOscillator();
-  const arpGain = audio.createGain();
-  arpeggio.type = "triangle";
-  arpeggio.frequency.value = chords[0][1] * 2;
-  arpGain.gain.value = kind === "intro" ? 0.018 : 0.014;
-  arpeggio.connect(arpGain).connect(master);
-  arpeggio.start();
-
-  let step = 0;
-  const timer = window.setInterval(() => {
-    if (step >= 16) step = 0;
-    const chord = chords[Math.floor(step / 4)];
-    const note = chord[step % 3] * (step % 2 === 0 ? 1 : 2);
-    const now = audio.currentTime;
-    layers.forEach((layer, index) => {
-      layer.osc.frequency.cancelScheduledValues(now);
-      layer.osc.frequency.setValueAtTime(layer.osc.frequency.value, now);
-      layer.osc.frequency.linearRampToValueAtTime(chord[index], now + 1.6);
-    });
-    arpeggio.frequency.cancelScheduledValues(now);
-    arpeggio.frequency.setValueAtTime(arpeggio.frequency.value, now);
-    arpeggio.frequency.exponentialRampToValueAtTime(note, now + 0.35);
-    step += 1;
-  }, 1200);
-
-  let stopped = false;
   const stop = () => {
-    if (stopped) return;
-    stopped = true;
-    window.clearInterval(timer);
-    const now = audio.currentTime;
-    master.gain.cancelScheduledValues(now);
-    master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), now);
-    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
-    window.setTimeout(() => {
-      layers.forEach(({ osc }) => { try { osc.stop(); } catch {} });
-      try { pulse.stop(); } catch {}
-      try { arpeggio.stop(); } catch {}
-      master.disconnect();
-    }, 950);
+    window.clearInterval(fadeIn);
+    const fadeOut = window.setInterval(() => {
+      audio.volume = Math.max(0, audio.volume - 0.025);
+      if (audio.volume <= 0.001) {
+        window.clearInterval(fadeOut);
+        audio.pause();
+        audio.src = "";
+        if (activeAudio === audio) activeAudio = null;
+      }
+    }, 80);
     if (activeMusicStop === stop) activeMusicStop = null;
   };
+
   activeMusicStop = stop;
+
+  void audio.play().catch(() => {
+    // Browsers may block autoplay until the user interacts.
+    // The game remains fully playable without music.
+  });
+
   return stop;
 }
 
