@@ -464,7 +464,39 @@ export default function GameMap({
     }
   }, [markersSignature, entries]);
 
-  /* ------------------------------------------------ 已完成探索轨迹 */\n  useEffect(() => {\n    const map = mapRef.current;\n    if (!map) return;\n\n    const completed = entries\n      .filter((entry) => entry.status === "completed")\n      .sort((a, b) => entries.indexOf(a) - entries.indexOf(b));\n\n    if (completed.length < 2) {\n      if (trailRef.current) {\n        map.removeLayer(trailRef.current);\n        trailRef.current = null;\n      }\n      return;\n    }\n\n    const points: L.LatLngExpression[] = completed.map((entry) => [\n      entry.scene.location.lat,\n      entry.scene.location.lng,\n    ]);\n\n    if (!trailRef.current) {\n      trailRef.current = L.polyline(points, {\n        color: "#f5a524", weight: 4, opacity: 0.48,\n        dashArray: "2 10", lineCap: "round", lineJoin: "round", interactive: false,\n      }).addTo(map);\n    } else {\n      trailRef.current.setLatLngs(points);\n    }\n  }, [entries]);\n\n  /* ------------------------------------------------ 玩家标记与精度晕 */
+  /* ------------------------------------------------ 已完成探索轨迹 */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const completed = entries
+      .filter((entry) => entry.status === "completed")
+      .sort((a, b) => entries.indexOf(a) - entries.indexOf(b));
+
+    if (completed.length < 2) {
+      if (trailRef.current) {
+        map.removeLayer(trailRef.current);
+        trailRef.current = null;
+      }
+      return;
+    }
+
+    const points: L.LatLngExpression[] = completed.map((entry) => [
+      entry.scene.location.lat,
+      entry.scene.location.lng,
+    ]);
+
+    if (!trailRef.current) {
+      trailRef.current = L.polyline(points, {
+        color: "#f5a524", weight: 4, opacity: 0.48,
+        dashArray: "2 10", lineCap: "round", lineJoin: "round", interactive: false,
+      }).addTo(map);
+    } else {
+      trailRef.current.setLatLngs(points);
+    }
+  }, [entries]);
+
+  /* ------------------------------------------------ 玩家标记与精度晕 */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
