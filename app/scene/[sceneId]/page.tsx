@@ -37,7 +37,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene?.id, progress?.status, state?.gameId]);
 
-  if (!scene || !state) {
+  if (!scene || !state || !game) {
     return (
       <Screen title="情境" subtitle="场景不存在">
         <div className="card p-4">
