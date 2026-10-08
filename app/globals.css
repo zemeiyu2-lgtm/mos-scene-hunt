@@ -875,3 +875,35 @@ body {
 .scene-action > span { display:grid; place-items:center; width:30px; height:30px; flex:0 0 auto; border-radius:10px; background:#247a61; color:white; font-size:14px; }
 .scene-action b { font-size:10px; letter-spacing:.12em; color:#247a61; }
 .scene-action p { margin-top:3px; font-size:13px; line-height:1.55; font-weight:650; color:#18352d; }
+
+
+.hunt-node--arrived .hunt-node__core {
+  background: #fff8e8;
+  color: #7a4b00;
+  border-color: #f5a524;
+  box-shadow: 0 0 0 5px rgba(245,165,36,.18), 0 6px 20px rgba(196,124,10,.3);
+  animation: discovery-pop .5s cubic-bezier(.2,.8,.2,1) both;
+}
+.hunt-node--arrived .hunt-node__pulse {
+  border-color: rgba(245,165,36,.78);
+  animation: discovery-ring 1.25s ease-out infinite;
+}
+.hunt-node--arrived .hunt-node__ring {
+  border-color: rgba(245,165,36,.72);
+  animation: discovery-ring 1.25s ease-out .18s infinite;
+}
+.hunt-node__distance--found {
+  background: #f5a524 !important;
+  color: #2b1a00 !important;
+  font-weight: 900 !important;
+  letter-spacing: .04em;
+}
+@keyframes discovery-pop {
+  0% { transform: scale(.78); opacity: .35; }
+  65% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes discovery-ring {
+  0% { transform: scale(.7); opacity: .85; }
+  75%,100% { transform: scale(1.65); opacity: 0; }
+}
