@@ -168,7 +168,11 @@ export async function loadGame(
 ): Promise<LoadedGame> {
   let networkError: unknown = null;
 
-  // A shared URL carries the complete validated game in its hash. Check it first so the recipient needs no local storage.\n  if (typeof window !== "undefined") {\n    const shared = await readSharedGameFromUrl();\n    if (shared) return { game: shared, issues: [], source: "shared" };\n  }\n\n  // Browser-local authored content takes precedence. This makes the designer
+  // A shared URL carries the complete validated game in its hash. Check it first so the recipient needs no local storage.
+  if (typeof window !== "undefined") {
+    const shared = await readSharedGameFromUrl();
+    if (shared) return { game: shared, issues: [], source: "shared" };\n  }\n
+  // Browser-local authored content takes precedence. This makes the designer
   // immediately playable without requiring an account or backend.
   if (typeof window !== "undefined") {
     try {
