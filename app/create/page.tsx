@@ -9,9 +9,6 @@ import { exportGameJson, gameToMarkdown, markdownToGame, validateGamePackage, ty
 import { docxToText } from "@/lib/content/docx";
 import { parseWordText } from "@/lib/content/word";
 
-const LIBRARY_KEY = "mos-scene-hunt:v06-library";
-function readLibrary(): Game[] { try { return JSON.parse(localStorage.getItem(LIBRARY_KEY) ?? "[]") as Game[]; } catch { return []; } }
-
 export default function CreatePage() {
   const { game } = useHunt(); const inputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<Game | null>(null); const [report, setReport] = useState<PackageReport | null>(null); const [message, setMessage] = useState(""); const [library, setLibrary] = useState<Game[]>([]);
@@ -45,10 +42,10 @@ export default function CreatePage() {
       setMessage(error instanceof Error ? `导入失败：${error.message}` : "文件无法解析");
     }
   };
-  const saveLibrary = () => { if (!working) return; saveAuthoredGame(working); markCurrentAuthoredGame(working.id); localStorage.setItem(LIBRARY_KEY, JSON.stringify([...readLibrary().filter((g) => g.id !== working.id), working])); refreshLibrary(); setMessage("已保存到本机游戏库"); };
+  const saveLibrary = () => { if (!working) return; if (!saveAuthoredGame(working)) { setMessage("保存失败：浏览器存储空间不可用。"); return; } markCurrentAuthoredGame(working.id); refreshLibrary(); setMessage("已保存到本机游戏库"); };
   const activateGame = (game: Game) => { saveAuthoredGame(game); markCurrentAuthoredGame(game.id); setDraft(game); setReport(validateGamePackage(game)); setMessage("已切换到「" + game.title + "」，现在可以试玩或继续设计。"); };
   const renameGame = (game: Game) => { const title = window.prompt("给游戏换一个显示名称：", game.title); if (!title?.trim()) return; const next = renameAuthoredGame(game.id, title); if (next) { setLibrary(listAuthoredGames()); if (working?.id === next.id) setDraft(next); setMessage("已重命名。"); } };
-  const removeGame = (game: Game) => { if (!window.confirm("确定删除「" + game.title + "」？删除后需要重新导入游戏包才能恢复。")) return; deleteAuthoredGame(game.id); localStorage.removeItem(LIBRARY_KEY); setLibrary(listAuthoredGames()); if (working?.id === game.id) setDraft(null); setMessage("已删除「" + game.title + "」。"); };
+  const removeGame = (game: Game) => { if (!window.confirm("确定删除「" + game.title + "」？删除后需要重新导入游戏包才能恢复。")) return; deleteAuthoredGame(game.id); setLibrary(listAuthoredGames()); if (working?.id === game.id) setDraft(null); setMessage("已删除「" + game.title + "」。"); };
   if (!working) return <Screen title="创建游戏" subtitle="等待游戏内容加载"><div className="card p-5">正在加载……</div></Screen>;
   const spatial = report?.spatial ?? validateGamePackage(working).spatial;
   return <Screen title="创建游戏" subtitle="手机优先 · 电脑增强">
