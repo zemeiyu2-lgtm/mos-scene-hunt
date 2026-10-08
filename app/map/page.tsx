@@ -8,7 +8,7 @@
  * radius is entered.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
@@ -21,6 +21,7 @@ import { calculateDistance, classifyFix, formatDistance, resolveRadius } from "@
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
 import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
+import { playMusic, speak } from "@/components/sound";
 
 export default function MapPage() {
   const router = useRouter();
@@ -40,6 +41,39 @@ export default function MapPage() {
   } = useHunt();
 
   const [recenterToken, setRecenterToken] = useState(0);
+  const voiceCueRef = useRef("");
+  const musicStopRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    musicStopRef.current?.();
+    musicStopRef.current = playMusic("explore");
+    return () => {
+      musicStopRef.current?.();
+      musicStopRef.current = null;
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!current || !currentDistance) return;
+    const distance = currentDistance.distance;
+    let cue: "arrive" | "near" | "approach" | "forward" | null = null;
+    if (currentDistance.inRange) cue = "arrive";
+    else if (distance <= 20) cue = "near";
+    else if (distance <= 50) cue = "approach";
+    else if (distance <= 100) cue = "forward";
+    if (!cue) return;
+    const token = `${current.id}:${cue}`;
+    if (voiceCueRef.current === token) return;
+    voiceCueRef.current = token;
+    const messages = {
+      forward: "下一站就在前方。",
+      approach: "你正在接近下一站，留意周围。",
+      near: "已经很近了。",
+      arrive: "你找到了。停下来看看周围。"
+    } as const;
+    speak(messages[cue]);
+  }, [current, currentDistance?.distance, currentDistance?.inRange]);
 
   const entries = useMemo<MapSceneEntry[]>(() => {
     return statuses.map((row) => {
