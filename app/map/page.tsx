@@ -55,10 +55,11 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    if (!current || !currentDistance) return;
-    const distance = currentDistance.distance;
+    const targetDistance = current ? distances[current.id] ?? null : null;
+    if (!current || !targetDistance) return;
+    const distance = targetDistance.distance;
     let cue: "arrive" | "near" | "approach" | "forward" | null = null;
-    if (currentDistance.inRange) cue = "arrive";
+    if (targetDistance.inRange) cue = "arrive";
     else if (distance <= 20) cue = "near";
     else if (distance <= 50) cue = "approach";
     else if (distance <= 100) cue = "forward";
@@ -73,7 +74,7 @@ export default function MapPage() {
       arrive: "你找到了。停下来看看周围。"
     } as const;
     speak(messages[cue]);
-  }, [current, currentDistance?.distance, currentDistance?.inRange]);
+  }, [current, distances]);
 
   const entries = useMemo<MapSceneEntry[]>(() => {
     return statuses.map((row) => {
