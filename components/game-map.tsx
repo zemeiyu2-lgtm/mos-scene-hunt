@@ -77,6 +77,7 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
   const number = String(index + 1).padStart(2, "0");
   const state =
     entry.status === "completed" ? "done" :
+    entry.isActive && entry.inRange ? "arrived" :
     entry.isActive ? "target" :
     entry.status === "locked" ? "locked" : "open";
   const glyph = entry.status === "completed" ? "✓" : entry.scene.mapStyle?.icon ?? "✦";
@@ -86,7 +87,7 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
       <span class="hunt-node__pulse"></span>
       <span class="hunt-node__ring"></span>
       <span class="hunt-node__core"><b>${number}</b><i>${glyph}</i></span>
-      ${entry.isActive && entry.distance !== null ? `<span class="hunt-node__distance">${Math.round(entry.distance)}m</span>` : ""}
+      ${entry.isActive && entry.inRange ? `<span class="hunt-node__distance hunt-node__distance--found">发现!</span>` : entry.isActive && entry.distance !== null ? `<span class="hunt-node__distance">${Math.round(entry.distance)}m</span>` : ""}
     </div>`,
     iconSize: [76, 76],
     iconAnchor: [38, 38],
@@ -463,7 +464,7 @@ export default function GameMap({
     }
   }, [markersSignature, entries]);
 
-  /* ------------------------------------------------ 玩家标记与精度晕 */
+  /* ------------------------------------------------ 已完成探索轨迹 */\n  useEffect(() => {\n    const map = mapRef.current;\n    if (!map) return;\n\n    const completed = entries\n      .filter((entry) => entry.status === "completed")\n      .sort((a, b) => entries.indexOf(a) - entries.indexOf(b));\n\n    if (completed.length < 2) {\n      if (trailRef.current) {\n        map.removeLayer(trailRef.current);\n        trailRef.current = null;\n      }\n      return;\n    }\n\n    const points: L.LatLngExpression[] = completed.map((entry) => [\n      entry.scene.location.lat,\n      entry.scene.location.lng,\n    ]);\n\n    if (!trailRef.current) {\n      trailRef.current = L.polyline(points, {\n        color: "#f5a524", weight: 4, opacity: 0.48,\n        dashArray: "2 10", lineCap: "round", lineJoin: "round", interactive: false,\n      }).addTo(map);\n    } else {\n      trailRef.current.setLatLngs(points);\n    }\n  }, [entries]);\n\n  /* ------------------------------------------------ 玩家标记与精度晕 */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -620,7 +621,7 @@ export default function GameMap({
           <div className="map-compass-hud">
             <span className="map-compass-hud__dot"></span>
             <span>正在探索</span>
-            {activeEntry ? <b>目标 {String(entries.findIndex(e => e.scene.id === activeEntry.scene.id)+1).padStart(2,"0")} · {activeEntry.distance !== null ? formatDistance(activeEntry.distance) : "定位中"}</b> : null}
+            {activeEntry ? <b>{activeEntry.inRange ? "✦ 已发现" : "目标 " + String(entries.findIndex(e => e.scene.id === activeEntry.scene.id)+1).padStart(2,"0") + " · " + (activeEntry.distance !== null ? formatDistance(activeEntry.distance) : "定位中")}</b> : null}
           </div>
         </div>
       ) : null}
@@ -628,8 +629,8 @@ export default function GameMap({
       {!drawingMode ? (
         <div className="pointer-events-none absolute bottom-24 left-3 z-[450]">
           <div className="map-explore-hint">
-            <span className="map-explore-hint__icon">✦</span>
-            <div><p>向前探索</p><small>地图只告诉你方向，答案在真实世界。</small></div>
+            <span className="map-explore-hint__icon">{activeEntry?.inRange ? "✓" : "✦"}</span>
+            <div><p>{activeEntry?.inRange ? "停下来，发现现场" : "向前探索"}</p><small>{activeEntry?.inRange ? "你已经到达。现在，让真实地点告诉你答案。" : "地图只告诉你方向，答案在真实世界。"}</small></div>
           </div>
         </div>
       ) : null}
