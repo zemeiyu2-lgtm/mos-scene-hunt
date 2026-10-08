@@ -74,42 +74,35 @@ interface GameMapProps {
 /* ------------------------------------------------------------------ */
 
 function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
-  const statusClass =
-    entry.status === "completed"
-      ? "scene-marker--completed"
-      : entry.status === "arrived" || entry.status === "challenging"
-        ? "scene-marker--arrived"
-        : entry.status === "available"
-          ? "scene-marker--available"
-          : "scene-marker--locked";
-
-  const glyph =
-    entry.status === "completed"
-      ? "✓"
-      : entry.scene.mapStyle?.icon ?? String(index + 1);
-
+  const number = String(index + 1).padStart(2, "0");
+  const state =
+    entry.status === "completed" ? "done" :
+    entry.isActive ? "target" :
+    entry.status === "locked" ? "locked" : "open";
+  const glyph = entry.status === "completed" ? "✓" : entry.scene.mapStyle?.icon ?? "✦";
   return L.divIcon({
     className: "",
-    html: `<div class="scene-marker-wrap ${entry.isActive ? "scene-marker-wrap--active" : ""}">
-      <div class="scene-marker ${statusClass} ${entry.isActive ? "scene-marker--active" : ""}" data-role="scene-marker" data-scene-id="${entry.scene.id}" data-status="${entry.status}">${glyph}</div>
-      ${entry.isActive ? '<div class="scene-marker__beacon"></div>' : ""}
+    html: `<div class="hunt-node hunt-node--${state}" data-role="scene-marker" data-scene-id="${entry.scene.id}" data-status="${entry.status}">
+      <span class="hunt-node__pulse"></span>
+      <span class="hunt-node__ring"></span>
+      <span class="hunt-node__core"><b>${number}</b><i>${glyph}</i></span>
+      ${entry.isActive && entry.distance !== null ? `<span class="hunt-node__distance">${Math.round(entry.distance)}m</span>` : ""}
     </div>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
+    iconSize: [76, 76],
+    iconAnchor: [38, 38],
   });
 }
 
 function playerIcon(simulated: boolean): L.DivIcon {
   return L.divIcon({
     className: "",
-    // `data-role` is a stable hook for acceptance tests; the CSS class names are
-    // free to change with the visual design, the role is not.
-    html: `<div class="player-marker ${simulated ? "player-marker--sim" : ""}" data-role="player-marker">
-             <div class="player-marker__pulse"></div>
-             <div class="player-marker__dot"></div>
-           </div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    html: `<div class="explorer-marker ${simulated ? "explorer-marker--sim" : ""}" data-role="player-marker">
+      <span class="explorer-marker__pulse"></span>
+      <span class="explorer-marker__arrow">▲</span>
+      <span class="explorer-marker__dot"></span>
+    </div>`,
+    iconSize: [46, 46],
+    iconAnchor: [23, 23],
   });
 }
 
@@ -141,6 +134,7 @@ export default function GameMap({
   const playerMarkerRef = useRef<L.Marker | null>(null);
   const playerHaloRef = useRef<L.Circle | null>(null);
   const directionLineRef = useRef<L.Polyline | null>(null);
+  const trailRef = useRef<L.Polyline | null>(null);
   const huntAreaRef = useRef<L.Circle | null>(null);
   const huntAreaPolygonRef = useRef<L.Polygon | null>(null);
   const huntAreaLineRef = useRef<L.Polyline | null>(null);
@@ -544,9 +538,11 @@ export default function GameMap({
       if (!directionLineRef.current) {
         const line = L.polyline(points, {
           color: "#f5a524",
-          weight: 2,
-          opacity: 0.5,
-          dashArray: "3 10",
+          weight: 3,
+          opacity: 0.72,
+          dashArray: "1 11",
+          lineCap: "round",
+          interactive: false,
         });
         line.addTo(map);
         directionLineRef.current = line;
@@ -619,6 +615,24 @@ export default function GameMap({
   return (
     <div className={`map-root ${drawingMode ? "map-root--drawing" : ""}`}>
       <div ref={containerRef} className="h-full w-full" />
+      {!drawingMode ? (
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center">
+          <div className="map-compass-hud">
+            <span className="map-compass-hud__dot"></span>
+            <span>正在探索</span>
+            {activeEntry ? <b>目标 {String(entries.findIndex(e => e.scene.id === activeEntry.scene.id)+1).padStart(2,"0")} · {activeEntry.distance !== null ? formatDistance(activeEntry.distance) : "定位中"}</b> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {!drawingMode ? (
+        <div className="pointer-events-none absolute bottom-24 left-3 z-[450]">
+          <div className="map-explore-hint">
+            <span className="map-explore-hint__icon">✦</span>
+            <div><p>向前探索</p><small>地图只告诉你方向，答案在真实世界。</small></div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Boundary-drawing guidance, kept in the DOM so it is readable by assistive tech. */}
       {drawingMode ? (
