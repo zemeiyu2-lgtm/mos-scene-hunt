@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export type SoundCue = "tap" | "arrive" | "unlock" | "success" | "reward" | "finish";
 export type MusicKind = "intro" | "explore";
@@ -166,11 +166,10 @@ export function stopMusic() {
 
 export function SoundToggle() {
   const [enabled, setEnabled] = useState(true);
-  const musicStopRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     setEnabled(window.localStorage.getItem(KEY) !== "off");
-    return () => musicStopRef.current?.();
+    return undefined;
   }, []);
 
   return (
