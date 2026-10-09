@@ -66,6 +66,17 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="card mt-4 p-4">
+        <div className="flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-xl" aria-hidden="true">✦</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold">想设计自己的游戏？</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">用你平常使用的 AI 帮你想玩法，再导入游戏包。不需要编程，也不需要 MOS Scene Hunt 内置 AI。</p>
+            <Link href="/how-to-create" className="btn btn-secondary mt-3 min-h-10 w-full">学习如何设计游戏 →</Link>
+          </div>
+        </div>
+      </section>
+
       <section className="card mt-4 overflow-hidden bsop-reference">
         <div className="bsop-reference__cover">
           {/* Official BSOP handbook thumbnail; the game itself can replace this with licensed field photography later. */}
