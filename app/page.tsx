@@ -71,6 +71,18 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="card mt-4 overflow-hidden border border-amber-300">
+        <div className="flex items-start gap-3 p-4">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-100 text-xl" aria-hidden="true">▶</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-800">新手先看 · 约 1 分钟</p>
+            <h3 className="mt-1 text-[17px] font-extrabold">自动演示：游戏是怎么玩的？</h3>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">像录屏一样看地图移动、地点发现、任务解锁和奖励。使用模拟数据，不需要 GPS，也不会影响真实存档。</p>
+            <Link href="/tutorial" className="btn btn-primary mt-3 min-h-10 w-full">播放新手演示 →</Link>
+          </div>
+        </div>
+      </section>
+
       <section className="card mt-4 overflow-hidden bsop-reference">
         <div className="bsop-reference__cover">
           {/* Official BSOP handbook thumbnail; the game itself can replace this with licensed field photography later. */}
