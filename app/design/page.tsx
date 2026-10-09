@@ -398,10 +398,10 @@ export default function DesignPage() {
     }
     try {
       const link = document.createElement("a");
-      link.download = `${(working?.title || "MOS-Scene-Hunt").replace(/[^\\p{L}\\p{N}_-]+/gu, "-")}-二维码.png`;
+      link.download = `${(working?.title || "MOS-Scene-Hunt").replace(/[^\\w-]+/g, "-")}-二维码.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
-      setShareMessage("二维码图片已生成；可在手机相册或下载记录中查看。");
+      setShareMessage("二维码 PNG 已生成；请在浏览器下载记录或文件中查看，需要时可再保存到相册。");
     } catch {
       setShareMessage("无法保存二维码图片，请尝试截图保存。");
     }
