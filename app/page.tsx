@@ -45,29 +45,13 @@ export default function HomePage() {
             情境 → 任务 → 奖励 → 下一地点
           </h2>
           <p className="mt-3 text-[13px] leading-relaxed text-white/75">
-            不是坐着答题，而是走进真实地点。你会发现线索、做出选择，并把游戏里的一个决定带回现实。
+            先看一分钟自动演示，再带上手机到户外，边走边找线索、解锁八个秘密。
           </p>
         </div>
 
-        <div className="p-5">
-          <div className="game-route mb-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span><i>→</i><span>带走</span></div>
-
-          <ol className="space-y-2.5">
-            {[
-              "允许浏览器获取你的位置",
-              "在地图上看到自己与目标地点",
-              "走进目标地点约 50 米的范围内",
-              "情境自动解锁，回答问题",
-              "获得关键词，解锁下一个地点",
-            ].map((step, i) => (
-              <li key={step} className="flex items-start gap-3">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-[#3a2400]">
-                  {i + 1}
-                </span>
-                <span className="text-[14px] leading-snug">{step}</span>
-              </li>
-            ))}
-          </ol>
+        <div className="px-5 pb-5">
+          <p className="text-sm font-semibold text-[var(--text)]">仅限户外游玩</p>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">室内定位可能不稳定。请在安全、开放的户外区域探索。</p>
         </div>
       </section>
 
@@ -79,18 +63,6 @@ export default function HomePage() {
             <h3 className="mt-1 text-[17px] font-extrabold">自动演示：游戏是怎么玩的？</h3>
             <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">像录屏一样看地图移动、地点发现、任务解锁和奖励。使用模拟数据，不需要 GPS，也不会影响真实存档。</p>
             <Link href="/tutorial" className="btn btn-primary mt-3 min-h-10 w-full">播放新手演示 →</Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="card mt-4 overflow-hidden border border-sky-200">
-        <div className="flex items-start gap-3 p-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sky-100 text-xl" aria-hidden="true">⌖</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-sky-800">下一步 · 现场定位</p>
-            <h3 className="mt-1 text-[17px] font-extrabold">测试手机 GPS 是否准确</h3>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">查看真实经纬度与定位精度，为 BSOP 站点标定和触发半径测试做准备。不会自动修改游戏内容。</p>
-            <Link href="/gps-test" className="btn btn-secondary mt-3 min-h-10 w-full">打开 GPS 现场测试 →</Link>
           </div>
         </div>
       </section>
@@ -112,8 +84,7 @@ export default function HomePage() {
           <p className="text-[13px] font-semibold">经典案例 · BSOP 神学院</p>
           <h3 className="mt-1 text-[18px] font-bold leading-tight">《神学院的八个秘密》</h3>
           <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--muted)]">
-            不是把新功能堆在模板上，而是让图片、官方资料、声音、GPS 与任务共同服务一条生命形成路线：
-            <span className="font-semibold text-[var(--text)]"> 呼召 → 真理 → 实践 → 敬拜 → 群体 → 生命 → 忠心 → 使命</span>。
+            八个户外站点、八道轻松的圣经记忆题。找线索、答问题、集齐钥匙，看看你能不能一次通关！
           </p>
           <div className="mt-3 flex gap-2">
             <Link href="/select?game=bsop-eight-secrets" className="btn btn-primary h-10 min-h-0 flex-1 px-3 text-[13px]">
