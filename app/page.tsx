@@ -10,7 +10,6 @@
 
 import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
-import { SimulatorUnavailableNotice } from "@/components/simulator-panel";
 import { ProgressBar, Screen } from "@/components/ui";
 import { useOnlineStatus } from "@/components/providers";
 
