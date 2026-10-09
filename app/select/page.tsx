@@ -113,22 +113,9 @@ export default function SelectPage() {
           ) : null}
 
           {game.id === "bsop-eight-secrets" ? (
-            <div className="bsop-key-rail mt-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">生命形成路线</p>
-                  <p className="mt-0.5 text-[12px] text-amber-900/70">七把钥匙，最后汇成一个行动</p>
-                </div>
-                <span className="chip bg-white/70 text-amber-900">8 站</span>
-              </div>
-              <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-                {["呼召","真理","实践","敬拜","群体","生命","忠心","使命"].map((word, i) => (
-                  <div key={word} className="bsop-key-rail__item">
-                    <span>{i < 7 ? "◆" : "★"}</span>
-                    <b>{word}</b>
-                  </div>
-                ))}
-              </div>
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
+              <p className="text-sm font-bold">户外校园寻宝 · 8 个站点</p>
+              <p className="mt-1 text-xs leading-relaxed">找到地点，回答一道圣经记忆题，收集钥匙。轻松玩，不用写长答案。</p>
             </div>
           ) : null}
 
@@ -196,11 +183,11 @@ export default function SelectPage() {
       ) : null}
 
       <div className="card mt-4 p-4">
-        <p className="text-[13px] font-semibold">开始前需要</p>
+        <p className="text-[13px] font-semibold">开始前只需记住</p>
         <ul className="mt-2 space-y-1.5 text-[12.5px] leading-relaxed text-[var(--muted)]">
-          <li>· 允许浏览器使用你的位置（仅用于计算你与地点的距离）</li>
-          <li>· 在户外开阔处，手机 GPS 精度通常为 ±5～20 米</li>
-          <li>· 无需注册、无需登录，进度保存在本机</li>
+          <li>· 本游戏仅适合户外游玩；室内定位可能不稳定。</li>
+          <li>· 允许浏览器使用位置权限，才能触发站点。</li>
+          <li>· 无需注册或登录，进度保存在本机。</li>
         </ul>
         {permission === "denied" ? (
           <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-[12px] leading-snug text-red-700">
