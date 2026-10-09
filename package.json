@@ -22,7 +22,8 @@
     "leaflet": "^1.9.4",
     "next": "15.1.11",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "qrcode.react": "^4.2.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",

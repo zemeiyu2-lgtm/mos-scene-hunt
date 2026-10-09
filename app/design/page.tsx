@@ -17,7 +17,8 @@
  * No GPS is required or requested: the designer works entirely from the map.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapView } from "@/components/map-view";
@@ -56,6 +57,7 @@ export default function DesignPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const qrContainerRef = useRef<HTMLDivElement>(null);
   // ① area-drawing session. While active, map clicks append boundary points.
   const [drawingArea, setDrawingArea] = useState(false);
   // One-shot circle placement: the next map click sets the area centre.
@@ -330,23 +332,46 @@ export default function DesignPage() {
   /* ---------------------------------------------------------------- ④ 保存 */
 
   const share = async () => {
-    if (!working || areaIncomplete || drawingArea) return false;
+    if (!working || areaIncomplete || drawingArea) return;
     setShareBusy(true);
     setShareMessage(null);
+    setShareUrl(null);
     try {
-      save();
+      if (!packageReport?.canPlaytest) {
+        const firstError = packageReport?.issues.find((issue) => issue.severity === "error");
+        throw new Error(firstError ? `请先修复游戏问题：${firstError.message}` : "请先完成游戏校验");
+      }
+      const configured = (point: { lat: number; lng: number } | undefined) =>
+        Boolean(point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && !(point.lat === 0 && point.lng === 0));
+      const missing: string[] = [];
+      if (!configured(working.startLocation)) missing.push("真实起点");
+      if (!working.huntArea) {
+        missing.push("游戏区域");
+      } else if (working.huntArea.shape === "polygon") {
+        if ((working.huntArea.points?.length ?? 0) < MIN_POLYGON_POINTS) missing.push("完整的游戏区域边界");
+        else if (working.huntArea.points?.some((point) => !configured(point))) missing.push("游戏区域边界上的真实坐标");
+      } else if (!configured(working.huntArea.center)) {
+        missing.push("游戏区域中心");
+      }
+      if (working.scenes.some((scene) => !configured(scene.location))) missing.push("所有站点的真实 GPS 坐标");
+      if (missing.length) throw new Error("暂不能发布，请先设置：" + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。");
+      if (!save()) throw new Error("游戏未能保存到本机，请检查浏览器存储空间后重试。");
       const url = await createGameShareUrl(working);
       setShareUrl(url);
       if (navigator.share) {
         try {
           await navigator.share({ title: working.title, text: "邀请你来玩：" + working.title, url });
-          setShareMessage("已打开系统分享面板");
+          setShareMessage("已打开系统分享面板；也可以在下方展示二维码或下载二维码图片。");
         } catch {
-          // User cancelled native sharing; the link remains visible for copying.
+          // User cancelled native sharing; the QR code and link remain available.
         }
       } else {
-        await navigator.clipboard.writeText(url);
-        setShareMessage("分享链接已复制");
+        try {
+          await navigator.clipboard.writeText(url);
+          setShareMessage("分享链接已复制；也可以在下方展示二维码或下载二维码图片。");
+        } catch {
+          setShareMessage("分享链接已生成，请复制链接或使用下方二维码。");
+        }
       }
     } catch (error) {
       setShareMessage(error instanceof Error ? error.message : "生成分享链接失败");
@@ -357,8 +382,29 @@ export default function DesignPage() {
 
   const copyShareUrl = async () => {
     if (!shareUrl) return;
-    await navigator.clipboard.writeText(shareUrl);
-    setShareMessage("分享链接已复制，可以发给微信好友或群");
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareMessage("分享链接已复制，可以发给微信好友或群。");
+    } catch {
+      setShareMessage("复制失败；请长按或选择下方链接复制。");
+    }
+  };
+
+  const downloadQrCode = () => {
+    const canvas = qrContainerRef.current?.querySelector("canvas");
+    if (!canvas || !shareUrl) {
+      setShareMessage("二维码尚未准备好，请稍后重试。");
+      return;
+    }
+    try {
+      const link = document.createElement("a");
+      link.download = `${(working?.title || "MOS-Scene-Hunt").replace(/[^\\w-]+/g, "-")}-二维码.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      setShareMessage("二维码 PNG 已生成；请在浏览器下载记录或文件中查看，需要时可再保存到相册。");
+    } catch {
+      setShareMessage("无法保存二维码图片，请尝试截图保存。");
+    }
   };
 
   const save = (): boolean => {
@@ -808,7 +854,7 @@ export default function DesignPage() {
           <p className="font-semibold">发布前请确认</p>
           <p className="mt-1 text-[var(--muted)]">请先设置真实起点、游戏区域和所有站点坐标，并在安全的户外试玩。AI 给出的 0,0 只是占位值，不可直接用于现场游戏。</p>
           <p className="mt-2 font-semibold">链接与二维码</p>
-          <p className="mt-1 text-[var(--muted)]">当前发布会生成携带本次游戏内容的独立分享链接；接收者打开后不依赖你的本机存档，也不需要你的手机一直在线。修改游戏后请重新生成并分享链接，旧链接不会自动更新。二维码生成与保存功能尚未上线，后续将优先支持手机展示二维码和保存二维码图片；届时仍会保留复制或发送链接的方式。</p>
+          <p className="mt-1 text-[var(--muted)]">发布后会生成携带本次游戏内容的独立分享链接和二维码。接收者扫码或打开链接即可加载这份游戏，不依赖你的本机存档，也不需要你的手机一直在线。修改游戏后请重新发布并分享新链接；旧链接不会自动更新。二维码在本机浏览器中生成，不调用 AI 服务或额外二维码服务器。</p>
         </div>
         {areaIncomplete ? (
           <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
@@ -836,13 +882,25 @@ export default function DesignPage() {
           </button>
           {shareUrl ? (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
-              <p className="text-[12px] font-semibold">分享链接已生成</p>
+              <p className="text-[12px] font-semibold">游戏二维码已生成</p>
+              {shareUrl.length <= 2600 ? (
+                <>
+                  <div ref={qrContainerRef} className="mx-auto mt-3 flex w-full max-w-[320px] justify-center rounded-xl bg-white p-3">
+                    <QRCodeCanvas value={shareUrl} size={280} level="L" marginSize={2} />
+                  </div>
+                  <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">让朋友用手机相机或微信扫一扫。现场展示时请调亮屏幕，并保持二维码完整可见。</p>
+                  <button type="button" className="btn btn-primary btn-block mt-3" onClick={downloadQrCode}>下载二维码图片（PNG）</button>
+                </>
+              ) : (
+                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">这款游戏的分享链接较长，二维码可能过于复杂，因此暂不生成二维码。请先复制链接分享；以后可以考虑短链接方案。</p>
+              )}
+              <p className="mt-3 text-[12px] font-semibold">分享链接</p>
               <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button type="button" className="btn btn-secondary" onClick={copyShareUrl}>复制链接</button>
-                <button type="button" className="btn btn-ghost" onClick={() => setShareUrl(null)}>收起</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setShareUrl(null)}>收起二维码</button>
               </div>
-              <p className="mt-2 text-[10.5px] leading-relaxed text-[var(--muted)]">别人打开链接后会直接进入这个游戏，不需要你的浏览器存档，也不需要登录。</p>
+              <p className="mt-2 text-[10.5px] leading-relaxed text-[var(--muted)]">这份二维码和链接对应当前发布的游戏内容。修改游戏后请重新发布；旧二维码仍指向旧版本。</p>
             </div>
           ) : null}
           {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}
