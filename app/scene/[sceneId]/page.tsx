@@ -37,7 +37,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene?.id, progress?.status, state?.gameId]);
 
-  if (!scene || !state) {
+  if (!scene || !state || !game) {
     return (
       <Screen title="情境" subtitle="场景不存在">
         <div className="card p-4">
@@ -52,6 +52,50 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
 
   const status = statuses.find((s) => s.scene.id === sceneId)?.status ?? progress?.status ?? "arrived";
   const isComplete = status === "completed";
+
+  if (game.id === "bsop-eight-secrets") {
+    const stationNumber = String(game.scenes.findIndex((s) => s.id === scene.id) + 1).padStart(2, "0");
+    const icon = scene.reward?.icon ?? "✦";
+    return (
+      <Screen title="" subtitle="" headerRight={<StatusChip status={isComplete ? "completed" : "arrived"} />}>
+        <section className="card overflow-hidden">
+          <div className="hero-explore px-5 py-7 text-center">
+            <p className="text-[11px] font-bold tracking-[0.18em] text-white/60">{stationNumber} / {game.scenes.length}</p>
+            <div className="mt-3 text-[52px] leading-none">{icon}</div>
+            <h1 className="mt-4 text-[24px] font-bold leading-tight text-white">{scene.title.replace(/^第[一二三四五六七八九十0-9]+站\s*[·・]\s*/, "")}</h1>
+          </div>
+          <div className="p-5">
+            <p className="text-[18px] font-bold leading-snug">{scene.challenge?.question ?? "看看周围，发现一个细节。"}</p>
+            <div className="mt-4 rounded-2xl bg-amber-50 px-4 py-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">现场行动</p>
+              <p className="mt-1.5 text-[14px] leading-relaxed text-amber-950">{scene.briefing ?? scene.place?.observationFocus ?? "看看周围，然后继续。"}</p>
+            </div>
+            {scene.story ? (
+              <details className="mt-4 rounded-xl bg-[var(--surface)] px-4 py-3">
+                <summary className="cursor-pointer text-[12px] font-semibold text-[var(--muted)]">想了解更多</summary>
+                <div className="mt-3 space-y-3 text-[12.5px] leading-relaxed text-[var(--muted)]">
+                  {scene.story.split(/\\n{2,}/).filter(Boolean).map((para, i) => <p key={i}>{para}</p>)}
+                </div>
+              </details>
+            ) : null}
+            {scene.place?.accessNote ? <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">⚠️ {scene.place.accessNote}</p> : null}
+          </div>
+        </section>
+        <div className="mt-4 grid gap-2">
+          {isComplete ? (
+            <button type="button" className="btn btn-primary btn-block" onClick={() => router.push(scene.nextSceneId ? `/scene/${scene.nextSceneId}` : "/quest")}>
+              {scene.nextSceneId ? "继续寻找 →" : "查看全部收获"}
+            </button>
+          ) : (
+            <button type="button" className="btn btn-primary btn-block h-12 text-[15px]" onClick={() => { enterScene(scene.id); openChallenge(scene.id); router.push(`/challenge/${scene.id}`); }}>
+              {scene.challenge ? "我准备好了 →" : "完成这一站 →"}
+            </button>
+          )}
+          <button type="button" className="btn btn-ghost btn-block" onClick={() => router.push("/map")}>回到地图</button>
+        </div>
+      </Screen>
+    );
+  }
 
   // Split the story on blank lines so authors can control paragraph rhythm with
   // plain text instead of embedding markup.

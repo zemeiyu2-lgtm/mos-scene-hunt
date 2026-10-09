@@ -8,7 +8,7 @@
  * radius is entered.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
@@ -21,6 +21,7 @@ import { calculateDistance, classifyFix, formatDistance, resolveRadius } from "@
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
 import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
+import { playMusic, speak } from "@/components/sound";
 
 export default function MapPage() {
   const router = useRouter();
@@ -40,6 +41,40 @@ export default function MapPage() {
   } = useHunt();
 
   const [recenterToken, setRecenterToken] = useState(0);
+  const voiceCueRef = useRef("");
+  const musicStopRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    musicStopRef.current?.();
+    musicStopRef.current = playMusic("explore");
+    return () => {
+      musicStopRef.current?.();
+      musicStopRef.current = null;
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    const targetDistance = current ? distances[current.id] ?? null : null;
+    if (!current || !targetDistance) return;
+    const distance = targetDistance.distance;
+    let cue: "arrive" | "near" | "approach" | "forward" | null = null;
+    if (targetDistance.inRange) cue = "arrive";
+    else if (distance <= 20) cue = "near";
+    else if (distance <= 50) cue = "approach";
+    else if (distance <= 100) cue = "forward";
+    if (!cue) return;
+    const token = `${current.id}:${cue}`;
+    if (voiceCueRef.current === token) return;
+    voiceCueRef.current = token;
+    const messages = {
+      forward: "下一站就在前方。",
+      approach: "你正在接近下一站，留意周围。",
+      near: "已经很近了。",
+      arrive: "你找到了。停下来看看周围。"
+    } as const;
+    speak(messages[cue]);
+  }, [current, distances]);
 
   const entries = useMemo<MapSceneEntry[]>(() => {
     return statuses.map((row) => {
@@ -96,7 +131,7 @@ export default function MapPage() {
             <div className="map-hud pointer-events-auto flex items-center gap-2">
               <Link
                 href="/quest"
-                className="card flex min-w-0 flex-1 items-center gap-3 px-3 py-2"
+                className="card flex min-w-0 flex-1 items-center gap-3 px-3 py-2 backdrop-blur-md"
                 aria-label="查看任务列表"
               >
                 <div className="min-w-0 flex-1">
@@ -199,7 +234,7 @@ export default function MapPage() {
           style={{ paddingBottom: "calc(12px + var(--tabbar-h) + var(--safe-bottom))" }}
         >
           <div className="page">
-            <div className="card p-3 shadow-sheet">
+            <div className="card border-white/70 bg-[var(--card)]/94 p-3 shadow-sheet backdrop-blur-md">
               {loading ? (
                 <p className="py-2 text-center text-[13px] text-[var(--muted)]">正在加载游戏数据…</p>
               ) : complete ? (
@@ -220,7 +255,7 @@ export default function MapPage() {
                         <StatusChip status={statuses.find((s) => s.scene.id === current.id)?.status ?? "available"} />
                       </div>
                       <p className="mt-0.5 truncate text-[12px] text-[var(--muted)]">
-                        {current.location.name ?? "目标地点"}
+                        {current.location.name ?? "目标地点"} · {currentDistance ? formatDistance(currentDistance.distance) : "定位中"}
                       </p>
                     </div>
                   </div>

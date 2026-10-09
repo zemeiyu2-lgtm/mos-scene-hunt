@@ -104,7 +104,7 @@ export default function HomePage() {
             <span className="font-semibold text-[var(--text)]"> 呼召 → 真理 → 实践 → 敬拜 → 群体 → 生命 → 忠心 → 使命</span>。
           </p>
           <div className="mt-3 flex gap-2">
-            <Link href="/select?game=bsop-eight-secrets" className="btn btn-primary h-10 min-h-0 flex-1 px-3 text-[13px]">
+            <Link href="/intro?game=bsop-eight-secrets" className="btn btn-primary h-10 min-h-0 flex-1 px-3 text-[13px]">
               试玩示范 →
             </Link>
             <Link href="/create" className="btn btn-secondary h-10 min-h-0 px-3 text-[13px]">设计 / 导入</Link>
