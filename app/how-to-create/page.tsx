@@ -22,7 +22,7 @@ id、title、story、location、nextSceneId、challenge、reward。
 奖励 type 使用 keyword、badge 或 item。所有场景按游玩顺序连接，最后一个场景的 nextSceneId 必须是 null。所有 id 必须唯一，entrySceneId 必须对应第一站。答案必须与选项一致，所有必需字段完整。
 
 【重要：不得编造真实 GPS 坐标。】
-startLocation 和每个 scene.location 的 lat、lng 暂时统一填 0。0,0 只是明显的待设置占位值，不是真实地点。导入后，设计者必须进入 MOS Scene Hunt 设计器，用地图逐一设置起点、探索区域和每一站的真实坐标，再检查路线并试玩。不要声称游戏已经完成定位。
+startLocation、huntArea.center 和每个 scene.location 的 lat、lng 暂时统一填 0。0,0 只是明显的待设置占位值，不是真实地点。导入后，设计者必须进入 MOS Scene Hunt 设计器，用地图逐一设置起点、探索区域和每一站的真实坐标，再检查路线并试玩。不要声称游戏已经完成定位。
 
 请先向我询问最多三个简单问题，了解游戏给谁玩、在哪里玩、想玩多久。若我已经说明，就不要重复询问，直接开始设计。允许我用自然语言反复修改游戏。最后请输出完整 JSON，并在 JSON 代码块之外列出需要我现场确认的事项。`;
 
