@@ -83,6 +83,18 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="card mt-4 overflow-hidden border border-sky-200">
+        <div className="flex items-start gap-3 p-4">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sky-100 text-xl" aria-hidden="true">⌖</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-sky-800">下一步 · 现场定位</p>
+            <h3 className="mt-1 text-[17px] font-extrabold">测试手机 GPS 是否准确</h3>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">查看真实经纬度与定位精度，为 BSOP 站点标定和触发半径测试做准备。不会自动修改游戏内容。</p>
+            <Link href="/gps-test" className="btn btn-secondary mt-3 min-h-10 w-full">打开 GPS 现场测试 →</Link>
+          </div>
+        </div>
+      </section>
+
       <section className="card mt-4 overflow-hidden bsop-reference">
         <div className="bsop-reference__cover">
           {/* Official BSOP handbook thumbnail; the game itself can replace this with licensed field photography later. */}
