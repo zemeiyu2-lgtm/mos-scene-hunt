@@ -46,13 +46,14 @@ export default function HowToCreatePage() {
       </section>
 
       <section className="card mt-4 p-5">
-        <h3 className="text-base font-bold">照着做，只需 5 步</h3>
+        <h3 className="text-base font-bold">照着做，完成设计与分享</h3>
         <ol className="mt-3 space-y-3 text-sm leading-relaxed">
           <li><b>1. 说出你的想法。</b><p className="mt-1 text-[var(--muted)]">例如：“给朋友聚会设计一个 15 分钟的户外寻宝游戏，有 5 个站点，轻松搞笑。”</p></li>
           <li><b>2. 复制下面的指令，交给你常用的 AI。</b><p className="mt-1 text-[var(--muted)]">AI 会先问几个简单问题，再帮你生成故事、站点、线索、题目和奖励。</p></li>
           <li><b>3. 反复修改，直到你喜欢。</b><p className="mt-1 text-[var(--muted)]">直接说“题目太难，改简单一点”“减少到 4 站”“把知识题改成观察挑战”。</p></li>
           <li><b>4. 让 AI 输出完整 JSON 文件。</b><p className="mt-1 text-[var(--muted)]">请它只输出严格有效的 JSON。复制 JSON 代码块到纯文本编辑器，保存为游戏名.json，编码选择 UTF-8。不要把 Markdown 说明一起保存进文件。</p></li>
           <li><b>5. 导入、设置地点、试玩。</b><p className="mt-1 text-[var(--muted)]">进入创建游戏页面，导入 JSON；再进入设计器，用地图设置真实起点和各站坐标，检查题目、路线与触发范围，最后在户外试玩。</p></li>
+          <li><b>6. 验收后再发布分享。</b><p className="mt-1 text-[var(--muted)]">先确认起点、游戏区域和每一站都已设置为真实地点，并在户外试玩。当前设计器生成的是独立分享链接；二维码现场分享是后续优先完善的功能。分享链接携带本次发布的游戏内容，别人打开后不依赖你的本机存档，也不要求你一直在线。</p></li>
         </ol>
       </section>
 
@@ -71,6 +72,17 @@ export default function HowToCreatePage() {
           <li>指令中的 0,0 是待设置标记，不是真实位置。导入后必须在设计器中把起点、区域和所有站点逐一标到真实地点。</li>
           <li>请在安全、开放的户外区域标定；不要把触发半径设得过小，也不要把路线安排到私人区域或危险道路。</li>
           <li>导入成功不代表游戏已经完成。请先检查设计器里的验证结果，再到现场试玩。</li>
+        </ul>
+      </section>
+
+      <section className="card mt-4 p-5">
+        <h3 className="text-base font-bold">发布与分享：设计者请先了解</h3>
+        <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-[var(--muted)]">
+          <li><b>先校验，再发布。</b>确认真实起点、游戏区域和每一站的 GPS 坐标都已设置，并在安全的户外环境完成试玩。AI 生成的 0,0 只是占位符，绝不能直接发布为可玩的现场游戏。</li>
+          <li><b>每次发布对应一份游戏内容。</b>不同游戏分别分享；修改游戏后，请重新生成并分享链接。已经发出的旧链接不会自动更新。</li>
+          <li><b>分享不依赖设计者设备。</b>接收者打开链接即可加载链接中携带的游戏内容，不需要你的本机存档，也不需要你的手机一直在线。玩家的游玩进度目前不会自动同步到其他玩家。</li>
+          <li><b>二维码是现场分享的优先方向。</b>当前设计器提供链接分享，二维码生成与保存功能尚未上线。后续会优先完善手机展示二维码、保存二维码图片，同时保留复制或发送链接的方式。</li>
+          <li><b>不需要为二维码或 AI 单独付费。</b>计划采用手机浏览器本地生成二维码，不调用 AI 服务；只有未来确实需要短链接或云端游戏库时，才评估额外的服务器与维护成本。</li>
         </ul>
       </section>
 

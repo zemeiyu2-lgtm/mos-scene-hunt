@@ -804,6 +804,12 @@ export default function DesignPage() {
         <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
           保存后，这台设备会把你的游戏作为本地创作版本。没有账号也能立即试玩；未来接入云端发布时，这个编辑器仍可作为内容制作入口。
         </p>
+        <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-[11.5px] leading-relaxed">
+          <p className="font-semibold">发布前请确认</p>
+          <p className="mt-1 text-[var(--muted)]">请先设置真实起点、游戏区域和所有站点坐标，并在安全的户外试玩。AI 给出的 0,0 只是占位值，不可直接用于现场游戏。</p>
+          <p className="mt-2 font-semibold">链接与二维码</p>
+          <p className="mt-1 text-[var(--muted)]">当前发布会生成携带本次游戏内容的独立分享链接；接收者打开后不依赖你的本机存档，也不需要你的手机一直在线。修改游戏后请重新生成并分享链接，旧链接不会自动更新。二维码生成与保存功能尚未上线，后续将优先支持手机展示二维码和保存二维码图片；届时仍会保留复制或发送链接的方式。</p>
+        </div>
         {areaIncomplete ? (
           <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
             游戏区域还没有画完（至少 {MIN_POLYGON_POINTS} 个边界点），完成或取消绘制后才能保存。
