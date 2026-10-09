@@ -189,17 +189,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="card mt-4 p-4">
-        <p className="text-[13px] font-semibold">开始前请确认</p>
-        <ul className="mt-2 space-y-1.5 text-[12.5px] leading-relaxed text-[var(--muted)]">
-          <li>· 请在有网络的环境下首次打开，游戏数据会被缓存到本地。</li>
-          <li>· 之后即使断网，只要 GPS 可用，游戏仍可继续。</li>
-          <li>· 请在户外开阔处游玩，注意周围交通与安全。</li>
-        </ul>
-        <div className="mt-3">
-          <SimulatorUnavailableNotice />
-        </div>
-      </section>
     </Screen>
   );
 }
