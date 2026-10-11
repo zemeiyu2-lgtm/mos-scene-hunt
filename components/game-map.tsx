@@ -565,6 +565,7 @@ export default function GameMap({
   const fitDoneRef = useRef(false);
   const lastFitTokenRef = useRef<string | undefined>(undefined);
   const lastCentredAtRef = useRef(0);
+  const lastRecenterTokenRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -597,11 +598,13 @@ export default function GameMap({
     const now = Date.now();
     const hasFix = Boolean(player);
     const firstFix = hasFix && lastCentredAtRef.current === 0;
-    const tokenRequested = recenterToken !== undefined;
+    const tokenRequested =
+      recenterToken !== undefined && recenterToken !== lastRecenterTokenRef.current;
     const drifted = hasFix && now - lastCentredAtRef.current > 8000;
 
     if (!hasFix || !(firstFix || tokenRequested || drifted)) return;
     lastCentredAtRef.current = now;
+    if (tokenRequested) lastRecenterTokenRef.current = recenterToken;
     map.setView([player!.lat, player!.lng], map.getZoom(), {
       animate: tokenRequested,
     });
