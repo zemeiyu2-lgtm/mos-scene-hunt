@@ -86,7 +86,9 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
   const glyph =
     entry.status === "completed"
       ? "✓"
-      : entry.scene.mapStyle?.icon ?? String(index + 1);
+      : entry.status === "locked"
+        ? "🔒"
+        : entry.scene.mapStyle?.icon ?? String(index + 1);
 
   return L.divIcon({
     className: "",
@@ -94,8 +96,8 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
       <div class="scene-marker ${statusClass} ${entry.isActive ? "scene-marker--active" : ""}" data-role="scene-marker" data-scene-id="${entry.scene.id}" data-status="${entry.status}">${glyph}</div>
       ${entry.isActive ? '<div class="scene-marker__beacon"></div>' : ""}
     </div>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
   });
 }
 
