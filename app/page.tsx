@@ -115,8 +115,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      ) : null}
-
       <section className="mt-4">
         <h3 className="px-1 text-[13px] font-semibold text-[var(--muted)]">可用寻宝</h3>
         <div className="mt-2 space-y-3">
