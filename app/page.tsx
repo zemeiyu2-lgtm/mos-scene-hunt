@@ -60,16 +60,32 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="card mt-4 p-4">
-        <div className="flex items-start gap-3">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-xl" aria-hidden="true">✦</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold">想设计自己的游戏？</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">用你平常使用的 AI 帮你想玩法，再导入游戏包。不需要编程，也不需要 MOS Scene Hunt 内置 AI。</p>
-            <Link href="/how-to-create" className="btn btn-secondary mt-3 min-h-10 w-full">学习如何设计游戏 →</Link>
+      {hasProgress && game ? (
+        <section className="card mt-4 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[13px] text-[var(--muted)]">进行中的寻宝</p>
+              <p className="text-[16px] font-semibold">{game.title}</p>
+            </div>
+            <span className="chip bg-amber-100 text-amber-800">
+              {complete ? "已完成" : `${Math.round(ratio * 100)}%`}
+            </span>
           </div>
-        </div>
-      </section>
+          <ProgressBar ratio={ratio} className="mt-3" />
+          <div className="mt-4 flex gap-2">
+            <Link href="/map" className="btn btn-primary flex-1">
+              继续寻宝
+            </Link>
+            <Link href="/bag" className="btn btn-secondary">
+              背包
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+
+
+
 
       <section className="card mt-4 overflow-hidden bsop-reference">
         <div className="bsop-reference__cover">
@@ -99,27 +115,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {hasProgress && game ? (
-        <section className="card mt-4 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[13px] text-[var(--muted)]">进行中的寻宝</p>
-              <p className="text-[16px] font-semibold">{game.title}</p>
-            </div>
-            <span className="chip bg-amber-100 text-amber-800">
-              {complete ? "已完成" : `${Math.round(ratio * 100)}%`}
-            </span>
-          </div>
-          <ProgressBar ratio={ratio} className="mt-3" />
-          <div className="mt-4 flex gap-2">
-            <Link href="/map" className="btn btn-primary flex-1">
-              继续寻宝
-            </Link>
-            <Link href="/bag" className="btn btn-secondary">
-              背包
-            </Link>
-          </div>
-        </section>
       ) : null}
 
       <section className="mt-4">
@@ -174,22 +169,13 @@ export default function HomePage() {
       </section>
 
       <section className="card mt-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold">🎮 游戏中心</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">从官方云端游戏库选择游戏，下载到本机后直接游玩。</p>
+        <div className="flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-xl" aria-hidden="true">✦</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold">想设计自己的游戏？</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">用你平常使用的 AI 帮你想玩法，再导入游戏包。不需要编程，也不需要 MOS Scene Hunt 内置 AI。</p>
+            <Link href="/how-to-create" className="btn btn-secondary mt-3 min-h-10 w-full">学习如何设计游戏 →</Link>
           </div>
-          <Link href="/games" className="btn btn-primary shrink-0">进入</Link>
-        </div>
-      </section>
-
-      <section className="card mt-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold">📦 游戏包中心</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">设计者负责制作游戏包；玩家平台负责导入、安装和游玩。两者可以完全分开。</p>
-          </div>
-          <Link href="/create" className="btn btn-secondary shrink-0">打开</Link>
         </div>
       </section>
 
