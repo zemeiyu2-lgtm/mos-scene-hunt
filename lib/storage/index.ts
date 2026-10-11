@@ -67,7 +67,7 @@ export interface PlayerSettings {
 export const DEFAULT_SETTINGS: PlayerSettings = {
   simulatorEnabled: false,
   simulatorCoordinate: null,
-  tileProvider: "osm-hot",
+  tileProvider: "osm",
   reduceMotion: false,
   allowAccuracySlack: true,
   hasSeenIntro: false,
