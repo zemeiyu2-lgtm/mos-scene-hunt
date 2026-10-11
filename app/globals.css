@@ -711,3 +711,70 @@ body {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ------------------------------------------------------------------ */
+/* V1 game-map experiment: readable adventure tokens                   */
+/* ------------------------------------------------------------------ */
+.scene-marker-wrap {
+  width: 48px;
+  height: 48px;
+}
+.scene-marker {
+  inset: 4px;
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255,255,255,.98);
+  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
+  box-shadow:
+    0 3px 0 rgba(28,35,48,.16),
+    0 6px 14px rgba(15,23,42,.28),
+    inset 0 1px 0 rgba(255,255,255,.42);
+  transition: box-shadow .18s ease, filter .18s ease;
+}
+.scene-marker--available {
+  background: radial-gradient(circle at 32% 24%, #ffe9a6 0%, #ffc84d 38%, #e79a13 100%);
+  color: #382200;
+  box-shadow:
+    0 0 0 2px rgba(245,165,36,.22),
+    0 3px 0 #b9750c,
+    0 6px 15px rgba(196,124,10,.34),
+    inset 0 1px 0 rgba(255,255,255,.7);
+}
+.scene-marker--arrived,
+.scene-marker--challenging {
+  background: radial-gradient(circle at 32% 24%, #a6dcff 0%, #439df5 42%, #1761c5 100%);
+  box-shadow: 0 3px 0 #124a94, 0 6px 16px rgba(29,127,240,.38), inset 0 1px 0 rgba(255,255,255,.65);
+}
+.scene-marker--completed {
+  background: radial-gradient(circle at 32% 24%, #baf8d8 0%, #42c98a 46%, #16845a 100%);
+  box-shadow: 0 3px 0 #126a49, 0 5px 13px rgba(22,132,90,.28), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.scene-marker--locked {
+  background: linear-gradient(145deg, #b8bfcc 0%, #7f899b 100%);
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 3px 0 #667083, 0 4px 10px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.45);
+}
+.scene-marker-wrap--active .scene-marker {
+  outline: 3px solid rgba(255,194,66,.82);
+  outline-offset: 3px;
+  filter: saturate(1.12);
+  animation: target-float 1.8s ease-in-out infinite;
+}
+.scene-marker__beacon {
+  left: 4px;
+  top: 4px;
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(255,190,54,.82);
+  box-shadow: 0 0 0 4px rgba(255,190,54,.12);
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-marker-wrap--active .scene-marker,
+  .scene-marker__beacon {
+    animation: none !important;
+  }
+}
