@@ -36,33 +36,27 @@ export default function HomePage() {
       <section className="card overflow-hidden">
         <div className="hero-explore px-5 py-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
-            V0.4 · Micro Designer
+            REAL-WORLD ADVENTURE
           </p>
-          <h2 className="mt-2 text-[22px] font-bold leading-tight">
-            现实移动 → GPS → 地点触发
-            <br />
-            情境 → 任务 → 奖励 → 下一地点
+          <h2 className="mt-2 text-[26px] font-extrabold leading-tight">
+            走出去，发现下一条线索
           </h2>
-          <p className="mt-3 text-[13px] leading-relaxed text-white/75">
-            先看一分钟自动演示，再带上手机到户外，边走边找线索、解锁八个秘密。
+          <p className="mt-3 max-w-sm text-[13px] leading-relaxed text-white/80">
+            带上手机，在真实地点寻找线索、完成挑战，一步步解锁故事。
           </p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <Link href="/games" className="btn min-h-11 flex-1 bg-white text-slate-900 shadow-sm">
+              选择游戏开始 <span aria-hidden="true">→</span>
+            </Link>
+            <Link href="/tutorial" className="btn min-h-11 flex-1 border border-white/30 bg-white/10 text-white">
+              <span aria-hidden="true">▶</span> 先看一分钟演示
+            </Link>
+          </div>
         </div>
 
         <div className="px-5 pb-5">
           <p className="text-sm font-semibold text-[var(--text)]">仅限户外游玩</p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">室内定位可能不稳定。请在安全、开放的户外区域探索。</p>
-        </div>
-      </section>
-
-      <section className="card mt-4 overflow-hidden border border-amber-300">
-        <div className="flex items-start gap-3 p-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-100 text-xl" aria-hidden="true">▶</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-800">新手先看 · 约 1 分钟</p>
-            <h3 className="mt-1 text-[17px] font-extrabold">自动演示：游戏是怎么玩的？</h3>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">像录屏一样看地图移动、地点发现、任务解锁和奖励。使用模拟数据，不需要 GPS，也不会影响真实存档。</p>
-            <Link href="/tutorial" className="btn btn-primary mt-3 min-h-10 w-full">播放新手演示 →</Link>
-          </div>
         </div>
       </section>
 
