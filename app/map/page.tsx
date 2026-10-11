@@ -121,17 +121,9 @@ export default function MapPage() {
                 aria-label="回到我的位置"
                 title="回到我的位置"
               >
-                ◎
+                ⌖
               </button>
 
-              <div
-                className="card flex h-[46px] shrink-0 items-center justify-center gap-1.5 px-2.5 text-[11px] font-semibold text-[var(--muted)]"
-                aria-label="当前底图：OpenStreetMap 标准地图"
-                title="当前使用 OpenStreetMap 标准地图"
-              >
-                <span aria-hidden="true">⌖</span>
-                <span>标准地图</span>
-              </div>
             </div>
 
             {/* GPS status strip: only shown when something is wrong or simulated. */}
