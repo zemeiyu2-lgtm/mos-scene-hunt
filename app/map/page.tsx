@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
+import { useSettings } from "@/components/providers";
 import { useGps } from "@/components/gps-provider";
 import { MapView } from "@/components/map-view";
 import { SimulatorPanel } from "@/components/simulator-panel";
@@ -22,6 +23,7 @@ import type { MapSceneEntry } from "@/components/game-map";
 
 export default function MapPage() {
   const router = useRouter();
+  const { settings, update } = useSettings();
   const { fix, start, status, error, isSimulated, retry, simulatorAvailable } = useGps();
   const {
     game,
