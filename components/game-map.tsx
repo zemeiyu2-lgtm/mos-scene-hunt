@@ -157,7 +157,7 @@ export default function GameMap({
   const huntAreaDragCallbackRef = useRef(onHuntAreaDrag);
   huntAreaDragCallbackRef.current = onHuntAreaDrag;
 
-  const tiles = TILE_PROVIDERS[tileProvider] ?? TILE_PROVIDERS["osm-hot"];
+  const tiles = TILE_PROVIDERS[tileProvider] ?? TILE_PROVIDERS.osm;
   const activeEntry = useMemo(() => entries.find((e) => e.isActive) ?? null, [entries]);
 
   // Signatures keep the imperative diffs cheap: effects only run when the
