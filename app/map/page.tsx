@@ -12,7 +12,6 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
-import { useSettings } from "@/components/providers";
 import { useGps } from "@/components/gps-provider";
 import { MapView } from "@/components/map-view";
 import { SimulatorPanel } from "@/components/simulator-panel";
@@ -20,11 +19,9 @@ import { StatusChip } from "@/components/ui";
 import { calculateDistance, classifyFix, formatDistance, resolveRadius } from "@/lib/location";
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
-import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
 
 export default function MapPage() {
   const router = useRouter();
-  const { settings, update } = useSettings();
   const { fix, start, status, error, isSimulated, retry, simulatorAvailable } = useGps();
   const {
     game,
@@ -80,7 +77,7 @@ export default function MapPage() {
           player={fix}
           entries={entries}
           huntArea={game?.huntArea}
-          tileProvider={settings.tileProvider as TileProviderId}
+          tileProvider="osm"
           draggablePlayer={simulatorAvailable && settings.simulatorEnabled && isSimulated}
           onSimulatedDrag={(lat, lng) => update({ simulatorCoordinate: { lat, lng } })}
           fitToHunt={!fix}
@@ -125,19 +122,14 @@ export default function MapPage() {
                 ◎
               </button>
 
-              <select
-                value={settings.tileProvider}
-                onChange={(e) => update({ tileProvider: e.target.value as TileProviderId })}
-                className="card h-[46px] w-[46px] shrink-0 appearance-none bg-[var(--card)] text-center text-[12px]"
-                aria-label="地图样式"
-                title="地图样式"
+              <div
+                className="card flex h-[46px] shrink-0 items-center justify-center gap-1.5 px-2.5 text-[11px] font-semibold text-[var(--muted)]"
+                aria-label="当前底图：OpenStreetMap 标准地图"
+                title="当前使用 OpenStreetMap 标准地图"
               >
-                {TILE_PROVIDER_LIST.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.id === "osm-hot" ? "HOT" : provider.id === "osm" ? "OSM" : "CARTO"}
-                  </option>
-                ))}
-              </select>
+                <span aria-hidden="true">⌖</span>
+                <span>标准地图</span>
+              </div>
             </div>
 
             {/* GPS status strip: only shown when something is wrong or simulated. */}
