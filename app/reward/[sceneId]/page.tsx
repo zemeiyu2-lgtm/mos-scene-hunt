@@ -112,8 +112,8 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
             <div className="bsop-keys mt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">八个秘密</p>
-                  <p className="mt-0.5 text-[12px] text-amber-900/70">你已经把这一站带进了整条路线</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">七把关键词钥匙</p>
+                  <p className="mt-0.5 text-[12px] text-amber-900/70">集齐七个关键词，最后一站领取完成徽章</p>
                 </div>
                 <span className="text-[12px] font-bold text-amber-900">{state.keywords.length}/7</span>
               </div>
