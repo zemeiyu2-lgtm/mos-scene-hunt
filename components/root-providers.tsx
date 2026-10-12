@@ -6,6 +6,7 @@ import { GpsProvider } from "./gps-provider";
 import { HuntProvider } from "./hunt-provider";
 import { resolveActiveGameId } from "@/lib/content";
 import { subscribeToCurrentAuthoredGame } from "@/lib/storage";
+import { UiLocaleProvider } from "@/components/ui-locale-provider";
 
 /**
  * Root provider stack.
@@ -22,6 +23,7 @@ export function RootProviders({ children }: { children: React.ReactNode }) {
   const gameId = useActiveGameId();
 
   return (
+    <UiLocaleProvider>
     <SettingsProvider>
       <ServiceWorkerRegistrar />
       <GpsProvider>
@@ -33,6 +35,7 @@ export function RootProviders({ children }: { children: React.ReactNode }) {
         </HuntProvider>
       </GpsProvider>
     </SettingsProvider>
+    </UiLocaleProvider>
   );
 }
 
