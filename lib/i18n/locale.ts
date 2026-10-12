@@ -427,6 +427,7 @@ const messages = {
     "bag.qualityFair": "一般",
     "bag.qualityPoor": "较差",
     "bag.qualityStale": "已过期",
+    "bag.confirmReset": "确认重置",
     "language.english": "English",
     "language.chinese": "简体中文",
     "language.label": "界面语言",
