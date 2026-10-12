@@ -21,8 +21,6 @@ const messages = {
     "distance.target": "Distance to target:",
     "distance.direction": "direction",
     "distance.triggerRadius": "Trigger radius",
-    "common.retry": "Try again",
-    "common.loading": "Loading…",
 
     "common.online": "Online",
     "common.offline": "Offline",
@@ -84,8 +82,6 @@ const messages = {
     "distance.target": "距离目标：",
     "distance.direction": "方向",
     "distance.triggerRadius": "触发半径",
-    "common.retry": "重试",
-    "common.loading": "正在加载…",
 
     "common.online": "在线",
     "common.offline": "离线",
