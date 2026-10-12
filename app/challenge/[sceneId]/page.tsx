@@ -149,13 +149,30 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
         </div>
       ) : null}
 
-      <section className="card story-card p-5 challenge-reveal">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-          {challenge.type === "choice" ? "选择题" : challenge.type === "keyword" ? "关键词题" : "简答题"}
-        </p>
-        <h2 className="mt-2 text-[17px] font-bold leading-snug">{challenge.question}</h2>
+      <section className="card story-card overflow-hidden challenge-reveal">
+        <div className="flex items-start gap-3 p-5 pb-4">
+          <div
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[var(--accent)]/15 text-[25px]"
+            aria-hidden="true"
+          >
+            {challenge.type === "choice" ? "🎯" : challenge.type === "keyword" ? "🗝️" : "🔎"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                {challenge.type === "choice" ? "选择挑战" : challenge.type === "keyword" ? "寻找关键词" : "解开谜题"}
+              </p>
+              <span className="chip bg-[var(--surface)] text-[10px] text-[var(--muted)]">
+                {challenge.type === "choice" ? `${challenge.options?.length ?? 0} 个选项` : challenge.type === "keyword" ? "关键词" : "自由作答"}
+              </span>
+            </div>
+            <h2 className="mt-2 text-[17px] font-bold leading-snug">{challenge.question}</h2>
+          </div>
+        </div>
         {challenge.prompt ? (
-          <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted)]">{challenge.prompt}</p>
+          <div className="border-t border-[var(--line)] bg-[var(--surface)]/70 px-5 py-3">
+            <p className="text-[13px] leading-relaxed text-[var(--muted)]">{challenge.prompt}</p>
+          </div>
         ) : null}
       </section>
 
@@ -244,7 +261,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
           onClick={submit}
           disabled={submitting || (challenge.type === "choice" ? selected === null : text.trim().length === 0)}
         >
-          {submitting ? "完成中…" : "提交答案"}
+          {submitting ? "正在解锁…" : challenge.type === "choice" ? "确认选择" : challenge.type === "keyword" ? "提交关键词" : "检查答案"}
         </button>
         <button
           type="button"
