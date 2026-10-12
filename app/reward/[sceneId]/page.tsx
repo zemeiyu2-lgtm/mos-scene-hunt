@@ -137,11 +137,11 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
         <section className={`card mt-4 p-5 text-center ${isBsop ? "bsop-final-card" : ""}`}>
           <p className="text-[30px]">{isBsop ? "🎓" : "🏁"}</p>
           <p className="mt-2 text-[16px] font-bold">
-            {isBsop ? "八把钥匙已经交到你手里" : "你已走完全部地点"}
+            {isBsop ? "七把关键词钥匙与最终徽章已收集" : "你已走完全部地点"}
           </p>
           <p className="mt-1 text-[13px] leading-relaxed text-[var(--muted)]">
             {isBsop
-              ? "神学院不是终点。请把最后一把钥匙变成一个真实行动：这一周，你准备去哪里服事、陪伴或门训一个人？"
+              ? "你已完成全部站点并收集最终徽章。你也可以把这次探索的收获带进日常生活。"
               : "现实移动 → GPS → 地点触发 → 情境 → 任务 → 奖励 → 下一地点。"}
           </p>
           {isBsop ? (
