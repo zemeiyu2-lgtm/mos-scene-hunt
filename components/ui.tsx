@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import type { SceneStatus } from "@/lib/game/state";
 import { formatDistance } from "@/lib/location";
 import { SoundToggle } from "@/components/sound";
+import { useUiLocale } from "@/components/ui-locale-provider";
 
 /* ------------------------------------------------------------------ */
 /* Status presentation                                                */
@@ -33,10 +34,12 @@ export const STATUS_CHIP_CLASS: Record<SceneStatus, string> = {
 };
 
 export function StatusChip({ status, className = "" }: { status: SceneStatus; className?: string }) {
+  const { t } = useUiLocale();
+  const statusKey = ({ locked: "status.locked", available: "status.available", arrived: "status.arrived", challenging: "status.challenging", completed: "status.completed" } as const)[status];
   return (
     <span className={`chip ${STATUS_CHIP_CLASS[status]} ${className}`}>
       {status === "completed" ? "✓ " : ""}
-      {STATUS_LABEL[status]}
+      {t(statusKey)}
     </span>
   );
 }
@@ -64,10 +67,11 @@ export function DistanceReadout({
   /** Optional compass label, e.g. "NE". */
   bearing?: string | null;
 }) {
+  const { t } = useUiLocale();
   if (metres === null) {
     return (
       <div className="text-sm text-[var(--muted)]">
-        正在获取定位…
+        {t("distance.locating")}
       </div>
     );
   }
@@ -75,19 +79,19 @@ export function DistanceReadout({
   if (inRange) {
     return (
       <div className="flex items-baseline gap-2">
-        <span className="text-lg font-bold text-emerald-600">✓ 已进入任务区域</span>
+        <span className="text-lg font-bold text-emerald-600">✓ {t("distance.inRange")}</span>
       </div>
     );
   }
 
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-sm text-[var(--muted)]">距离目标：</span>
+      <span className="text-sm text-[var(--muted)]">{t("distance.target")}</span>
       <span className="tabular text-xl font-bold text-[var(--text)]">
         {formatDistance(metres)}
       </span>
-      {bearing ? <span className="text-sm text-[var(--muted)]">· {bearing} 方向</span> : null}
-      <span className="text-xs text-[var(--muted)]">（触发半径 {radius} m）</span>
+      {bearing ? <span className="text-sm text-[var(--muted)]">· {bearing} {t("distance.direction")}</span> : null}
+      <span className="text-xs text-[var(--muted)]">({t("distance.triggerRadius")} {radius} m)</span>
     </div>
   );
 }
@@ -176,28 +180,31 @@ export function ErrorState({
   detail?: string;
   onRetry?: () => void;
 }) {
+  const { t } = useUiLocale();
   return (
     <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
       <p className="text-[15px] font-semibold text-red-800">{title}</p>
       {detail ? <p className="mt-1 text-[13px] leading-relaxed text-red-700">{detail}</p> : null}
       {onRetry ? (
         <button type="button" className="btn btn-secondary mt-3" onClick={onRetry}>
-          重试
+          {t("common.retry")}
         </button>
       ) : null}
     </div>
   );
 }
 
-export function LoadingState({ label = "正在加载…" }: { label?: string }) {
+export function LoadingState({ label }: { label?: string }) {
+  const { t } = useUiLocale();
+  const displayLabel = label ?? t("common.loading");
   return (
     <div className="grid place-items-center py-16">
       <div
         className="h-8 w-8 animate-spin rounded-full border-[3px] border-[var(--line)] border-t-[var(--accent)]"
         role="status"
-        aria-label={label}
+        aria-label={displayLabel}
       />
-      <p className="mt-3 text-[13px] text-[var(--muted)]">{label}</p>
+      <p className="mt-3 text-[13px] text-[var(--muted)]">{displayLabel}</p>
     </div>
   );
 }
