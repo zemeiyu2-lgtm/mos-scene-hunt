@@ -139,7 +139,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
         <section className={`card mt-4 p-5 text-center ${isBsop ? "bsop-final-card" : ""}`}>
           <p className="text-[30px]">{isBsop ? "🎓" : "🏁"}</p>
           <p className="mt-2 text-[16px] font-bold">
-            {isBsop ? "{t("reward.eightKeys")}" : "{t("reward.allLocations")}"}
+            {isBsop ? t("reward.eightKeys") : t("reward.allLocations")}
           </p>
           <p className="mt-1 text-[13px] leading-relaxed text-[var(--muted)]">
             {isBsop
@@ -156,7 +156,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
       ) : nextScene ? (
         <section className="card mt-4 p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-            已解锁 · 下一个地点
+            {t("reward.nextUnlocked")}
           </p>
           <p className="mt-1.5 text-[16px] font-bold">{nextScene.title}</p>
           <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">
