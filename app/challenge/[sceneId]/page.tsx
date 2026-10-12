@@ -56,7 +56,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
         <div className="card p-4">
           <p className="text-[14px]">{t("challenge.notFound")}</p>
           <button type="button" className="btn btn-secondary mt-3" onClick={() => router.push("/quest")}>
-            返回任务列表
+            {t("challenge.returnList")}
           </button>
         </div>
       </Screen>
@@ -136,7 +136,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
   return (
     <Screen
       title={scene.title}
-      subtitle={scene.location.name ?? "任务"}
+      subtitle={scene.location.name ?? t("challenge.task")}
       headerRight={<StatusChip status={progress?.status ?? "challenging"} />}
     >
       {/* The player may have stepped out of the ring mid-question. Warn, but do
@@ -252,7 +252,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
           className="btn btn-ghost btn-block"
           onClick={() => (current ? router.push("/map") : router.push("/quest"))}
         >
-          回到地图
+          {t("challenge.backToMap")}
         </button>
       </div>
 
