@@ -22,7 +22,7 @@ export default function HomePage() {
   return (
     <Screen
       title="MOS Scene Hunt"
-      subtitle="在真实世界里移动，解锁情境、线索与任务"
+      subtitle="Move through the real world to unlock contexts, clues, and challenges"
       headerRight={
         <span
           className={`chip shrink-0 ${
