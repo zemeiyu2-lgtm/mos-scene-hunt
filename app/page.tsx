@@ -36,16 +36,22 @@ export default function HomePage() {
       <section className="card overflow-hidden">
         <div className="hero-explore px-5 py-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
-            V0.4 · Micro Designer
+            REAL-WORLD ADVENTURE
           </p>
-          <h2 className="mt-2 text-[22px] font-bold leading-tight">
-            现实移动 → GPS → 地点触发
-            <br />
-            情境 → 任务 → 奖励 → 下一地点
+          <h2 className="mt-2 text-[26px] font-extrabold leading-tight">
+            走出去，发现下一条线索
           </h2>
-          <p className="mt-3 text-[13px] leading-relaxed text-white/75">
-            先看一分钟自动演示，再带上手机到户外，边走边找线索、解锁八个秘密。
+          <p className="mt-3 max-w-sm text-[13px] leading-relaxed text-white/80">
+            带上手机，在真实地点寻找线索、完成挑战，一步步解锁故事。
           </p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <Link href="/games" className="btn min-h-11 flex-1 bg-white text-slate-900 shadow-sm">
+              选择游戏开始 <span aria-hidden="true">→</span>
+            </Link>
+            <Link href="/tutorial" className="btn min-h-11 flex-1 border border-white/30 bg-white/10 text-white">
+              <span aria-hidden="true">▶</span> 先看一分钟演示
+            </Link>
+          </div>
         </div>
 
         <div className="px-5 pb-5">
@@ -54,28 +60,32 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="card mt-4 overflow-hidden border border-amber-300">
-        <div className="flex items-start gap-3 p-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-100 text-xl" aria-hidden="true">▶</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-800">新手先看 · 约 1 分钟</p>
-            <h3 className="mt-1 text-[17px] font-extrabold">自动演示：游戏是怎么玩的？</h3>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">像录屏一样看地图移动、地点发现、任务解锁和奖励。使用模拟数据，不需要 GPS，也不会影响真实存档。</p>
-            <Link href="/tutorial" className="btn btn-primary mt-3 min-h-10 w-full">播放新手演示 →</Link>
+      {hasProgress && game ? (
+        <section className="card mt-4 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[13px] text-[var(--muted)]">进行中的寻宝</p>
+              <p className="text-[16px] font-semibold">{game.title}</p>
+            </div>
+            <span className="chip bg-amber-100 text-amber-800">
+              {complete ? "已完成" : `${Math.round(ratio * 100)}%`}
+            </span>
           </div>
-        </div>
-      </section>
+          <ProgressBar ratio={ratio} className="mt-3" />
+          <div className="mt-4 flex gap-2">
+            <Link href="/map" className="btn btn-primary flex-1">
+              继续寻宝
+            </Link>
+            <Link href="/bag" className="btn btn-secondary">
+              背包
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
-      <section className="card mt-4 p-4">
-        <div className="flex items-start gap-3">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-xl" aria-hidden="true">✦</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold">想设计自己的游戏？</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">用你平常使用的 AI 帮你想玩法，再导入游戏包。不需要编程，也不需要 MOS Scene Hunt 内置 AI。</p>
-            <Link href="/how-to-create" className="btn btn-secondary mt-3 min-h-10 w-full">学习如何设计游戏 →</Link>
-          </div>
-        </div>
-      </section>
+
+
+
 
       <section className="card mt-4 overflow-hidden bsop-reference">
         <div className="bsop-reference__cover">
@@ -104,29 +114,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {hasProgress && game ? (
-        <section className="card mt-4 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[13px] text-[var(--muted)]">进行中的寻宝</p>
-              <p className="text-[16px] font-semibold">{game.title}</p>
-            </div>
-            <span className="chip bg-amber-100 text-amber-800">
-              {complete ? "已完成" : `${Math.round(ratio * 100)}%`}
-            </span>
-          </div>
-          <ProgressBar ratio={ratio} className="mt-3" />
-          <div className="mt-4 flex gap-2">
-            <Link href="/map" className="btn btn-primary flex-1">
-              继续寻宝
-            </Link>
-            <Link href="/bag" className="btn btn-secondary">
-              背包
-            </Link>
-          </div>
-        </section>
-      ) : null}
 
       <section className="mt-4">
         <h3 className="px-1 text-[13px] font-semibold text-[var(--muted)]">可用寻宝</h3>
@@ -180,22 +167,13 @@ export default function HomePage() {
       </section>
 
       <section className="card mt-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold">🎮 游戏中心</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">从官方云端游戏库选择游戏，下载到本机后直接游玩。</p>
+        <div className="flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-xl" aria-hidden="true">✦</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold">想设计自己的游戏？</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">用你平常使用的 AI 帮你想玩法，再导入游戏包。不需要编程，也不需要 MOS Scene Hunt 内置 AI。</p>
+            <Link href="/how-to-create" className="btn btn-secondary mt-3 min-h-10 w-full">学习如何设计游戏 →</Link>
           </div>
-          <Link href="/games" className="btn btn-primary shrink-0">进入</Link>
-        </div>
-      </section>
-
-      <section className="card mt-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold">📦 游戏包中心</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">设计者负责制作游戏包；玩家平台负责导入、安装和游玩。两者可以完全分开。</p>
-          </div>
-          <Link href="/create" className="btn btn-secondary shrink-0">打开</Link>
         </div>
       </section>
 

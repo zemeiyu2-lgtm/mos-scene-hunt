@@ -55,14 +55,16 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
     <Screen title="任务完成" subtitle={scene.title}>
       <section className="card overflow-hidden">
         <div className="completion-hero px-5 py-8 text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/15 text-[34px] shadow-lg">{reward?.icon ?? "✓"}</div>
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/15 text-[34px] shadow-lg">{granted ? reward?.icon ?? "✓" : "!"}</div>
           <p className="mt-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-white/75">
-            获得{reward?.type === "keyword" ? "关键词" : reward?.type === "badge" ? "徽章" : "奖励"}
+            {granted
+              ? "获得" + (reward?.type === "keyword" ? "关键词" : reward?.type === "badge" ? "徽章" : "奖励")
+              : "任务尚未完成"}
           </p>
           <h2 className="mt-1 text-[26px] font-bold leading-tight">
-            {reward?.title ?? "已完成"}
+            {granted ? reward?.title ?? "已完成" : "尚未领取奖励"}
           </h2>
-          {reward?.description ? (
+          {granted && reward?.description ? (
             <p className="mx-auto mt-2 max-w-[320px] text-[13px] leading-relaxed text-white/85">
               {reward.description}
             </p>
@@ -110,8 +112,8 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
             <div className="bsop-keys mt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">八个秘密</p>
-                  <p className="mt-0.5 text-[12px] text-amber-900/70">你已经把这一站带进了整条路线</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">七把关键词钥匙</p>
+                  <p className="mt-0.5 text-[12px] text-amber-900/70">集齐七个关键词，最后一站领取完成徽章</p>
                 </div>
                 <span className="text-[12px] font-bold text-amber-900">{state.keywords.length}/7</span>
               </div>
@@ -145,7 +147,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           {isBsop ? (
             <div className="mt-4 rounded-xl bg-white/70 px-3.5 py-3 text-left">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">最后任务 · 带走</p>
-              <p className="mt-1 text-[13px] font-semibold">把一个具体行动写下来，然后离开地图。</p>
+              <p className="mt-1 text-[13px] font-semibold">想一想：这一周，你准备去哪里服事、陪伴或门训一个人？</p>
             </div>
           ) : null}
         </section>
@@ -182,17 +184,23 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
         <button
           type="button"
           className="btn btn-primary btn-block"
-          onClick={() => router.push("/map")}
+          onClick={() => router.push(!granted ? "/scene/" + scene.id : complete ? "/bag" : "/map")}
         >
-          {nextScene ? "去寻找下一站 →" : "回到地图 →"}
+          {!granted
+            ? "返回情境继续任务"
+            : complete
+              ? "查看全部收获 →"
+              : nextScene
+                ? "去寻找下一站 →"
+                : "回到地图 →"}
         </button>
 
         <button
           type="button"
           className="btn btn-ghost btn-block"
-          onClick={() => router.push("/bag")}
+          onClick={() => router.push(complete ? "/quest" : "/bag")}
         >
-          查看背包
+          {complete ? "查看任务进度" : "查看背包"}
         </button>
       </div>
     </Screen>
