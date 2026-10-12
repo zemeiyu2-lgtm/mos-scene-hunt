@@ -86,7 +86,9 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
   const glyph =
     entry.status === "completed"
       ? "✓"
-      : entry.scene.mapStyle?.icon ?? String(index + 1);
+      : entry.status === "locked"
+        ? "🔒"
+        : entry.scene.mapStyle?.icon ?? String(index + 1);
 
   return L.divIcon({
     className: "",
@@ -94,8 +96,8 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
       <div class="scene-marker ${statusClass} ${entry.isActive ? "scene-marker--active" : ""}" data-role="scene-marker" data-scene-id="${entry.scene.id}" data-status="${entry.status}">${glyph}</div>
       ${entry.isActive ? '<div class="scene-marker__beacon"></div>' : ""}
     </div>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
   });
 }
 
@@ -563,6 +565,7 @@ export default function GameMap({
   const fitDoneRef = useRef(false);
   const lastFitTokenRef = useRef<string | undefined>(undefined);
   const lastCentredAtRef = useRef(0);
+  const lastRecenterTokenRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -595,11 +598,13 @@ export default function GameMap({
     const now = Date.now();
     const hasFix = Boolean(player);
     const firstFix = hasFix && lastCentredAtRef.current === 0;
-    const tokenRequested = recenterToken !== undefined;
+    const tokenRequested =
+      recenterToken !== undefined && recenterToken !== lastRecenterTokenRef.current;
     const drifted = hasFix && now - lastCentredAtRef.current > 8000;
 
     if (!hasFix || !(firstFix || tokenRequested || drifted)) return;
     lastCentredAtRef.current = now;
+    if (tokenRequested) lastRecenterTokenRef.current = recenterToken;
     map.setView([player!.lat, player!.lng], map.getZoom(), {
       animate: tokenRequested,
     });
