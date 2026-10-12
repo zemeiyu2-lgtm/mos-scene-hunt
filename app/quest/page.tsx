@@ -110,14 +110,14 @@ export default function QuestPage() {
                             </span>
                             <span className="text-[11px] text-[var(--muted)]">
                               {" "}
-                              / 触发半径 {radius} m
+                              / {t("quest.triggerRadius")} {radius} m
                             </span>
                           </>
                         )}
                       </p>
                     ) : isLocked ? (
                       <p className="mt-2 text-[12px] text-[var(--muted)]">
-                        {t("quest.unlockAfter")}「{statuses[index - 1]?.scene.title ?? t("quest.previousLocation")}」{t("quest.previousLocation")}
+                        {t("quest.unlockAfter").replace("{title}", statuses[index - 1]?.scene.title ?? t("quest.previousLocation"))}
                       </p>
                     ) : null}
 
@@ -135,13 +135,13 @@ export default function QuestPage() {
                               href={`/scene/${row.scene.id}`}
                               className="btn btn-secondary h-9 min-h-0 flex-1 px-3 text-[13px]"
                             >
-                              重看情境
+                              {t("quest.revisitScene")}
                             </Link>
                             <Link
                               href={`/reward/${row.scene.id}`}
                               className="btn btn-ghost h-9 min-h-0 px-3 text-[13px]"
                             >
-                              奖励
+                              {t("quest.rewardButton")}
                             </Link>
                           </>
                         ) : canEnter ? (
@@ -150,7 +150,7 @@ export default function QuestPage() {
                               href={`/scene/${row.scene.id}`}
                               className="btn btn-primary h-9 min-h-0 flex-1 px-3 text-[13px]"
                             >
-                              解锁情境 →
+                              {t("quest.unlockScene")}
                             </Link>
                           </>
                         ) : (
@@ -159,7 +159,7 @@ export default function QuestPage() {
                             className="btn btn-secondary h-9 min-h-0 flex-1 px-3 text-[13px]"
                             onClick={() => router.push("/map")}
                           >
-                            在地图上查看路线
+                            {t("quest.viewRoute")}
                           </button>
                         )}
                       </div>
