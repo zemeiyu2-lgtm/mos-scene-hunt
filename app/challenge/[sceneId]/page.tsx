@@ -17,11 +17,13 @@ import { Screen, StatusChip } from "@/components/ui";
 import { matchTextAnswer } from "@/lib/game/answers";
 import { playSound } from "@/components/sound";
 import { MediaGallery } from "@/components/media-gallery";
+import { useUiLocale } from "@/components/ui-locale-provider";
 
 export default function ChallengePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
   const { sceneId } = use(params);
   const router = useRouter();
+  const { t } = useUiLocale();
   const { game, state, submitAnswer, distances, current } = useHunt();
 
   const scene = game?.scenes.find((s) => s.id === sceneId) ?? null;
@@ -50,9 +52,9 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
 
   if (!scene || !challenge || !state) {
     return (
-      <Screen title="任务" subtitle="场景不存在">
+      <Screen title={t("challenge.task")} subtitle={t("challenge.sceneMissing")}>
         <div className="card p-4">
-          <p className="text-[14px]">找不到这个任务。</p>
+          <p className="text-[14px]">{t("challenge.notFound")}</p>
           <button type="button" className="btn btn-secondary mt-3" onClick={() => router.push("/quest")}>
             返回任务列表
           </button>
@@ -63,13 +65,13 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
 
   if (alreadyComplete && !solved) {
     return (
-      <Screen title={scene.title} subtitle="已完成">
+      <Screen title={scene.title} subtitle={t("status.completed")}>
         <div className="card p-5 text-center">
           <p className="text-[28px]">✓</p>
-          <p className="mt-2 text-[15px] font-semibold">你已完成这个任务</p>
+          <p className="mt-2 text-[15px] font-semibold">{t("challenge.done")}</p>
           {scene.reward ? (
             <p className="mt-1 text-[13px] text-[var(--muted)]">
-              奖励：{scene.reward.title}
+              {t("challenge.reward")}{scene.reward.title}
             </p>
           ) : null}
           <button
@@ -77,7 +79,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
             className="btn btn-primary btn-block mt-4"
             onClick={() => router.push(scene.nextSceneId ? `/scene/${scene.nextSceneId}` : "/quest")}
           >
-            {scene.nextSceneId ? "前往下一个地点" : "查看收获"}
+            {scene.nextSceneId ? t("challenge.nextLocation") : t("challenge.viewFindings")}
           </button>
         </div>
       </Screen>
@@ -142,16 +144,15 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       {!inRange ? (
         <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-[12.5px] leading-snug text-amber-900">
-            你现在不在任务区域内（
-            {distance ? `${Math.round(distance.distance)} m` : "未知"}）。已打开的任务可以继续完成，
-            但建议回到地点附近以获得最佳体验。
+            {t("challenge.outsideArea")}（
+            {distance ? `${Math.round(distance.distance)} m` : t("challenge.distanceUnknown")}）。{t("challenge.continueOutside")}
           </p>
         </div>
       ) : null}
 
       <section className="card story-card p-5 challenge-reveal">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-          {challenge.type === "choice" ? "选择题" : challenge.type === "keyword" ? "关键词题" : "简答题"}
+          {challenge.type === "choice" ? t("challenge.choiceType") : challenge.type === "keyword" ? t("challenge.keywordType") : t("challenge.textType")}
         </p>
         <h2 className="mt-2 text-[17px] font-bold leading-snug">{challenge.question}</h2>
         {challenge.prompt ? (
@@ -189,7 +190,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       ) : (
         <section className="mt-3">
           <label htmlFor="answer-input" className="sr-only">
-            你的答案
+            {t("challenge.yourAnswer")}
           </label>
           <input
             id="answer-input"
@@ -203,7 +204,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
               if (e.key === "Enter") submit();
             }}
             placeholder={
-              challenge.type === "keyword" ? "输入关键词…" : "输入你的答案…"
+              challenge.type === "keyword" ? t("challenge.keywordPlaceholder") : t("challenge.answerPlaceholder")
             }
             autoComplete="off"
             autoCapitalize="off"
@@ -211,28 +212,28 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
             enterKeyHint="done"
           />
           <p className="mt-1.5 text-[11px] text-[var(--muted)]">
-            大小写、全角半角与标点都会被自动忽略。
+            {t("challenge.normalizationHint")}
           </p>
         </section>
       )}
 
       {feedback === "correct" ? (
         <div className="success-pulse mt-3">
-          <p className="text-[15px] font-bold text-emerald-800">✓ 完成了</p>
-          <p className="mt-0.5 text-[12px] text-emerald-700">这一站的钥匙正在交到你手里…</p>
+          <p className="text-[15px] font-bold text-emerald-800">✓ {t("challenge.solved")}</p>
+          <p className="mt-0.5 text-[12px] text-emerald-700">{t("challenge.keyComing")}</p>
         </div>
       ) : feedback === "wrong" ? (
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
-          <p className="text-[13px] font-semibold text-red-800">答案不正确</p>
+          <p className="text-[13px] font-semibold text-red-800">{t("challenge.wrong")}</p>
           <p className="mt-0.5 text-[12px] leading-snug text-red-700">
-            这次没有答对，可以再试一次。答错不会丢失任何进度。
+            {t("challenge.wrongHint")}
           </p>
         </div>
       ) : null}
 
       {hintVisible && challenge.hint ? (
         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
-          <p className="text-[12px] font-semibold text-amber-900">提示</p>
+          <p className="text-[12px] font-semibold text-amber-900">{t("challenge.hint")}</p>
           <p className="mt-0.5 text-[12.5px] leading-relaxed text-amber-900">{challenge.hint}</p>
         </div>
       ) : null}
@@ -244,7 +245,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
           onClick={submit}
           disabled={submitting || (challenge.type === "choice" ? selected === null : text.trim().length === 0)}
         >
-          {submitting ? "完成中…" : "提交答案"}
+          {submitting ? t("challenge.submitting") : t("challenge.submit")}
         </button>
         <button
           type="button"
@@ -257,7 +258,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
 
       {attempts > 0 && !challenge.hint ? (
         <p className="mt-3 text-center text-[11.5px] text-[var(--muted)]">
-          提示：答案与你在现场能观察到的具体事物有关，不必想得太复杂。
+          {t("challenge.attemptHint")}
         </p>
       ) : null}
     </Screen>
