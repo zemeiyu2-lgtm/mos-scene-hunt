@@ -225,7 +225,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
           <p className="text-[13px] font-semibold text-red-800">答案不正确</p>
           <p className="mt-0.5 text-[12px] leading-snug text-red-700">
-            已记录第 {attempts} 次尝试。可以再试一次——答错不会丢失任何进度。
+            这次没有答对，可以再试一次。答错不会丢失任何进度。
           </p>
         </div>
       ) : null}
