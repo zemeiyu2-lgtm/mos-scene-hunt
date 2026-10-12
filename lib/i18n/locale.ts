@@ -11,6 +11,19 @@ const UI_LOCALE_KEY = "mos-scene-hunt:ui-locale";
 
 const messages = {
   en: {
+    "status.locked": "Locked",
+    "status.available": "Ready to visit",
+    "status.arrived": "Arrived",
+    "status.challenging": "In challenge",
+    "status.completed": "Completed",
+    "distance.locating": "Getting location…",
+    "distance.inRange": "Inside the challenge area",
+    "distance.target": "Distance to target:",
+    "distance.direction": "direction",
+    "distance.triggerRadius": "Trigger radius",
+    "common.retry": "Try again",
+    "common.loading": "Loading…",
+
     "common.online": "Online",
     "common.offline": "Offline",
     "common.back": "Back",
@@ -61,6 +74,19 @@ const messages = {
     "language.label": "App language",
   },
   "zh-CN": {
+    "status.locked": "未解锁",
+    "status.available": "待前往",
+    "status.arrived": "已到达",
+    "status.challenging": "答题中",
+    "status.completed": "已完成",
+    "distance.locating": "正在获取定位…",
+    "distance.inRange": "已进入任务区域",
+    "distance.target": "距离目标：",
+    "distance.direction": "方向",
+    "distance.triggerRadius": "触发半径",
+    "common.retry": "重试",
+    "common.loading": "正在加载…",
+
     "common.online": "在线",
     "common.offline": "离线",
     "common.back": "返回",
