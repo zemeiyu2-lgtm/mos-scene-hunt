@@ -108,7 +108,7 @@ export default function DesignPage() {
 
   if (loading || !working) {
     return (
-      <Screen title=(en ? "Create game" : "创建游戏") subtitle=(en ? "Loading content" : "正在加载内容")>
+      <Screen title={en ? "Create game" : "创建游戏"} subtitle={en ? "Loading content" : "正在加载内容"}>
         <div className="card h-40 animate-pulse" />
         {loadError ? <p className="mt-3 text-sm text-red-700">{loadError}</p> : null}
       </Screen>
@@ -474,16 +474,16 @@ export default function DesignPage() {
 
   return (
     <Screen
-      title=(en ? "Create game" : "创建游戏")
-      subtitle=(en ? "Four steps: draw area → place stops → set radius → save" : "四步完成：画区域 → 放场景 → 设距离 → 保存")
-      headerRight={<Link href="/" className="btn btn-ghost h-9 min-h-0 px-3">{en ? "Back" : (en ? "Back" : "返回")}</Link>}
+      title={en ? "Create game" : "创建游戏"}
+      subtitle={en ? "Four steps: draw area → place stops → set radius → save" : "四步完成：画区域 → 放场景 → 设距离 → 保存"}
+      headerRight={<Link href="/" className="btn btn-ghost h-9 min-h-0 px-3">{en ? "Back" : "返回"}</Link>}
     >
       {/* ------------------------------------------------ 步骤导航 */}
       <ol className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
           { n: "①", label: "画游戏区域", done: Boolean(area) && !areaIncomplete && !drawingArea },
-          { n: "②", label: (en ? "Place stops" : "放置场景"), done: working.scenes.length > 0 && !drawingArea },
-          { n: "③", label: (en ? "Set trigger radius" : "设置触发距离"), done: working.scenes.every((s) => s.location.radius) },
+          { n: "②", label: "放置场景", done: working.scenes.length > 0 && !drawingArea },
+          { n: "③", label: "设置触发距离", done: working.scenes.every((s) => s.location.radius) },
           { n: "④", label: "保存游戏", done: saved },
         ].map((step) => (
           <li
@@ -503,12 +503,12 @@ export default function DesignPage() {
       <section className="card mb-4 overflow-hidden">
         <div className="relative overflow-hidden bg-gradient-to-br from-[#15233d] via-[#243b5d] to-[#3f6a68] px-5 py-5 text-white">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/60">CLASSIC 01 · BSOP CAMPUS</p>
-          <h2 className="mt-1.5 text-[21px] font-bold">{en ? "Seminary's Eight Secrets" : (en ? "Seminary's Eight Secrets" : "《神学院的八个秘密》")}</h2>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-white/75">{en ? "Turn a real campus into a memorable journey: explore → choose → act → reflect → take something with you." : (en ? "Turn a real campus into a memorable journey: explore → choose → act → reflect → take something with you." : "把真实校园变成一条会留下记忆的路：探索 → 选择 → 行动 → 反思 → 带走。")}</p>
+          <h2 className="mt-1.5 text-[21px] font-bold">{en ? "Seminary's Eight Secrets" : "《神学院的八个秘密》"}</h2>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-white/75">{en ? "Turn a real campus into a memorable journey: explore → choose → act → reflect → take something with you." : "把真实校园变成一条会留下记忆的路：探索 → 选择 → 行动 → 反思 → 带走。"}</p>
           <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadBsopClassicTemplate}>
             载入 BSOP 经典母版
           </button>
-          <p className="mt-2 text-[10.5px] text-white/55">{en ? "After loading, move all eight scenes to their real campus locations, then draw the play area." : (en ? "After loading, move all eight scenes to their real campus locations, then draw the play area." : "载入后请把 8 个场景拖到校园真实位置，再绘制游戏区域。")}</p>
+          <p className="mt-2 text-[10.5px] text-white/55">{en ? "After loading, move all eight scenes to their real campus locations, then draw the play area." : "载入后请把 8 个场景拖到校园真实位置，再绘制游戏区域。"}</p>
         </div>
       </section>
 
@@ -532,7 +532,7 @@ export default function DesignPage() {
           />
         </div>
         <div className="border-t border-[var(--line)] p-4 text-[12px] leading-relaxed">
-          <p className="font-semibold">{en ? "Map editor" : (en ? "Map editor" : "地图编辑")}</p>
+          <p className="font-semibold">{en ? "Map editor" : "地图编辑"}</p>
           <p className="mt-1 text-[var(--muted)]">
             {drawingArea ? (
               <span className="font-semibold text-[var(--accent)]">
@@ -560,33 +560,33 @@ export default function DesignPage() {
       <section className="card mt-4 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[15px] font-bold">{en ? "Spatial overview" : (en ? "Spatial overview" : "空间设计总览")}</p>
-            <p className="mt-1 text-[11.5px] text-[var(--muted)]">{en ? "The map determines where players experience the story. The system flags issues but never changes locations for you." : (en ? "The map determines where players experience the story. The system flags issues but never changes locations for you." : "地图决定玩家在哪里经历故事；系统只提示问题，不替你改点位。")}</p>
+            <p className="text-[15px] font-bold">{en ? "Spatial overview" : "空间设计总览"}</p>
+            <p className="mt-1 text-[11.5px] text-[var(--muted)]">{en ? "The map determines where players experience the story. The system flags issues but never changes locations for you." : "地图决定玩家在哪里经历故事；系统只提示问题，不替你改点位。"}</p>
           </div>
           <span className="chip bg-[var(--surface)]">{working.scenes.length} 个体验点</span>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(spatial?.totalMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Total route" : (en ? "Total route" : "总路线")}</div></div>
-          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{spatial?.walkingMinutes ?? 0}′</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Estimated walk" : (en ? "Estimated walk" : "粗略步行")}</div></div>
-          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(area?.radiusMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Area size" : (en ? "Area size" : "区域尺度")}</div></div>
+          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(spatial?.totalMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Total route" : "总路线"}</div></div>
+          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{spatial?.walkingMinutes ?? 0}′</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Estimated walk" : "粗略步行"}</div></div>
+          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(area?.radiusMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Area size" : "区域尺度"}</div></div>
         </div>
         {working.scenes.length > 1 ? <div className="mt-3 overflow-x-auto pb-1"><div className="flex min-w-max items-center gap-1">{working.scenes.map((scene, i) => <span key={scene.id} className="flex items-center gap-1">{i > 0 ? <span className="text-[var(--muted)]">→</span> : null}<button type="button" className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${scene.id === selected?.id ? "border-[var(--accent)] bg-[var(--accent)]/10" : "border-[var(--line)]"}`} onClick={() => setSelectedId(scene.id)}>{i + 1}. {scene.title}</button></span>)}</div></div> : null}
-        {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}><strong>{issue.severity === "error" ? (en ? "Needs fixing: " : "需要修正：") : (en ? "Spatial note: " : "空间提示：")}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-semibold text-emerald-800">{en ? "Spatial check passed. You can continue designing." : (en ? "Spatial check passed. You can continue designing." : "空间检查通过，可以继续设计。")}</p>}
+        {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}><strong>{issue.severity === "error" ? (en ? "Needs fixing: " : "需要修正：") : "空间提示："}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-semibold text-emerald-800">{en ? "Spatial check passed. You can continue designing." : "空间检查通过，可以继续设计。"}</p>}
       </section>
 
       {/* ------------------------------------------------ ① 选择游戏区域 */}
       <section className="card mt-4 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[15px] font-bold">{en ? "① Choose play area" : (en ? "① Choose play area" : "① 选择游戏区域")}</p>
-            <p className="text-[11.5px] text-[var(--muted)]">{en ? "Draw the play area on the map. GPS is not required." : (en ? "Draw the play area on the map. GPS is not required." : "在地图上圈出游戏范围。不需要 GPS。")}</p>
+            <p className="text-[15px] font-bold">{en ? "① Choose play area" : "① 选择游戏区域"}</p>
+            <p className="text-[11.5px] text-[var(--muted)]">{en ? "Draw the play area on the map. GPS is not required." : "在地图上圈出游戏范围。不需要 GPS。"}</p>
           </div>
         </div>
 
         {drawingArea ? (
           <>
             <div className="mt-3 rounded-xl border border-dashed border-[var(--accent)] bg-[var(--surface)] p-3">
-              <p className="text-[12px] font-semibold">{en ? "Click the boundary points of the play area on the map" : (en ? "Click the boundary points of the play area on the map" : "请在地图上依次点击游戏区域的边界点")}</p>
+              <p className="text-[12px] font-semibold">{en ? "Click the boundary points of the play area on the map" : "请在地图上依次点击游戏区域的边界点"}</p>
               <p className="mt-1 font-mono text-[11px] leading-relaxed text-[var(--muted)]">
                 ●──────●<br />
                 /&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br />
@@ -629,7 +629,7 @@ export default function DesignPage() {
         ) : placingCircle ? (
           <>
             <div className="mt-3 rounded-xl border border-dashed border-[var(--accent)] bg-[var(--surface)] p-3">
-              <p className="text-[12px] font-semibold">{en ? "Click the map to set the circle center" : (en ? "Click the map to set the circle center" : "点击地图设置圆心")}</p>
+              <p className="text-[12px] font-semibold">{en ? "Click the map to set the circle center" : "点击地图设置圆心"}</p>
               <p className="mt-1 text-[11.5px] text-[var(--muted)]">
                 定好圆心后，用半径滑块调整范围。
               </p>
@@ -651,8 +651,8 @@ export default function DesignPage() {
                 onClick={startPolygon}
               >
                 <span className="text-[16px] leading-none">⬡</span>
-                <span className="text-[12px] font-bold">{en ? "Draw custom area" : (en ? "Draw custom area" : "自定义绘制")}</span>
-                <span className="text-[10.5px] font-normal opacity-80">{en ? "Irregular area · Recommended" : (en ? "Irregular area · Recommended" : "不规则区域 · 推荐")}</span>
+                <span className="text-[12px] font-bold">{en ? "Draw custom area" : "自定义绘制"}</span>
+                <span className="text-[10.5px] font-normal opacity-80">{en ? "Irregular area · Recommended" : "不规则区域 · 推荐"}</span>
               </button>
               <button
                 type="button"
@@ -660,8 +660,8 @@ export default function DesignPage() {
                 onClick={startCirclePlacement}
               >
                 <span className="text-[16px] leading-none">⭕</span>
-                <span className="text-[12px] font-bold">{en ? "Circular area" : (en ? "Circular area" : "圆形区域")}</span>
-                <span className="text-[10.5px] font-normal opacity-70">{en ? "Center + radius" : (en ? "Center + radius" : "中心 + 半径")}</span>
+                <span className="text-[12px] font-bold">{en ? "Circular area" : "圆形区域"}</span>
+                <span className="text-[10.5px] font-normal opacity-70">{en ? "Center + radius" : "中心 + 半径"}</span>
               </button>
             </div>
 
@@ -689,7 +689,7 @@ export default function DesignPage() {
             ) : (
               <div className="mt-4">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold">{en ? "Area radius" : (en ? "Area radius" : "区域半径")}</label>
+                  <label className="text-xs font-semibold">{en ? "Area radius" : "区域半径"}</label>
                   <span className="tabular text-xs font-bold">
                     {Math.round(area?.radiusMeters ?? 100)} m
                   </span>
@@ -733,7 +733,7 @@ export default function DesignPage() {
               增加场景，拖动标记或点击地图放置。先到现场，再解锁任务。
             </p>
           </div>
-          <button type="button" className="btn btn-secondary h-9 min-h-0 px-3 text-xs" onClick={addScene}>{en ? "+ Add stop" : (en ? "+ Add stop" : "＋增加场景")}</button>
+          <button type="button" className="btn btn-secondary h-9 min-h-0 px-3 text-xs" onClick={addScene}>{en ? "+ Add stop" : "＋增加场景"}</button>
         </div>
 
         <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
@@ -757,20 +757,20 @@ export default function DesignPage() {
               </p>
             ) : null}
 
-                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">{en ? "Route order" : (en ? "Route order" : "路线顺序")}</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>\n\n<label className="block text-xs font-semibold">{en ? "Scene title" : (en ? "Scene title" : "场景名称")}<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
-            <label className="mt-3 block text-xs font-semibold">{en ? "Location name" : (en ? "Location name" : "现场名称")}<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
-            <label className="mt-3 block text-xs font-semibold">{en ? "Story on arrival" : (en ? "Story on arrival" : "到达后故事")}<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
-            <label className="mt-3 block text-xs font-semibold">{en ? "Arrival briefing" : (en ? "Arrival briefing" : "到达提示")}<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
+                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">{en ? "Route order" : "路线顺序"}</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>\n\n<label className="block text-xs font-semibold">{en ? "Scene title" : "场景名称"}<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
+            <label className="mt-3 block text-xs font-semibold">{en ? "Location name" : "现场名称"}<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
+            <label className="mt-3 block text-xs font-semibold">{en ? "Story on arrival" : "到达后故事"}<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
+            <label className="mt-3 block text-xs font-semibold">{en ? "Arrival briefing" : "到达提示"}<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
             <MediaEditor media={selected.media} onChange={(media) => updateScene(selected.id, { media })} />
 
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <label className="text-xs font-semibold">{en ? "Latitude" : (en ? "Latitude" : "纬度")}<input className="input mt-1" inputMode="decimal" value={selected.location.lat} onChange={(e) => updateLocation(selected.id, Number(e.target.value), selected.location.lng)} /></label>
-              <label className="text-xs font-semibold">{en ? "Longitude" : (en ? "Longitude" : "经度")}<input className="input mt-1" inputMode="decimal" value={selected.location.lng} onChange={(e) => updateLocation(selected.id, selected.location.lat, Number(e.target.value))} /></label>
+              <label className="text-xs font-semibold">{en ? "Latitude" : "纬度"}<input className="input mt-1" inputMode="decimal" value={selected.location.lat} onChange={(e) => updateLocation(selected.id, Number(e.target.value), selected.location.lng)} /></label>
+              <label className="text-xs font-semibold">{en ? "Longitude" : "经度"}<input className="input mt-1" inputMode="decimal" value={selected.location.lng} onChange={(e) => updateLocation(selected.id, selected.location.lat, Number(e.target.value))} /></label>
             </div>
 
             <div className="mt-4 rounded-xl bg-[var(--surface)] p-3">
-              <p className="text-xs font-semibold">{en ? "Challenge" : (en ? "Challenge" : "挑战")}</p>
-              <label className="mt-2 block text-xs">{en ? "Question" : (en ? "Question" : "问题")}<textarea className="input mt-1 min-h-16" value={selected.challenge?.question ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, question: e.target.value } : undefined })} /></label>
+              <p className="text-xs font-semibold">{en ? "Challenge" : "挑战"}</p>
+              <label className="mt-2 block text-xs">{en ? "Question" : "问题"}<textarea className="input mt-1 min-h-16" value={selected.challenge?.question ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, question: e.target.value } : undefined })} /></label>
               {selected.challenge?.type === "choice" ? (
                 <>
                   <div className="mt-2 grid gap-2">
@@ -784,21 +784,21 @@ export default function DesignPage() {
                   </div>
                   {selected.challenge?.reflective ? (
                     <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
-                      这是<strong>{en ? "a reflective choice" : (en ? "a reflective choice" : "反思型选择")}</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
+                      这是<strong>{en ? "a reflective choice" : "反思型选择"}</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
                     </div>
                   ) : (
-                    <label className="mt-2 block text-xs">{en ? "Correct answer" : (en ? "Correct answer" : "正确答案")}<input className="input mt-1" type="number" min={0} max={Math.max(0, (selected.challenge.options?.length ?? 1) - 1)} value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : 0} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })} /></label>
+                    <label className="mt-2 block text-xs">{en ? "Correct answer" : "正确答案"}<input className="input mt-1" type="number" min={0} max={Math.max(0, (selected.challenge.options?.length ?? 1) - 1)} value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : 0} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })} /></label>
                   )}
                 </>
               ) : null}
-              <label className="mt-2 block text-xs">{en ? "Answer explanation" : (en ? "Answer explanation" : "答案说明")}<textarea className="input mt-1 min-h-16" value={selected.challenge?.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
+              <label className="mt-2 block text-xs">{en ? "Answer explanation" : "答案说明"}<textarea className="input mt-1 min-h-16" value={selected.challenge?.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
               <MediaEditor media={selected.challenge?.media} onChange={(media) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, media } : undefined })} />
             </div>
 
             <div className="mt-4 rounded-xl bg-[var(--surface)] p-3">
-              <p className="text-xs font-semibold">{en ? "Reward" : (en ? "Reward" : "奖励")}</p>
-              <label className="mt-2 block text-xs">{en ? "Reward title" : (en ? "Reward title" : "奖励名称")}<input className="input mt-1" value={selected.reward?.title ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, title: e.target.value } : { type: "keyword", title: e.target.value, value: e.target.value } })} /></label>
-              <label className="mt-2 block text-xs">{en ? "Reward content" : (en ? "Reward content" : "奖励内容")}<input className="input mt-1" value={selected.reward?.value ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, value: e.target.value } : undefined })} /></label>
+              <p className="text-xs font-semibold">{en ? "Reward" : "奖励"}</p>
+              <label className="mt-2 block text-xs">{en ? "Reward title" : "奖励名称"}<input className="input mt-1" value={selected.reward?.title ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, title: e.target.value } : { type: "keyword", title: e.target.value, value: e.target.value } })} /></label>
+              <label className="mt-2 block text-xs">{en ? "Reward content" : "奖励内容"}<input className="input mt-1" value={selected.reward?.value ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, value: e.target.value } : undefined })} /></label>
             </div>
 
             <button type="button" className="mt-4 text-xs font-semibold text-red-700 underline" onClick={deleteSelected} disabled={working.scenes.length <= 1}>
@@ -849,15 +849,15 @@ export default function DesignPage() {
 
       {/* ------------------------------------------------ ④ 保存游戏 */}
       <section className="card mt-4 p-4">
-        <p className="text-[15px] font-bold">{en ? "④ Save game" : (en ? "④ Save game" : "④ 保存游戏")}</p>
+        <p className="text-[15px] font-bold">{en ? "④ Save game" : "④ 保存游戏"}</p>
         <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
           保存后，这台设备会把你的游戏作为本地创作版本。没有账号也能立即试玩；未来接入云端发布时，这个编辑器仍可作为内容制作入口。
         </p>
         <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-[11.5px] leading-relaxed">
-          <p className="font-semibold">{en ? "Before publishing" : (en ? "Before publishing" : "发布前请确认")}</p>
-          <p className="mt-1 text-[var(--muted)]">{en ? "Set the real start point, play area, and all stop coordinates, then playtest outdoors in a safe place. AI-generated 0,0 values are placeholders and must not be used for a live game." : (en ? "Set the real start point, play area, and all stop coordinates, then playtest outdoors in a safe place. AI-generated 0,0 values are placeholders and must not be used for a live game." : "请先设置真实起点、游戏区域和所有站点坐标，并在安全的户外试玩。AI 给出的 0,0 只是占位值，不可直接用于现场游戏。")}</p>
-          <p className="mt-2 font-semibold">{en ? "Links and QR code" : (en ? "Links and QR code" : "链接与二维码")}</p>
-          <p className="mt-1 text-[var(--muted)]">{en ? "Publishing creates a unique share link and QR code carrying this version of the game. Recipients can scan or open the link without your local save or your phone staying online. Republish and share a new link after editing; old links do not update. The QR code is generated locally in the browser, without AI services or a separate QR server." : (en ? "Publishing creates a unique share link and QR code carrying this version of the game. Recipients can scan or open the link without your local save or your phone staying online. Republish and share a new link after editing; old links do not update. The QR code is generated locally in the browser, without AI services or a separate QR server." : "发布后会生成携带本次游戏内容的独立分享链接和二维码。接收者扫码或打开链接即可加载这份游戏，不依赖你的本机存档，也不需要你的手机一直在线。修改游戏后请重新发布并分享新链接；旧链接不会自动更新。二维码在本机浏览器中生成，不调用 AI 服务或额外二维码服务器。")}</p>
+          <p className="font-semibold">{en ? "Before publishing" : "发布前请确认"}</p>
+          <p className="mt-1 text-[var(--muted)]">{en ? "Set the real start point, play area, and all stop coordinates, then playtest outdoors in a safe place. AI-generated 0,0 values are placeholders and must not be used for a live game." : "请先设置真实起点、游戏区域和所有站点坐标，并在安全的户外试玩。AI 给出的 0,0 只是占位值，不可直接用于现场游戏。"}</p>
+          <p className="mt-2 font-semibold">{en ? "Links and QR code" : "链接与二维码"}</p>
+          <p className="mt-1 text-[var(--muted)]">{en ? "Publishing creates a unique share link and QR code carrying this version of the game. Recipients can scan or open the link without your local save or your phone staying online. Republish and share a new link after editing; old links do not update. The QR code is generated locally in the browser, without AI services or a separate QR server." : "发布后会生成携带本次游戏内容的独立分享链接和二维码。接收者扫码或打开链接即可加载这份游戏，不依赖你的本机存档，也不需要你的手机一直在线。修改游戏后请重新发布并分享新链接；旧链接不会自动更新。二维码在本机浏览器中生成，不调用 AI 服务或额外二维码服务器。"}</p>
         </div>
         {areaIncomplete ? (
           <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
@@ -870,7 +870,7 @@ export default function DesignPage() {
             className="btn btn-primary btn-block"
             onClick={play}
           >
-            {saved ? (en ? "✓ Saved — play now" : "✓ 已保存，立即试玩") : (en ? "Save and play now" : "保存并立即试玩")}
+            {saved ? (en ? "✓ Saved — play now" : "✓ 已保存，立即试玩") : "保存并立即试玩"}
           </button>
           <button
             type="button"
@@ -878,37 +878,37 @@ export default function DesignPage() {
             onClick={save}
             disabled={areaIncomplete || drawingArea}
           >
-            {saved ? (en ? "✓ Saved on this device" : "✓ 已保存到本机") : (en ? "Save on this device only" : "仅保存到本机")}
+            {saved ? (en ? "✓ Saved on this device" : "✓ 已保存到本机") : "仅保存到本机"}
           </button>
           <button type="button" className="btn btn-primary btn-block" onClick={share} disabled={areaIncomplete || drawingArea || shareBusy}>
-            {shareBusy ? (en ? "Generating share link…" : "正在生成分享链接…") : (en ? "🔗 Publish and share" : "🔗 发布并分享给朋友")}
+            {shareBusy ? (en ? "Generating share link…" : "正在生成分享链接…") : "🔗 发布并分享给朋友"}
           </button>
           {shareUrl ? (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
-              <p className="text-[12px] font-semibold">{en ? "Game QR code generated" : (en ? "Game QR code generated" : "游戏二维码已生成")}</p>
+              <p className="text-[12px] font-semibold">{en ? "Game QR code generated" : "游戏二维码已生成"}</p>
               {shareUrl.length <= 2600 ? (
                 <>
                   <div ref={qrContainerRef} className="mx-auto mt-3 flex w-full max-w-[320px] justify-center rounded-xl bg-white p-3">
                     <QRCodeCanvas value={shareUrl} size={280} level="L" marginSize={2} />
                   </div>
-                  <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">{en ? "Ask friends to scan with their phone camera. For in-person use, increase screen brightness and keep the full QR code visible." : (en ? "Ask friends to scan with their phone camera. For in-person use, increase screen brightness and keep the full QR code visible." : "让朋友用手机相机或微信扫一扫。现场展示时请调亮屏幕，并保持二维码完整可见。")}</p>
-                  <button type="button" className="btn btn-primary btn-block mt-3" onClick={downloadQrCode}>{en ? "Download QR code (PNG)" : (en ? "Download QR code (PNG)" : "下载二维码图片（PNG）")}</button>
+                  <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">{en ? "Ask friends to scan with their phone camera. For in-person use, increase screen brightness and keep the full QR code visible." : "让朋友用手机相机或微信扫一扫。现场展示时请调亮屏幕，并保持二维码完整可见。"}</p>
+                  <button type="button" className="btn btn-primary btn-block mt-3" onClick={downloadQrCode}>{en ? "Download QR code (PNG)" : "下载二维码图片（PNG）"}</button>
                 </>
               ) : (
-                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">{en ? "This game's share link is long, so the QR code may be too complex. For now, copy and share the link; a short-link option may be considered later." : (en ? "This game's share link is long, so the QR code may be too complex. For now, copy and share the link; a short-link option may be considered later." : "这款游戏的分享链接较长，二维码可能过于复杂，因此暂不生成二维码。请先复制链接分享；以后可以考虑短链接方案。")}</p>
+                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">{en ? "This game's share link is long, so the QR code may be too complex. For now, copy and share the link; a short-link option may be considered later." : "这款游戏的分享链接较长，二维码可能过于复杂，因此暂不生成二维码。请先复制链接分享；以后可以考虑短链接方案。"}</p>
               )}
-              <p className="mt-3 text-[12px] font-semibold">{en ? "Share link" : (en ? "Share link" : "分享链接")}</p>
+              <p className="mt-3 text-[12px] font-semibold">{en ? "Share link" : "分享链接"}</p>
               <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <button type="button" className="btn btn-secondary" onClick={copyShareUrl}>{en ? "Copy link" : (en ? "Copy link" : "复制链接")}</button>
-                <button type="button" className="btn btn-ghost" onClick={() => setShareUrl(null)}>{en ? "Hide QR code" : (en ? "Hide QR code" : "收起二维码")}</button>
+                <button type="button" className="btn btn-secondary" onClick={copyShareUrl}>{en ? "Copy link" : "复制链接"}</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setShareUrl(null)}>{en ? "Hide QR code" : "收起二维码"}</button>
               </div>
-              <p className="mt-2 text-[10.5px] leading-relaxed text-[var(--muted)]">{en ? "This QR code and link represent the currently published game. Republish after editing; old QR codes still point to the old version." : (en ? "This QR code and link represent the currently published game. Republish after editing; old QR codes still point to the old version." : "这份二维码和链接对应当前发布的游戏内容。修改游戏后请重新发布；旧二维码仍指向旧版本。")}</p>
+              <p className="mt-2 text-[10.5px] leading-relaxed text-[var(--muted)]">{en ? "This QR code and link represent the currently published game. Republish after editing; old QR codes still point to the old version." : "这份二维码和链接对应当前发布的游戏内容。修改游戏后请重新发布；旧二维码仍指向旧版本。"}</p>
             </div>
           ) : null}
           {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}
-          <div className="grid grid-cols-2 gap-2"><button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>{en ? "Copy game JSON" : (en ? "Copy game JSON" : "复制游戏 JSON")}</button><button type="button" className="btn btn-ghost btn-block" onClick={exportPackage}>{en ? "Export game package" : (en ? "Export game package" : "导出游戏包")}</button></div>
-          <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>{en ? "Restore official sample content" : (en ? "Restore official sample content" : "恢复官方示范内容")}</button>
+          <div className="grid grid-cols-2 gap-2"><button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>{en ? "Copy game JSON" : "复制游戏 JSON"}</button><button type="button" className="btn btn-ghost btn-block" onClick={exportPackage}>{en ? "Export game package" : "导出游戏包"}</button></div>
+          <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>{en ? "Restore official sample content" : "恢复官方示范内容"}</button>
         </div>
       </section>
     </Screen>
