@@ -342,42 +342,42 @@ export default function DesignPage() {
     try {
       if (!packageReport?.canPlaytest) {
         const firstError = packageReport?.issues.find((issue) => issue.severity === "error");
-        throw new Error(firstError ? `请先修复游戏问题：${firstError.message}` : "请先完成游戏校验");
+        throw new Error(firstError ? `请先修复游戏问题：${firstError.message}` : (en ? "Please validate the game first" : "请先完成游戏校验"));
       }
       const configured = (point: { lat: number; lng: number } | undefined) =>
         Boolean(point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && !(point.lat === 0 && point.lng === 0));
       const missing: string[] = [];
-      if (!configured(working.startLocation)) missing.push("真实起点");
+      if (!configured(working.startLocation)) missing.push((en ? "real start point" : "真实起点"));
       if (!working.huntArea) {
         missing.push("游戏区域");
       } else if (working.huntArea.shape === "polygon") {
         if ((working.huntArea.points?.length ?? 0) < MIN_POLYGON_POINTS) missing.push((en ? "complete play-area boundary" : "完整的游戏区域边界"));
         else if (working.huntArea.points?.some((point) => !configured(point))) missing.push((en ? "real coordinates for the play-area boundary" : "游戏区域边界上的真实坐标"));
       } else if (!configured(working.huntArea.center)) {
-        missing.push("游戏区域中心");
+        missing.push((en ? "play-area center" : "游戏区域中心"));
       }
       if (working.scenes.some((scene) => !configured(scene.location))) missing.push((en ? "real GPS coordinates for all stops" : "所有站点的真实 GPS 坐标"));
-      if (missing.length) throw new Error("暂不能发布，请先设置：" + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。");
-      if (!save()) throw new Error("游戏未能保存到本机，请检查浏览器存储空间后重试。");
+      if (missing.length) throw new Error((en ? "Cannot publish yet. Please set: " : "暂不能发布，请先设置：") + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。");
+      if (!save()) throw new Error((en ? "The game could not be saved on this device. Check browser storage and try again." : "游戏未能保存到本机，请检查浏览器存储空间后重试。"));
       const url = await createGameShareUrl(working);
       setShareUrl(url);
       if (navigator.share) {
         try {
-          await navigator.share({ title: working.title, text: "邀请你来玩：" + working.title, url });
-          setShareMessage("已打开系统分享面板；也可以在下方展示二维码或下载二维码图片。");
+          await navigator.share({ title: working.title, text: (en ? "You're invited to play: " : "邀请你来玩：") + working.title, url });
+          setShareMessage((en ? "The system share panel is open. You can also display or download the QR code below." : "已打开系统分享面板；也可以在下方展示二维码或下载二维码图片。"));
         } catch {
           // User cancelled native sharing; the QR code and link remain available.
         }
       } else {
         try {
           await navigator.clipboard.writeText(url);
-          setShareMessage("分享链接已复制；也可以在下方展示二维码或下载二维码图片。");
+          setShareMessage((en ? "Share link copied. You can also display or download the QR code below." : "分享链接已复制；也可以在下方展示二维码或下载二维码图片。"));
         } catch {
-          setShareMessage("分享链接已生成，请复制链接或使用下方二维码。");
+          setShareMessage((en ? "Share link generated. Copy it or use the QR code below." : "分享链接已生成，请复制链接或使用下方二维码。"));
         }
       }
     } catch (error) {
-      setShareMessage(error instanceof Error ? error.message : "生成分享链接失败");
+      setShareMessage(error instanceof Error ? error.message : (en ? "Failed to generate share link" : "生成分享链接失败"));
     } finally {
       setShareBusy(false);
     }
@@ -387,16 +387,16 @@ export default function DesignPage() {
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setShareMessage("分享链接已复制，可以发给微信好友或群。");
+      setShareMessage((en ? "Share link copied. You can send it to friends or a group." : "分享链接已复制，可以发给微信好友或群。"));
     } catch {
-      setShareMessage("复制失败；请长按或选择下方链接复制。");
+      setShareMessage((en ? "Copy failed. Long-press or select the link below to copy it." : "复制失败；请长按或选择下方链接复制。"));
     }
   };
 
   const downloadQrCode = () => {
     const canvas = qrContainerRef.current?.querySelector("canvas");
     if (!canvas || !shareUrl) {
-      setShareMessage("二维码尚未准备好，请稍后重试。");
+      setShareMessage((en ? "QR code is not ready yet. Please try again." : "二维码尚未准备好，请稍后重试。"));
       return;
     }
     try {
@@ -404,9 +404,9 @@ export default function DesignPage() {
       link.download = `${(working?.title || "MOS-Scene-Hunt").replace(/[^\\w-]+/g, "-")}-二维码.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
-      setShareMessage("二维码 PNG 已生成；请在浏览器下载记录或文件中查看，需要时可再保存到相册。");
+      setShareMessage((en ? "QR code PNG generated. Find it in browser downloads or files, then save it to your photos if needed." : "二维码 PNG 已生成；请在浏览器下载记录或文件中查看，需要时可再保存到相册。"));
     } catch {
-      setShareMessage("无法保存二维码图片，请尝试截图保存。");
+      setShareMessage((en ? "Could not save the QR image. Try taking a screenshot." : "无法保存二维码图片，请尝试截图保存。"));
     }
   };
 
@@ -481,10 +481,10 @@ export default function DesignPage() {
       {/* ------------------------------------------------ 步骤导航 */}
       <ol className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
-          { n: "①", label: "画游戏区域", done: Boolean(area) && !areaIncomplete && !drawingArea },
+          { n: "①", label: (en ? "Draw play area" : "画游戏区域"), done: Boolean(area) && !areaIncomplete && !drawingArea },
           { n: "②", label: en ? "Place stops" : "放置场景", done: working.scenes.length > 0 && !drawingArea },
           { n: "③", label: en ? "Set trigger radius" : "设置触发距离", done: working.scenes.every((s) => s.location.radius) },
-          { n: "④", label: "保存游戏", done: saved },
+          { n: "④", label: (en ? "Save game" : "保存游戏"), done: saved },
         ].map((step) => (
           <li
             key={step.n}
@@ -586,7 +586,7 @@ export default function DesignPage() {
         {drawingArea ? (
           <>
             <div className="mt-3 rounded-xl border border-dashed border-[var(--accent)] bg-[var(--surface)] p-3">
-              <p className="text-[12px] font-semibold">{en ? "Click the boundary points of the play area on the map" : "请在地图上依次点击游戏区域的边界点"}</p>
+              <p className="text-[12px] font-semibold">{en ? "Click the boundary points of the play area on the map" : (en ? "Click the play-area boundary points on the map in order" : "请在地图上依次点击游戏区域的边界点")}</p>
               <p className="mt-1 font-mono text-[11px] leading-relaxed text-[var(--muted)]">
                 ●──────●<br />
                 /&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br />
@@ -598,7 +598,7 @@ export default function DesignPage() {
               <p className="text-[11.5px] text-[var(--muted)]">
                 {polygonPoints.length < MIN_POLYGON_POINTS
                   ? `至少 ${MIN_POLYGON_POINTS} 个点才能完成。`
-                  : "可以点「完成区域」闭合形状。"}
+                  : (en ? "Select “Finish area” to close the shape." : "可以点「完成区域」闭合形状。")}
               </p>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
