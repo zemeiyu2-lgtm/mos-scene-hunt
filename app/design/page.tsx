@@ -479,7 +479,7 @@ export default function DesignPage() {
       headerRight={<Link href="/" className="btn btn-ghost h-9 min-h-0 px-3">{en ? "Back" : "返回"}</Link>}
     >
       {/* ------------------------------------------------ 步骤导航 */}
-      <ol className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <ol className="creator-step-nav mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
           { n: "①", label: (en ? "Draw play area" : "画游戏区域"), done: Boolean(area) && !areaIncomplete && !drawingArea },
           { n: "②", label: en ? "Place stops" : "放置场景", done: working.scenes.length > 0 && !drawingArea },
@@ -557,7 +557,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ 空间摘要 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-spatial-card">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[15px] font-bold">{en ? "Spatial overview" : "空间设计总览"}</p>
@@ -575,7 +575,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ ① 选择游戏区域 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-stage-card creator-area-stage">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[15px] font-bold">{en ? "① Choose play area" : "① 选择游戏区域"}</p>
@@ -725,7 +725,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ ② 放置场景 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-stage-card creator-stops-stage">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[15px] font-bold">{en ? "② Place stops" : "② 放置场景"}</p>
@@ -809,7 +809,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ ③ 设置触发距离 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-stage-card creator-radius-stage">
         <p className="text-[15px] font-bold">{en ? "③ Set trigger radius" : "③ 设置触发距离"}</p>
         <p className="mt-1 text-[11.5px] text-[var(--muted)]">
           {en ? "Each stop’s unlock radius. 15–30 m is usually more reliable given real-world GPS error." : "每个场景的解锁半径。15–30m 在真实 GPS 误差下最稳。"}
@@ -848,7 +848,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ ④ 保存游戏 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-stage-card creator-save-stage">
         <p className="text-[15px] font-bold">{en ? "④ Save game" : "④ 保存游戏"}</p>
         <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
           {en ? "Saving keeps a creator copy on this device. You can playtest without an account; this editor remains the authoring entry point if cloud publishing is added later." : "保存后，这台设备会把你的游戏作为本地创作版本。没有账号也能立即试玩；未来接入云端发布时，这个编辑器仍可作为内容制作入口。"}
