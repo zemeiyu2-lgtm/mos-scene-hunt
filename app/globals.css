@@ -1156,3 +1156,84 @@ textarea,
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Creator guide — readable instructional hierarchy on small screens. */
+.how-to-hero-card {
+  border-top: 3px solid var(--accent-deep);
+  background: linear-gradient(145deg, #ffffff 0%, #f5fbf8 100%);
+}
+.how-to-steps-card,
+.how-to-prompt-card,
+.how-to-safety-card,
+.how-to-sharing-card,
+.how-to-start-card {
+  min-width: 0;
+}
+.how-to-step-list > li {
+  padding-left: 2px;
+  text-wrap: pretty;
+}
+.how-to-step-list > li b {
+  line-height: 1.5;
+}
+.how-to-prompt-card {
+  border-color: rgba(8, 118, 95, 0.22);
+}
+.how-to-prompt-heading {
+  align-items: center;
+}
+.how-to-prompt-heading > div {
+  min-width: 0;
+}
+.how-to-prompt-heading > button {
+  flex-shrink: 0;
+}
+.how-to-prompt-text {
+  border: 1px solid rgba(20, 37, 31, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overscroll-behavior: contain;
+}
+.how-to-safety-card {
+  border-left: 3px solid #d97706;
+}
+.how-to-sharing-card {
+  border-left: 3px solid var(--accent);
+}
+.how-to-start-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f7fbf9 100%);
+}
+.how-to-start-card .btn {
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.35;
+  padding-block: 10px;
+}
+@media (max-width: 360px) {
+  .how-to-hero-card,
+  .how-to-steps-card,
+  .how-to-prompt-card,
+  .how-to-safety-card,
+  .how-to-sharing-card,
+  .how-to-start-card {
+    padding: 14px;
+  }
+  .how-to-prompt-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .how-to-prompt-heading > button {
+    width: 100%;
+  }
+  .how-to-prompt-text {
+    max-height: 360px;
+    padding: 10px;
+    font-size: 11px;
+  }
+  .how-to-start-card .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .how-to-start-card .sm\\:col-span-2 {
+    grid-column: auto;
+  }
+}
