@@ -401,7 +401,7 @@ export default function DesignPage() {
     }
     try {
       const link = document.createElement("a");
-      link.download = `${(working?.title || "MOS-Scene-Hunt").replace(/[^\\w-]+/g, "-")}-${en ? "QR-code" : "二维码"}.png`;
+      link.download = `${(working?.title || "MOS-Scene-Hunt").replace(/[^\\w-]+/g, "-")}-二维码.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
       setShareMessage((en ? "QR code PNG generated. Find it in browser downloads or files, then save it to your photos if needed." : "二维码 PNG 已生成；请在浏览器下载记录或文件中查看，需要时可再保存到相册。"));
