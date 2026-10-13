@@ -128,7 +128,7 @@ export default function QuestPage() {
                     ) : null}
 
                     {!isLocked ? (
-                      <div className="mt-3 flex gap-2">
+                      <div className="quest-location-actions mt-3 flex gap-2">
                         {isDone ? (
                           <>
                             <Link
