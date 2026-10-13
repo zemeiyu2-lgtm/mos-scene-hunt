@@ -482,8 +482,8 @@ export default function DesignPage() {
       <ol className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
           { n: "①", label: "画游戏区域", done: Boolean(area) && !areaIncomplete && !drawingArea },
-          { n: "②", label: "放置场景", done: working.scenes.length > 0 && !drawingArea },
-          { n: "③", label: "设置触发距离", done: working.scenes.every((s) => s.location.radius) },
+          { n: "②", label: en ? "Place stops" : "放置场景", done: working.scenes.length > 0 && !drawingArea },
+          { n: "③", label: en ? "Set trigger radius" : "设置触发距离", done: working.scenes.every((s) => s.location.radius) },
           { n: "④", label: "保存游戏", done: saved },
         ].map((step) => (
           <li
@@ -571,7 +571,7 @@ export default function DesignPage() {
           <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(area?.radiusMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Area size" : "区域尺度"}</div></div>
         </div>
         {working.scenes.length > 1 ? <div className="mt-3 overflow-x-auto pb-1"><div className="flex min-w-max items-center gap-1">{working.scenes.map((scene, i) => <span key={scene.id} className="flex items-center gap-1">{i > 0 ? <span className="text-[var(--muted)]">{en ? "→" : "→"}</span> : null}<button type="button" className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${scene.id === selected?.id ? "border-[var(--accent)] bg-[var(--accent)]/10" : "border-[var(--line)]"}`} onClick={() => setSelectedId(scene.id)}>{i + 1}. {scene.title}</button></span>)}</div></div> : null}
-        {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}><strong>{issue.severity === "error" ? (en ? "Needs fixing: " : "需要修正：") : "空间提示："}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-semibold text-emerald-800">{en ? "Spatial check passed. You can continue designing." : "空间检查通过，可以继续设计。"}</p>}
+        {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}><strong>{issue.severity === "error" ? (en ? "Needs fixing: " : "需要修正：") : en ? "Spatial note: " : "空间提示："}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-semibold text-emerald-800">{en ? "Spatial check passed. You can continue designing." : "空间检查通过，可以继续设计。"}</p>}
       </section>
 
       {/* ------------------------------------------------ ① 选择游戏区域 */}
@@ -594,7 +594,7 @@ export default function DesignPage() {
                 \&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/<br />
                 ●──────●
               </p>
-              <p className="mt-2 text-[13px] font-bold">{en ? "{en ? `Selected ${polygonPoints.length} points` : `已选择 ${polygonPoints.length} 个点`}" : "已选择 {polygonPoints.length} 个点"}</p>
+              <p className="mt-2 text-[13px] font-bold">{en ? `Selected ${polygonPoints.length} points` : `已选择 ${polygonPoints.length} 个点`}</p>
               <p className="text-[11.5px] text-[var(--muted)]">
                 {polygonPoints.length < MIN_POLYGON_POINTS
                   ? `至少 ${MIN_POLYGON_POINTS} 个点才能完成。`
@@ -757,7 +757,7 @@ export default function DesignPage() {
               </p>
             ) : null}
 
-                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">{en ? "Route order" : "路线顺序"}</p><p className="text-[13px] font-bold">{en ? "{en ? `Stop ${working.scenes.findIndex((s) => s.id === selected.id) + 1} of ${working.scenes.length}` : `第 ${working.scenes.findIndex((s) => s.id === selected.id) + 1} / ${working.scenes.length} 站`}" : "第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站"}</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>{en ? "← Move up" : "← 上移"}</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>{en ? "Move down →" : "下移 →"}</button></div></div>\n\n<label className="block text-xs font-semibold">{en ? "Scene title" : "场景名称"}<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
+                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">{en ? "Route order" : "路线顺序"}</p><p className="text-[13px] font-bold">{en ? `Stop ${working.scenes.findIndex((s) => s.id === selected.id) + 1} of ${working.scenes.length}` : `第 ${working.scenes.findIndex((s) => s.id === selected.id) + 1} / ${working.scenes.length} 站`}</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>{en ? "← Move up" : "← 上移"}</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>{en ? "Move down →" : "下移 →"}</button></div></div>\n\n<label className="block text-xs font-semibold">{en ? "Scene title" : "场景名称"}<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">{en ? "Location name" : "现场名称"}<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
             <label className="mt-3 block text-xs font-semibold">{en ? "Story on arrival" : "到达后故事"}<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">{en ? "Arrival briefing" : "到达提示"}<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
@@ -784,7 +784,7 @@ export default function DesignPage() {
                   </div>
                   {selected.challenge?.reflective ? (
                     <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
-                      这是<strong>{en ? "a reflective choice" : "反思型选择"}</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
+                      {en ? <>This is a <strong>reflective choice</strong>: there is no standard answer. Players complete it by making an authentic choice; it is not used for ranking or testing.</> : <>这是<strong>反思型选择</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。</>}
                     </div>
                   ) : (
                     <label className="mt-2 block text-xs">{en ? "Correct answer" : "正确答案"}<input className="input mt-1" type="number" min={0} max={Math.max(0, (selected.challenge.options?.length ?? 1) - 1)} value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : 0} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })} /></label>
