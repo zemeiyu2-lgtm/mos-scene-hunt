@@ -112,7 +112,7 @@ body {
 
 .btn-primary {
   background: var(--accent);
-  color: #2b1a00;
+  color: #ffffff;
   box-shadow: 0 6px 18px -10px rgba(8, 118, 95, 0.38);
 }
 
@@ -161,7 +161,7 @@ body {
 
 .input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.18);
+  box-shadow: 0 0 0 3px rgba(16, 155, 129, 0.18);
 }
 
 /* Bottom sheet used by the simulator and the inventory. */
