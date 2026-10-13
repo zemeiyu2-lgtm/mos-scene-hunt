@@ -58,7 +58,7 @@ const STEPS: DemoStep[] = [
     eyebrow: "第 6 幕 · 阅读与观察",
     title: "地点解锁后，内容才真正开始",
     narration: "先读一个简短的引导，再观察身边的环境，最后回答一个与地点有关的问题。游戏不是只让你在地图上走点。",
-    distance: (en ? "Stop 1 · Calling" : "第一站 · 呼召"),
+    distance: "第一站 · 呼召",
     phase: "场景已解锁",
     station: 1,
   },
@@ -143,18 +143,18 @@ export default function TutorialPage() {
         <Link href="/" className="inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-sm font-semibold text-[var(--muted)]">
           <span aria-hidden="true">←</span> 返回首页
         </Link>
-        <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">{en ? "Guided tour" : (en ? "Guided tour" : "新手演示")}</span>
+        <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">{en ? "Guided tour" : "新手演示"}</span>
       </header>
 
       <section className="mb-4">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">MOS SCENE HUNT · GUIDED TOUR</p>
-        <h1 className="mt-2 text-2xl font-extrabold leading-tight">{en ? "Take a guided tour of BSOP's sample game" : (en ? "Take a guided tour of BSOP's sample game" : "跟着 BSOP 范本，走一遍游戏")}</h1>
-        <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{en ? "Watch automatically, or pause, review, and move through each step manually." : (en ? "Watch automatically, or pause, review, and move through each step manually." : "像录屏一样自动播放，也可以随时暂停、回看和手动推进。")}</p>
+        <h1 className="mt-2 text-2xl font-extrabold leading-tight">{en ? "Take a guided tour of BSOP's sample game" : "跟着 BSOP 范本，走一遍游戏"}</h1>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{en ? "Watch automatically, or pause, review, and move through each step manually." : "像录屏一样自动播放，也可以随时暂停、回看和手动推进。"}</p>
       </section>
 
       <div role="status" aria-live="polite" className="mb-3 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950">
         <span className="mt-0.5" aria-hidden="true">ⓘ</span>
-        <span><strong>{en ? "Simulated demo — no real GPS." : (en ? "Simulated demo — no real GPS." : "模拟演示，不使用真实 GPS。")}</strong>{en ? "Map positions, distances, and discovery feedback are preset examples, not measured BSOP results. Your real game progress is not changed." : (en ? "Map positions, distances, and discovery feedback are preset examples, not measured BSOP results. Your real game progress is not changed." : "地图位置、距离与到达反馈均为预设演示数据，不是 BSOP 实测结果，也不会改动真实游戏进度。")}</span>
+        <span><strong>{en ? "Simulated demo — no real GPS." : "模拟演示，不使用真实 GPS。"}</strong>{en ? "Map positions, distances, and discovery feedback are preset examples, not measured BSOP results. Your real game progress is not changed." : "地图位置、距离与到达反馈均为预设演示数据，不是 BSOP 实测结果，也不会改动真实游戏进度。"}</span>
       </div>
 
       <section className="overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--card)] shadow-sm">
@@ -170,22 +170,22 @@ export default function TutorialPage() {
           </div>
           <div className="relative z-10 flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-200">{en ? "BSOP · SAMPLE ROUTE" : (en ? "BSOP · SAMPLE ROUTE" : "BSOP · 示例路线")}</p>
-              <p className="mt-1 text-lg font-extrabold">{en ? "Seminary's Eight Secrets" : (en ? "Seminary's Eight Secrets" : "神学院的八个秘密")}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-200">{en ? "BSOP · SAMPLE ROUTE" : "BSOP · 示例路线"}</p>
+              <p className="mt-1 text-lg font-extrabold">{en ? "Seminary's Eight Secrets" : "神学院的八个秘密"}</p>
             </div>
             <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-semibold">{current.phase}</span>
           </div>
 
           {isMapScene ? (
             <div className="relative z-10 mt-3 h-[190px] overflow-hidden rounded-2xl border border-white/10 bg-[#173b4a]/65">
-              <svg viewBox="0 0 320 190" className="absolute inset-0 h-full w-full" aria-label=(en ? "Illustrative route, not a real campus map" : "示意路线图，非真实校园地图")>
+              <svg viewBox="0 0 320 190" className="absolute inset-0 h-full w-full" aria-label={en ? "Illustrative route, not a real campus map" : "示意路线图，非真实校园地图"}>
                 <path d="M25 155 C60 130 78 110 110 96 S170 55 210 53 S260 50 290 25" fill="none" stroke="#f5d77e" strokeWidth="4" strokeLinecap="round" strokeDasharray="6 7" />
                 <path d="M10 40 L95 65 L145 20 M130 170 L185 120 L300 140" fill="none" stroke="#9ac1bc" strokeWidth="12" strokeLinecap="round" opacity=".35" />
                 <circle cx="210" cy="53" r="22" fill="#f5d77e" opacity=".16" />
                 <circle cx="210" cy="53" r="12" fill="#f5d77e" opacity=".28" />
                 <circle cx="210" cy="53" r="5" fill="#f5d77e" />
-                <text x="220" y="45" fill="#fff3c7" fontSize="10" fontWeight="700">{en ? "Stop 1" : (en ? "Stop 1" : "第一站")}</text>
-                <text x="220" y="58" fill="#ffffff" fontSize="8">{en ? "Sample target" : (en ? "Sample target" : "示意目标")}</text>
+                <text x="220" y="45" fill="#fff3c7" fontSize="10" fontWeight="700">{en ? "Stop 1" : "第一站"}</text>
+                <text x="220" y="58" fill="#ffffff" fontSize="8">{en ? "Sample target" : "示意目标"}</text>
               </svg>
               <div className="absolute z-10 transition-all duration-1000 ease-in-out" style={{ left: marker.left, top: marker.top, transform: "translate(-50%, -50%)" }}>
                 <div className="grid h-9 w-9 place-items-center rounded-full border-[3px] border-white bg-teal-300 text-sm font-black text-[#12323e] shadow-lg">你</div>
@@ -194,13 +194,13 @@ export default function TutorialPage() {
               <div className="absolute bottom-2 left-2 rounded-lg bg-black/35 px-2.5 py-1.5 text-[10px] font-semibold backdrop-blur">
                 {step >= 4 ? (en ? "✦ Stop 1 discovered" : "✦ 发现第一站") : `↗ 距离目标 ${current.distance}`}
               </div>
-              <div className="absolute bottom-2 right-2 rounded-lg bg-black/35 px-2.5 py-1.5 text-[9px] text-white/80">{en ? "Illustrative map · not measured" : (en ? "Illustrative map · not measured" : "示意地图 · 非实测")}</div>
+              <div className="absolute bottom-2 right-2 rounded-lg bg-black/35 px-2.5 py-1.5 text-[9px] text-white/80">{en ? "Illustrative map · not measured" : "示意地图 · 非实测"}</div>
             </div>
           ) : (
             <div className="relative z-10 mt-5 flex min-h-[190px] flex-col justify-center rounded-2xl border border-white/10 bg-white/[0.06] p-5">
               <div className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-amber-300 text-2xl text-[#102b3a]">✦</div>
-              <p className="text-xs font-semibold text-teal-100">{en ? "Eight stops · Real places · Real action" : (en ? "Eight stops · Real places · Real action" : "八站探索 · 真实地点 · 实际行动")}</p>
-              <p className="mt-2 max-w-xs text-2xl font-extrabold leading-tight">{en ? "Discover something new with every step." : (en ? "Discover something new with every step." : "让每一步移动，都发现新的意义。")}</p>
+              <p className="text-xs font-semibold text-teal-100">{en ? "Eight stops · Real places · Real action" : "八站探索 · 真实地点 · 实际行动"}</p>
+              <p className="mt-2 max-w-xs text-2xl font-extrabold leading-tight">{en ? "Discover something new with every step." : "让每一步移动，都发现新的意义。"}</p>
             </div>
           )}
         </div>
@@ -215,16 +215,16 @@ export default function TutorialPage() {
 
           {step >= 5 && step < 7 ? (
             <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
-              <p className="text-xs font-bold text-[var(--muted)]">{en ? "Stop 1 · Calling" : (en ? "Stop 1 · Calling" : "第一站 · 呼召")}</p>
-              <p className="mt-2 text-base font-bold">{en ? "Why did you come here?" : (en ? "Why did you come here?" : "你为什么来到这里？")}</p>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{en ? "Observe your surroundings. Then consider: what do you hope will change through this journey?" : (en ? "Observe your surroundings. Then consider: what do you hope will change through this journey?" : "先观察周围，再想一想：这段学习旅程，你最期待被改变的是什么？")}</p>
-              {step === 6 ? <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800">{en ? "✓ Keyword earned: Calling" : (en ? "✓ Keyword earned: Calling" : "✓ 获得关键词：呼召")}</div> : null}
+              <p className="text-xs font-bold text-[var(--muted)]">{en ? "Stop 1 · Calling" : "第一站 · 呼召"}</p>
+              <p className="mt-2 text-base font-bold">{en ? "Why did you come here?" : "你为什么来到这里？"}</p>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{en ? "Observe your surroundings. Then consider: what do you hope will change through this journey?" : "先观察周围，再想一想：这段学习旅程，你最期待被改变的是什么？"}</p>
+              {step === 6 ? <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800">{en ? "✓ Keyword earned: Calling" : "✓ 获得关键词：呼召"}</div> : null}
             </div>
           ) : null}
 
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-[var(--muted)]">
-              <span>{en ? "Tour progress" : (en ? "Tour progress" : "演示进度")}</span><span>{progress}%</span>
+              <span>{en ? "Tour progress" : "演示进度"}</span><span>{progress}%</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-[var(--line)]">
               <div className="h-full rounded-full bg-[var(--accent)] transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -233,7 +233,7 @@ export default function TutorialPage() {
 
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setPlaying((value) => !value)} className="btn btn-primary min-h-11">
-              {playing ? (en ? "Ⅱ Pause tour" : "Ⅱ 暂停演示") : step === steps.length - 1 ? (en ? "▶ Resume playback" : "▶ 继续播放") : (en ? "▶ Continue tour" : "▶ 继续演示")}
+              {playing ? (en ? "Ⅱ Pause tour" : "Ⅱ 暂停演示") : step === steps.length - 1 ? (en ? "▶ Resume playback" : "▶ 继续播放") : "▶ 继续演示"}
             </button>
             <button type="button" onClick={next} disabled={step === steps.length - 1} className="btn btn-secondary min-h-11 disabled:cursor-not-allowed disabled:opacity-40">
               下一幕 →
@@ -242,7 +242,7 @@ export default function TutorialPage() {
               ← 上一幕
             </button>
             <button type="button" onClick={() => setSlow((value) => !value)} className="btn btn-secondary min-h-11">
-              {slow ? (en ? "Use normal speed" : "切换正常速度") : (en ? "Slow narration" : "放慢讲解")}
+              {slow ? (en ? "Use normal speed" : "切换正常速度") : "放慢讲解"}
             </button>
           </div>
           <button type="button" onClick={restart} className="mt-2 min-h-10 w-full rounded-xl px-3 text-sm font-semibold text-[var(--muted)] underline underline-offset-4">
@@ -253,15 +253,15 @@ export default function TutorialPage() {
 
       {step === steps.length - 1 ? (
         <section className="mt-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950">
-          <p className="font-extrabold">{en ? "Tour complete — ready to play?" : (en ? "Tour complete — ready to play?" : "演示结束，准备好开始了吗？")}</p>
-          <p className="mt-1 text-sm leading-relaxed">{en ? "In a real game, your device provides location and distance. Use it outdoors and walk safely." : (en ? "In a real game, your device provides location and distance. Use it outdoors and walk safely." : "进入真实游戏后，位置和距离将由你的设备定位提供；请在户外安全行走时使用。")}</p>
+          <p className="font-extrabold">{en ? "Tour complete — ready to play?" : "演示结束，准备好开始了吗？"}</p>
+          <p className="mt-1 text-sm leading-relaxed">{en ? "In a real game, your device provides location and distance. Use it outdoors and walk safely." : "进入真实游戏后，位置和距离将由你的设备定位提供；请在户外安全行走时使用。"}</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <Link href="/select?game=bsop-eight-secrets" className="btn btn-primary min-h-11 flex-1">{en ? "Play BSOP sample" : (en ? "Play BSOP sample" : "进入 BSOP 范本")}</Link>
-            <Link href="/create" className="btn btn-secondary min-h-11 flex-1">{en ? "Create a game" : (en ? "Create a game" : "开始创作游戏")}</Link>
+            <Link href="/select?game=bsop-eight-secrets" className="btn btn-primary min-h-11 flex-1">{en ? "Play BSOP sample" : "进入 BSOP 范本"}</Link>
+            <Link href="/create" className="btn btn-secondary min-h-11 flex-1">{en ? "Create a game" : "开始创作游戏"}</Link>
           </div>
         </section>
       ) : (
-        <p className="mt-4 text-center text-xs leading-relaxed text-[var(--muted)]">{en ? "Tip: Pause autoplay to read each step. This demo never requests location permission." : (en ? "Tip: Pause autoplay to read each step. This demo never requests location permission." : "提示：你可以暂停自动播放，慢慢阅读每一步。演示不会申请定位权限。")}</p>
+        <p className="mt-4 text-center text-xs leading-relaxed text-[var(--muted)]">{en ? "Tip: Pause autoplay to read each step. This demo never requests location permission." : "提示：你可以暂停自动播放，慢慢阅读每一步。演示不会申请定位权限。"}</p>
       )}
     </main>
   );
