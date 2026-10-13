@@ -111,13 +111,13 @@ body {
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-deep);
   color: #ffffff;
   box-shadow: 0 6px 18px -10px rgba(8, 118, 95, 0.38);
 }
 
 .btn-primary:active:not(:disabled) {
-  background: var(--accent-deep);
+  background: #065b49;
 }
 
 .btn-secondary {
