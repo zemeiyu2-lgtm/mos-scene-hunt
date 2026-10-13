@@ -12,6 +12,7 @@ import type { SceneStatus } from "@/lib/game/state";
 import { formatDistance } from "@/lib/location";
 import { SoundToggle } from "@/components/sound";
 import { useUiLocale } from "@/components/ui-locale-provider";
+import { useVisualTheme, VISUAL_THEME_OPTIONS } from "@/components/visual-theme-provider";
 
 /* ------------------------------------------------------------------ */
 /* Status presentation                                                */
@@ -100,7 +101,7 @@ export function DistanceReadout({
 /* Structure                                                          */
 /* ------------------------------------------------------------------ */
 
-export function Screen({
+function VisualThemeSelect() {\n  const { locale } = useUiLocale();\n  const { theme, setTheme } = useVisualTheme();\n  const labels: Record<string, string> = locale === "zh-CN"\n    ? { "natural-expedition": "自然探索", "story-journal": "故事手记", "city-detective": "城市侦探" }\n    : { "natural-expedition": "Nature", "story-journal": "Journal", "city-detective": "Detective" };\n  return (\n    <label className="sr-only">\n      {locale === "zh-CN" ? "视觉主题" : "Visual theme"}\n      <select\n        aria-label={locale === "zh-CN" ? "视觉主题" : "Visual theme"}\n        className="visual-theme-select"\n        value={theme}\n        onChange={(event) => setTheme(event.target.value as (typeof VISUAL_THEME_OPTIONS)[number]["id"])}\n      >\n        {VISUAL_THEME_OPTIONS.map((option) => (\n          <option key={option.id} value={option.id}>{labels[option.id]}</option>\n        ))}\n      </select>\n    </label>\n  );\n}\n\nexport function Screen({
   title,
   subtitle,
   children,
@@ -123,7 +124,7 @@ export function Screen({
               <p className="mt-0.5 text-[13px] leading-snug text-[var(--muted)]">{subtitle}</p>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5"><SoundToggle />{headerRight}</div>
+          <div className="flex shrink-0 items-center gap-1.5"><VisualThemeSelect /><SoundToggle />{headerRight}</div>
         </div>
       </header>
       <div className="scroll-area">
