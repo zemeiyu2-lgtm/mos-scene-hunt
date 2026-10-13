@@ -1122,3 +1122,37 @@ body {
     padding: 14px;
   }
 }
+
+
+/* Accessibility finish — honor system motion preferences and prevent mobile overflow. */
+html {
+  background: var(--surface, #f5f8f6);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  min-width: 320px;
+  overflow-wrap: anywhere;
+}
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  -webkit-tap-highlight-color: rgba(16, 155, 129, 0.12);
+}
+:where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid rgba(8, 118, 95, 0.72);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
