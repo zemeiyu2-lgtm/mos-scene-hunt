@@ -235,7 +235,7 @@ export default function DesignPage() {
         center: { lat, lng },
         radiusMeters: working.huntArea?.radiusMeters ?? 100,
         shape: "circle",
-        name: working.huntArea?.name ?? "圆形游戏区域",
+        name: working.huntArea?.name ?? (en ? "Circular play area" : "圆形游戏区域"),
       },
     });
   };
@@ -349,7 +349,7 @@ export default function DesignPage() {
       const missing: string[] = [];
       if (!configured(working.startLocation)) missing.push((en ? "real start point" : "真实起点"));
       if (!working.huntArea) {
-        missing.push("游戏区域");
+        missing.push(en ? "play area" : "游戏区域");
       } else if (working.huntArea.shape === "polygon") {
         if ((working.huntArea.points?.length ?? 0) < MIN_POLYGON_POINTS) missing.push((en ? "complete play-area boundary" : "完整的游戏区域边界"));
         else if (working.huntArea.points?.some((point) => !configured(point))) missing.push((en ? "real coordinates for the play-area boundary" : "游戏区域边界上的真实坐标"));
@@ -401,7 +401,7 @@ export default function DesignPage() {
     }
     try {
       const link = document.createElement("a");
-      link.download = `${(working?.title || "MOS-Scene-Hunt").replace(/[^\\w-]+/g, "-")}-二维码.png`;
+      link.download = `${(working?.title || "MOS-Scene-Hunt").replace(/[^\\w-]+/g, "-")}-${en ? "QR-code" : "二维码"}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
       setShareMessage((en ? "QR code PNG generated. Find it in browser downloads or files, then save it to your photos if needed." : "二维码 PNG 已生成；请在浏览器下载记录或文件中查看，需要时可再保存到相册。"));
@@ -608,7 +608,7 @@ export default function DesignPage() {
                 onClick={finishPolygon}
                 disabled={polygonPoints.length < MIN_POLYGON_POINTS}
               >
-                完成区域
+                {en ? "Finish area" : "完成区域"}
               </button>
               <button
                 type="button"
@@ -616,13 +616,13 @@ export default function DesignPage() {
                 onClick={undoPolygonPoint}
                 disabled={polygonPoints.length === 0}
               >
-                撤销上一点
+                {en ? "Undo last point" : "撤销上一点"}
               </button>
               <button type="button" className="btn btn-ghost" onClick={restartPolygon}>
-                重新绘制
+                {en ? "Redraw" : "重新绘制"}
               </button>
               <button type="button" className="btn btn-ghost" onClick={cancelPolygon}>
-                取消
+                {en ? "Cancel" : "取消"}
               </button>
             </div>
           </>
@@ -631,7 +631,7 @@ export default function DesignPage() {
             <div className="mt-3 rounded-xl border border-dashed border-[var(--accent)] bg-[var(--surface)] p-3">
               <p className="text-[12px] font-semibold">{en ? "Click the map to set the circle center" : "点击地图设置圆心"}</p>
               <p className="mt-1 text-[11.5px] text-[var(--muted)]">
-                定好圆心后，用半径滑块调整范围。
+                {en ? "After setting the center, use the radius slider to adjust the area." : "定好圆心后，用半径滑块调整范围。"}
               </p>
             </div>
             <button
@@ -668,10 +668,10 @@ export default function DesignPage() {
             {isPolygon ? (
               <div className="mt-3 rounded-xl bg-[var(--surface)] p-3">
                 <p className="text-[12px] font-semibold">
-                  当前区域：自定义多边形（{polygonPoints.length} 个顶点）
+                  {en ? `Current area: custom polygon (${polygonPoints.length} vertices)` : `当前区域：自定义多边形（${polygonPoints.length} 个顶点）`}
                 </p>
                 <p className="mt-1 text-[11.5px] text-[var(--muted)]">
-                  外接半径约 {Math.round(area?.radiusMeters ?? 0)}m。想调整就重新绘制一次。
+                  {en ? `Bounding radius is about ${Math.round(area?.radiusMeters ?? 0)} m. Redraw to adjust it.` : `外接半径约 ${Math.round(area?.radiusMeters ?? 0)}m。想调整就重新绘制一次。`}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button type="button" className="text-xs font-semibold underline" onClick={startPolygon}>
@@ -682,7 +682,7 @@ export default function DesignPage() {
                     className="text-xs font-semibold text-red-700 underline"
                     onClick={clearPolygon}
                   >
-                    清除区域
+                    {en ? "Clear area" : "清除区域"}
                   </button>
                 </div>
               </div>
@@ -718,7 +718,7 @@ export default function DesignPage() {
               </div>
             )}
             <p className="mt-2 text-[11.5px] text-[var(--muted)]">
-              50–100m 就可以做非常小的游戏。实际 GPS 触发圈建议保持 15–30m。
+              {en ? "A small game can fit within 50–100 m. For real GPS, a 15–30 m trigger radius is recommended." : "50–100m 就可以做非常小的游戏。实际 GPS 触发圈建议保持 15–30m。"}
             </p>
           </>
         )}
@@ -730,7 +730,7 @@ export default function DesignPage() {
           <div>
             <p className="text-[15px] font-bold">{en ? "② Place stops" : "② 放置场景"}</p>
             <p className="text-[11.5px] text-[var(--muted)]">
-              增加场景，拖动标记或点击地图放置。先到现场，再解锁任务。
+              {en ? "Add stops, then drag a marker or click the map to place it. Reach the real location to unlock a task." : "增加场景，拖动标记或点击地图放置。先到现场，再解锁任务。"}
             </p>
           </div>
           <button type="button" className="btn btn-secondary h-9 min-h-0 px-3 text-xs" onClick={addScene}>{en ? "+ Add stop" : "＋增加场景"}</button>
@@ -753,7 +753,7 @@ export default function DesignPage() {
           <div className="mt-4">
             {selectedOutsideArea ? (
               <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
-                提示：「{selected.title}」落在游戏区域之外。把它拖进区域内，或重新绘制区域。
+                {en ? `Note: “${selected.title}” is outside the play area. Move it inside or redraw the area.` : `提示：「${selected.title}」落在游戏区域之外。把它拖进区域内，或重新绘制区域。`}
               </p>
             ) : null}
 
@@ -802,7 +802,7 @@ export default function DesignPage() {
             </div>
 
             <button type="button" className="mt-4 text-xs font-semibold text-red-700 underline" onClick={deleteSelected} disabled={working.scenes.length <= 1}>
-              删除这个场景
+              {en ? "Delete this stop" : "删除这个场景"}
             </button>
           </div>
         ) : null}
@@ -812,7 +812,7 @@ export default function DesignPage() {
       <section className="card mt-4 p-4">
         <p className="text-[15px] font-bold">{en ? "③ Set trigger radius" : "③ 设置触发距离"}</p>
         <p className="mt-1 text-[11.5px] text-[var(--muted)]">
-          每个场景的解锁半径。15–30m 在真实 GPS 误差下最稳。
+          {en ? "Each stop’s unlock radius. 15–30 m is usually more reliable given real-world GPS error." : "每个场景的解锁半径。15–30m 在真实 GPS 误差下最稳。"}
         </p>
 
         <div className="mt-3 grid gap-3">
@@ -851,7 +851,7 @@ export default function DesignPage() {
       <section className="card mt-4 p-4">
         <p className="text-[15px] font-bold">{en ? "④ Save game" : "④ 保存游戏"}</p>
         <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
-          保存后，这台设备会把你的游戏作为本地创作版本。没有账号也能立即试玩；未来接入云端发布时，这个编辑器仍可作为内容制作入口。
+          {en ? "Saving keeps a creator copy on this device. You can playtest without an account; this editor remains the authoring entry point if cloud publishing is added later." : "保存后，这台设备会把你的游戏作为本地创作版本。没有账号也能立即试玩；未来接入云端发布时，这个编辑器仍可作为内容制作入口。"}
         </p>
         <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-[11.5px] leading-relaxed">
           <p className="font-semibold">{en ? "Before publishing" : "发布前请确认"}</p>
@@ -861,7 +861,7 @@ export default function DesignPage() {
         </div>
         {areaIncomplete ? (
           <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
-            游戏区域还没有画完（至少 {MIN_POLYGON_POINTS} 个边界点），完成或取消绘制后才能保存。
+            {en ? `The play area is incomplete (at least ${MIN_POLYGON_POINTS} boundary points). Finish or cancel drawing before saving.` : `游戏区域还没有画完（至少 ${MIN_POLYGON_POINTS} 个边界点），完成或取消绘制后才能保存。`}
           </p>
         ) : null}
         <div className="mt-3 grid gap-2">
