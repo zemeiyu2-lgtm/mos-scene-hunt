@@ -540,7 +540,7 @@ export default function DesignPage() {
               </span>
             ) : placingCircle ? (
               <span className="font-semibold text-[var(--accent)]">
-                点击地图上任意一点，作为圆形区域的中心
+                {en ? "Click any point on the map to set the circle center" : "点击地图上任意一点，作为圆形区域的中心"}
               </span>
             ) : (
               <>{en ? "Selected: “{selected?.title ?? \"Location\"}”. Drag its marker or click the map to move it." : "当前选中「{selected?.title ?? \"地点\"}」。直接拖动地点标记，或点击地图移动当前地点。"}</>
