@@ -99,7 +99,7 @@ export default function SelectPage() {
         </div>
         {importMessage ? <p className="mt-2 rounded-xl bg-[var(--surface)] px-3 py-2 text-[11.5px] leading-relaxed">{importMessage}</p> : null}
       </section>
-      <section className="card story-card overflow-hidden">
+      <section className="card select-game-card story-card overflow-hidden">
         <div className="hero-explore px-5 py-6">
           <p className="game-kicker">
             {isAuthored ? t("select.localCreation") : manifest?.difficulty === "easy" ? t("games.easy") : t("games.hard")} ·{" "}
