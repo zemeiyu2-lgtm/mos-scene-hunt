@@ -70,7 +70,7 @@ export default function QuestPage() {
           return (
             <li key={row.scene.id}>
               <div
-                className={`card p-4 transition-transform ${isLocked ? "opacity-60" : ""} ${
+                className={`card quest-location-card p-4 transition-transform ${isLocked ? "opacity-60" : ""} ${
                   row.isActive ? "border-[var(--accent)]" : ""
                 }`}
               >
