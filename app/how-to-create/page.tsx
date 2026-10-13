@@ -27,17 +27,39 @@ startLocation、huntArea.center 和每个 scene.location 的 lat、lng 暂时统
 
 请先向我询问最多三个简单问题，了解游戏给谁玩、在哪里玩、想玩多久。若我已经说明，就不要重复询问，直接开始设计。允许我用自然语言反复修改游戏。最后请输出完整 JSON，并在 JSON 代码块之外列出需要我现场确认的事项。`;
 
+const PROMPT_EN = `You are a game design assistant for MOS Scene Hunt. Help a non-programmer turn a simple idea into a mobile outdoor exploration game that can be imported into MOS Scene Hunt.
+
+Design a light, fun, easy-to-play game based on my idea. Unless I explicitly ask, avoid long lectures. Each stop should have a short story, a clear task, an answer or completion condition, a hint, and a reward.
+
+First create the complete game content, then output one strictly valid JSON code block. Do not put comments in JSON, omit fields, or output pseudocode. The top-level JSON object must be the game object and include at least:
+id, language, title, description, author, version, estimatedMinutes, difficulty, startLocation, huntArea, entrySceneId, scenes.
+
+Each scene must include at least:
+id, title, story, location, nextSceneId, challenge, reward.
+
+Use only these challenge types:
+1. choice: question, options (2–4 choices), answer (zero-based index of the correct choice), prompt, explanation.
+2. text: question, answer (array of accepted strings), hint.
+3. keyword: question, answer (array of accepted strings), hint.
+
+Reward type must be keyword, badge, or item. Connect all scenes in play order. The final scene's nextSceneId must be null. Every id must be unique, and entrySceneId must match the first stop. Answers must match the choices, and all required fields must be present.
+
+IMPORTANT: Never invent real GPS coordinates.
+Set startLocation, huntArea.center, and every scene.location lat/lng to 0 for now. These zeroes are obvious placeholders, not real locations. After importing, the creator must use the MOS Scene Hunt designer map to set the real start point, play area, and each stop, then review the route and playtest. Never claim the game is already geolocated.
+
+Ask me up to three simple questions first: who will play, where it will take place, and how long it should last. If I already answered, do not ask again; start designing. Let me revise the game in natural language. Finally, output the complete JSON and list any items I must confirm on site outside the JSON code block.`;
+
 export default function HowToCreatePage() {
   const { locale } = useUiLocale();
   const en = locale === "en";
   const [copied, setCopied] = useState(false);
   async function copyPrompt() {
     try {
-      await navigator.clipboard.writeText(PROMPT);
+      await navigator.clipboard.writeText(en ? PROMPT_EN : PROMPT);
       setCopied(true);
     } catch {
       setCopied(false);
-      window.prompt("复制下面的指令：", PROMPT);
+      window.prompt(en ? "Copy the prompt below:" : "复制下面的指令：", en ? PROMPT_EN : PROMPT);
     }
   }
   return (
@@ -63,9 +85,9 @@ export default function HowToCreatePage() {
       <section className="card mt-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div><h3 className="text-base font-bold">{en ? "AI game design prompt" : "AI 游戏设计指令"}</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">{en ? "Copy the entire prompt into a conversation with your preferred AI tool." : "复制整段内容，粘贴到你常用的 AI 对话中。"}</p></div>
-          <button type="button" className="btn btn-primary shrink-0" onClick={copyPrompt}>{copied ? (en ? "Copied" : "已复制") : "复制指令"}</button>
+          <button type="button" className="btn btn-primary shrink-0" onClick={copyPrompt}>{copied ? (en ? "Copied" : "已复制") : (en ? "Copy prompt" : "复制指令")}</button>
         </div>
-        <pre className="mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[var(--surface)] p-3 text-xs leading-relaxed">{PROMPT}</pre>
+        <pre className="mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[var(--surface)] p-3 text-xs leading-relaxed">{en ? PROMPT_EN : PROMPT}</pre>
       </section>
 
       <section className="card mt-4 p-5">
