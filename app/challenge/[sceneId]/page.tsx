@@ -178,7 +178,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
                 aria-pressed={active}
               >
                 <span
-                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-bold ${active ? "bg-[var(--accent)] text-[#3a2400]" : "bg-[var(--line)] text-[var(--muted)]"}`}
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-bold ${active ? "bg-[var(--accent)] text-white" : "bg-[var(--line)] text-[var(--muted)]"}`}
                 >
                   {String.fromCharCode(65 + index)}
                 </span>
