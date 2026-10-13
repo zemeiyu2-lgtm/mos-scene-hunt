@@ -543,7 +543,7 @@ export default function DesignPage() {
                 点击地图上任意一点，作为圆形区域的中心
               </span>
             ) : (
-              <>当前选中「{selected?.title ?? "地点"}」。直接拖动地点标记，或点击地图移动当前地点。</>
+              <>{en ? "Selected: “{selected?.title ?? \"Location\"}”. Drag its marker or click the map to move it." : "当前选中「{selected?.title ?? \"地点\"}」。直接拖动地点标记，或点击地图移动当前地点。"}</>
             )}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -563,14 +563,14 @@ export default function DesignPage() {
             <p className="text-[15px] font-bold">{en ? "Spatial overview" : "空间设计总览"}</p>
             <p className="mt-1 text-[11.5px] text-[var(--muted)]">{en ? "The map determines where players experience the story. The system flags issues but never changes locations for you." : "地图决定玩家在哪里经历故事；系统只提示问题，不替你改点位。"}</p>
           </div>
-          <span className="chip bg-[var(--surface)]">{working.scenes.length} 个体验点</span>
+          <span className="chip bg-[var(--surface)]">{working.scenes.length} {en ? "stops" : "个体验点"}</span>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
           <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(spatial?.totalMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Total route" : "总路线"}</div></div>
           <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{spatial?.walkingMinutes ?? 0}′</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Estimated walk" : "粗略步行"}</div></div>
           <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(area?.radiusMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">{en ? "Area size" : "区域尺度"}</div></div>
         </div>
-        {working.scenes.length > 1 ? <div className="mt-3 overflow-x-auto pb-1"><div className="flex min-w-max items-center gap-1">{working.scenes.map((scene, i) => <span key={scene.id} className="flex items-center gap-1">{i > 0 ? <span className="text-[var(--muted)]">→</span> : null}<button type="button" className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${scene.id === selected?.id ? "border-[var(--accent)] bg-[var(--accent)]/10" : "border-[var(--line)]"}`} onClick={() => setSelectedId(scene.id)}>{i + 1}. {scene.title}</button></span>)}</div></div> : null}
+        {working.scenes.length > 1 ? <div className="mt-3 overflow-x-auto pb-1"><div className="flex min-w-max items-center gap-1">{working.scenes.map((scene, i) => <span key={scene.id} className="flex items-center gap-1">{i > 0 ? <span className="text-[var(--muted)]">{en ? "→" : "→"}</span> : null}<button type="button" className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${scene.id === selected?.id ? "border-[var(--accent)] bg-[var(--accent)]/10" : "border-[var(--line)]"}`} onClick={() => setSelectedId(scene.id)}>{i + 1}. {scene.title}</button></span>)}</div></div> : null}
         {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}><strong>{issue.severity === "error" ? (en ? "Needs fixing: " : "需要修正：") : "空间提示："}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-semibold text-emerald-800">{en ? "Spatial check passed. You can continue designing." : "空间检查通过，可以继续设计。"}</p>}
       </section>
 
@@ -594,7 +594,7 @@ export default function DesignPage() {
                 \&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/<br />
                 ●──────●
               </p>
-              <p className="mt-2 text-[13px] font-bold">已选择 {polygonPoints.length} 个点</p>
+              <p className="mt-2 text-[13px] font-bold">{en ? "{en ? `Selected ${polygonPoints.length} points` : `已选择 ${polygonPoints.length} 个点`}" : "已选择 {polygonPoints.length} 个点"}</p>
               <p className="text-[11.5px] text-[var(--muted)]">
                 {polygonPoints.length < MIN_POLYGON_POINTS
                   ? `至少 ${MIN_POLYGON_POINTS} 个点才能完成。`
@@ -728,7 +728,7 @@ export default function DesignPage() {
       <section className="card mt-4 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[15px] font-bold">② 放置场景</p>
+            <p className="text-[15px] font-bold">{en ? "② Place stops" : "② 放置场景"}</p>
             <p className="text-[11.5px] text-[var(--muted)]">
               增加场景，拖动标记或点击地图放置。先到现场，再解锁任务。
             </p>
@@ -757,7 +757,7 @@ export default function DesignPage() {
               </p>
             ) : null}
 
-                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">{en ? "Route order" : "路线顺序"}</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>\n\n<label className="block text-xs font-semibold">{en ? "Scene title" : "场景名称"}<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
+                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">{en ? "Route order" : "路线顺序"}</p><p className="text-[13px] font-bold">{en ? "{en ? `Stop ${working.scenes.findIndex((s) => s.id === selected.id) + 1} of ${working.scenes.length}` : `第 ${working.scenes.findIndex((s) => s.id === selected.id) + 1} / ${working.scenes.length} 站`}" : "第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站"}</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>{en ? "← Move up" : "← 上移"}</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>{en ? "Move down →" : "下移 →"}</button></div></div>\n\n<label className="block text-xs font-semibold">{en ? "Scene title" : "场景名称"}<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">{en ? "Location name" : "现场名称"}<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
             <label className="mt-3 block text-xs font-semibold">{en ? "Story on arrival" : "到达后故事"}<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">{en ? "Arrival briefing" : "到达提示"}<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
@@ -810,7 +810,7 @@ export default function DesignPage() {
 
       {/* ------------------------------------------------ ③ 设置触发距离 */}
       <section className="card mt-4 p-4">
-        <p className="text-[15px] font-bold">③ 设置触发距离</p>
+        <p className="text-[15px] font-bold">{en ? "③ Set trigger radius" : "③ 设置触发距离"}</p>
         <p className="mt-1 text-[11.5px] text-[var(--muted)]">
           每个场景的解锁半径。15–30m 在真实 GPS 误差下最稳。
         </p>
