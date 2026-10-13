@@ -1262,3 +1262,28 @@ html[data-visual-theme="city-detective"] {
   --accent-deep: #176368;
   --ok: #10b981;
 }
+
+
+/* Compact theme control: presentation preference only, never game content. */
+.visual-theme-select {
+  max-width: 104px;
+  min-height: 36px;
+  padding: 0 22px 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.visual-theme-select:focus-visible {
+  outline: 3px solid rgba(16, 155, 129, 0.55);
+  outline-offset: 2px;
+}
+@media (max-width: 360px) {
+  .visual-theme-select {
+    max-width: 82px;
+    padding-inline: 6px 18px;
+    font-size: 11px;
+  }
+}
