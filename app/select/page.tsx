@@ -197,7 +197,7 @@ export default function SelectPage() {
         ) : null}
       </div>
 
-      <div className="mt-4 grid gap-2">
+      <div className="select-start-actions mt-4 grid gap-2">
         <button type="button" className="btn btn-primary btn-block" onClick={begin}>
           {hasProgress ? t("home.continueHunt") : t("select.startHunt")}
         </button>
