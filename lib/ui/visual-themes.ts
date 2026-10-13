@@ -16,7 +16,7 @@ export const VISUAL_THEMES = {
       card: "#FFFFFF",
       line: "#DDE7E2",
       text: "#14251F",
-      muted: "#64748B",
+      muted: "#5F6B7B",
       accent: "#109B81",
       accentDeep: "#08765F",
       decorative: "#E8F4EF",
