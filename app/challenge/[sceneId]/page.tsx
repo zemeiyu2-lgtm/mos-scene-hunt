@@ -150,7 +150,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
         </div>
       ) : null}
 
-      <section className="card story-card p-5 challenge-reveal">
+      <section className="card story-card p-5 challenge-reveal challenge-question-card">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
           {challenge.type === "choice" ? t("challenge.choiceType") : challenge.type === "keyword" ? t("challenge.keywordType") : t("challenge.textType")}
         </p>
@@ -163,7 +163,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       <MediaGallery media={challenge.media} />
 
       {challenge.type === "choice" && challenge.options ? (
-        <section className="mt-3 space-y-2">
+        <section className="mt-3 space-y-2 challenge-options">
           {challenge.options.map((option, index) => {
             const active = selected === index;
             return (
@@ -238,7 +238,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-2">
+      <div className="mt-4 grid gap-2 challenge-actions">
         <button
           type="button"
           className="btn btn-primary btn-block"
