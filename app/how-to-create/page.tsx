@@ -64,15 +64,15 @@ export default function HowToCreatePage() {
   }
   return (
     <Screen title={en ? "How to design a game" : "教你设计游戏"} subtitle={en ? "Create with an AI tool you already use — no coding required" : "不懂编程，也能借助自己常用的 AI 创作"}>
-      <section className="card p-5">
+      <section className="card p-5 how-to-hero-card">
         <p className="game-kicker">{en ? "MOS SCENE HUNT · CREATOR GUIDE" : "MOS SCENE HUNT · 新手指南"}</p>
         <h2 className="mt-2 text-2xl font-bold">{en ? "From an idea to a playable game" : "从一个想法，到一款可以试玩的游戏"}</h2>
         <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">{en ? "You do not need to buy or run AI inside MOS Scene Hunt. Open ChatGPT, Claude, Gemini, or another AI tool you already use. Copy the design prompt below and follow its questions." : "你不需要在 MOS Scene Hunt 里购买或调用 AI。打开自己已经能使用的 ChatGPT、Claude、Gemini 或其他 AI，把下面的设计指令复制过去，按它的提问逐步完成即可。"}</p>
       </section>
 
-      <section className="card mt-4 p-5">
+      <section className="card mt-4 p-5 how-to-steps-card">
         <h3 className="text-base font-bold">{en ? "Follow these steps to design and share" : "照着做，完成设计与分享"}</h3>
-        <ol className="mt-3 space-y-3 text-sm leading-relaxed">
+        <ol className="mt-3 space-y-3 text-sm leading-relaxed how-to-step-list">
           <li><b>{en ? "1. Describe your idea." : "1. 说出你的想法。"}</b><p className="mt-1 text-[var(--muted)]">{en ? "Example: “Design a lighthearted 15-minute outdoor treasure hunt for friends, with five stops.”" : "例如：“给朋友聚会设计一个 15 分钟的户外寻宝游戏，有 5 个站点，轻松搞笑。”"}</p></li>
           <li><b>{en ? "2. Copy the prompt below into your AI tool." : "2. 复制下面的指令，交给你常用的 AI。"}</b><p className="mt-1 text-[var(--muted)]">{en ? "The AI will ask a few simple questions, then draft the story, stops, clues, challenges, and rewards." : "AI 会先问几个简单问题，再帮你生成故事、站点、线索、题目和奖励。"}</p></li>
           <li><b>{en ? "3. Revise until you are happy with it." : "3. 反复修改，直到你喜欢。"}</b><p className="mt-1 text-[var(--muted)]">{en ? "For example: “Make the questions easier,” “Use four stops,” or “Replace trivia with an observation challenge.”" : "直接说“题目太难，改简单一点”“减少到 4 站”“把知识题改成观察挑战”。"}</p></li>
@@ -82,15 +82,15 @@ export default function HowToCreatePage() {
         </ol>
       </section>
 
-      <section className="card mt-4 p-5">
-        <div className="flex items-start justify-between gap-3">
+      <section className="card mt-4 p-5 how-to-prompt-card">
+        <div className="flex items-start justify-between gap-3 how-to-prompt-heading">
           <div><h3 className="text-base font-bold">{en ? "AI game design prompt" : "AI 游戏设计指令"}</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">{en ? "Copy the entire prompt into a conversation with your preferred AI tool." : "复制整段内容，粘贴到你常用的 AI 对话中。"}</p></div>
           <button type="button" className="btn btn-primary shrink-0" onClick={copyPrompt}>{copied ? (en ? "Copied" : "已复制") : (en ? "Copy prompt" : "复制指令")}</button>
         </div>
-        <pre className="mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[var(--surface)] p-3 text-xs leading-relaxed">{en ? PROMPT_EN : PROMPT}</pre>
+        <pre className="mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[var(--surface)] p-3 text-xs leading-relaxed how-to-prompt-text">{en ? PROMPT_EN : PROMPT}</pre>
       </section>
 
-      <section className="card mt-4 p-5">
+      <section className="card mt-4 p-5 how-to-safety-card">
         <h3 className="text-base font-bold">{en ? "Important: AI does not know your real-world coordinates" : "特别注意：AI 不知道你现场的真实坐标"}</h3>
         <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-[var(--muted)]">
           <li>{en ? "AI can design stories, questions, clues, and rewards, but it cannot know the real GPS coordinates of your stops." : "AI 可以设计故事、题目、线索和奖励，但不能凭空知道每个站点的真实 GPS 坐标。"}</li>
@@ -100,7 +100,7 @@ export default function HowToCreatePage() {
         </ul>
       </section>
 
-      <section className="card mt-4 p-5">
+      <section className="card mt-4 p-5 how-to-sharing-card">
         <h3 className="text-base font-bold">{en ? "Publishing and sharing: what creators should know" : "发布与分享：设计者请先了解"}</h3>
         <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-[var(--muted)]">
           <li><b>{en ? "Validate before publishing." : "先校验，再发布。"}</b>{en ? "Set real GPS coordinates for the start, play area, and every stop, then complete a safe outdoor playtest. AI-generated 0,0 placeholders must never be published as a ready-to-play real-world game." : "确认真实起点、游戏区域和每一站的 GPS 坐标都已设置，并在安全的户外环境完成试玩。AI 生成的 0,0 只是占位符，绝不能直接发布为可玩的现场游戏。"}</li>
@@ -111,7 +111,7 @@ export default function HowToCreatePage() {
         </ul>
       </section>
 
-      <section className="card mt-4 p-5">
+      <section className="card mt-4 p-5 how-to-start-card">
         <h3 className="text-base font-bold">{en ? "Get started" : "开始动手"}</h3>
         <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{en ? "Start with a small game of three to five stops. Make sure the full experience works before adding more stops or complex mechanics." : "建议先从 3–5 个站点的小型游戏开始。先做出一个能完整走通的版本，再增加站点和复杂玩法。"}</p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
