@@ -79,7 +79,7 @@ export default function GamesPage() {
                   {busyId === game.id ? t("games.downloading") : t("games.download")}
                 </button>
                 <Link className="btn btn-secondary text-center" href={`/select?game=${encodeURIComponent(game.id)}`}>
-                  查看
+                  {t("games.view")}
                 </Link>
               </div>
             </article>
