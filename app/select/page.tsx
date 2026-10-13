@@ -88,7 +88,7 @@ export default function SelectPage() {
   return (
     <>
     <Screen title={t("select.title")} subtitle={t("select.confirmStart")}>
-      <section className="card mb-4 p-4">
+      <section className="card select-import-card mb-4 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[13px] font-bold">📦 {t("select.importPackage")}</p>
