@@ -121,7 +121,7 @@ export default function SelectPage() {
             </div>
           ) : null}
 
-          <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <dl className="select-metrics mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { k: t("select.locations"), v: `${game.scenes.length}` },
               { k: t("select.area"), v: formatArea(game.huntArea?.radiusMeters, t) },
