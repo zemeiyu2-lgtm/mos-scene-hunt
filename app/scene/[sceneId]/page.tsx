@@ -161,7 +161,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
         ) : null}
       </article>
 
-      <div className="mt-4 grid gap-2">
+      <div className="scene-actions mt-4 grid gap-2">
         {isComplete ? (
           <>
             <div className="card mb-1 p-4 text-center">
