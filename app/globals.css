@@ -1233,7 +1233,7 @@ textarea,
   .how-to-start-card .grid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .how-to-start-card .sm\\:col-span-2 {
+  .how-to-start-card .grid > a {
     grid-column: auto;
   }
 }
