@@ -17,7 +17,7 @@ import { useUiLocale } from "@/components/ui-locale-provider";
 export default function HomePage() {
   const { game, state, loading, loadError, ratio, complete, contentSource, reloadContent } = useHunt();
   const online = useOnlineStatus();
-  const { t } = useUiLocale();
+  const { t, locale, toggleLocale } = useUiLocale();
 
   const hasProgress = Boolean(state && state.inventory.length > 0);
 
@@ -26,13 +26,14 @@ export default function HomePage() {
       title="MOS Scene Hunt"
       subtitle={t("home.subtitle")}
       headerRight={
-        <span
-          className={`chip shrink-0 ${
-            online ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
-          }`}
-        >
-          {online ? t("common.online") : t("common.offline")}
-        </span>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={toggleLocale} className="btn btn-ghost h-9 min-h-0 px-2 text-xs" aria-label={locale === "en" ? "Switch interface to Simplified Chinese" : "Switch interface to English"}>
+            {locale === "en" ? "简体中文" : "English"}
+          </button>
+          <span className={`chip shrink-0 ${online ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
+            {online ? t("common.online") : t("common.offline")}
+          </span>
+        </div>
       }
     >
       <section className="card overflow-hidden">
