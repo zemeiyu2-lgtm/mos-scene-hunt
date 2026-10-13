@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useUiLocale } from "@/components/ui-locale-provider";
 
 type DemoStep = {
@@ -120,7 +120,7 @@ export default function TutorialPage() {
     return () => window.clearTimeout(timer);
   }, [playing, slow, step]);
 
-  const stepLabel = useMemo(() => en ? `Act ${step + 1} of ${steps.length}` : `第 ${step + 1} 幕，共 ${steps.length} 幕`, [step]);
+  const stepLabel = en ? `Act ${step + 1} of ${steps.length}` : `第 ${step + 1} 幕，共 ${steps.length} 幕`;
 
   function restart() {
     setStep(0);
