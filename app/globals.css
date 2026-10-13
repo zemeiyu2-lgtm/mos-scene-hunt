@@ -784,3 +784,39 @@ body {
     animation: none !important;
   }
 }
+
+
+/* ------------------------------------------------------------------ */
+/* Home hierarchy refinement — presentation only                      */
+/* ------------------------------------------------------------------ */
+.home-hero-card {
+  border-color: rgba(20, 37, 31, 0.08);
+  box-shadow: 0 12px 28px -20px rgba(20, 37, 31, 0.34);
+}
+.home-hero-card .hero-explore {
+  padding-top: 30px;
+  padding-bottom: 28px;
+}
+.home-hero-card .hero-explore h2 {
+  max-width: 18ch;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.home-resume-card {
+  border-color: rgba(8, 118, 95, 0.24);
+  box-shadow: 0 8px 22px -18px rgba(8, 118, 95, 0.35);
+}
+.home-demo-card {
+  box-shadow: 0 4px 18px -15px rgba(20, 37, 31, 0.28);
+}
+.home-available-section > h3 {
+  letter-spacing: 0.01em;
+}
+.home-create-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbf9 100%);
+}
+@media (max-width: 360px) {
+  .home-hero-card .hero-explore {
+    padding: 24px 16px;
+  }
+}
