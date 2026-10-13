@@ -140,7 +140,7 @@ export default function SelectPage() {
               <p className="font-semibold">
                 {t("select.playArea")} · {game.huntArea.name ?? formatArea(game.huntArea.radiusMeters, t)}
                 {game.huntArea.shape === "polygon"
-                  ? `（${t("select.customPolygon")} · ${game.huntArea.points?.length ?? 0}）`
+                  ? `（${t("select.customPolygon")} · ${game.huntArea.points?.length ?? 0} ${t("select.vertices")}）`
                   : ""}
               </p>
               <p className="mt-0.5">
