@@ -639,7 +639,7 @@ export default function DesignPage() {
               className="btn btn-ghost mt-2 w-full"
               onClick={() => setPlacingCircle(false)}
             >
-              取消
+              {en ? "Cancel" : "取消"}
             </button>
           </>
         ) : (
@@ -675,7 +675,7 @@ export default function DesignPage() {
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button type="button" className="text-xs font-semibold underline" onClick={startPolygon}>
-                    重新绘制
+                    {en ? "Redraw" : "重新绘制"}
                   </button>
                   <button
                     type="button"
