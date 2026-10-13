@@ -586,7 +586,7 @@ export default function DesignPage() {
         {drawingArea ? (
           <>
             <div className="mt-3 rounded-xl border border-dashed border-[var(--accent)] bg-[var(--surface)] p-3">
-              <p className="text-[12px] font-semibold">{en ? "Click the boundary points of the play area on the map" : (en ? "Click the play-area boundary points on the map in order" : "{en ? "Click the play-area boundary points on the map in order" : "请在地图上依次点击游戏区域的边界点"}")}</p>
+              <p className="text-[12px] font-semibold">{en ? "Click the boundary points of the play area on the map" : "请在地图上依次点击游戏区域的边界点"}</p>
               <p className="mt-1 font-mono text-[11px] leading-relaxed text-[var(--muted)]">
                 ●──────●<br />
                 /&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br />
