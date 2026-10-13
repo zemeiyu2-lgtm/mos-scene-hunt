@@ -187,7 +187,7 @@ export default function MapPage() {
           style={{ paddingBottom: "calc(12px + var(--tabbar-h) + var(--safe-bottom))" }}
         >
           <div className="page">
-            <div className="card p-3 shadow-sheet">
+            <div className="card p-3 shadow-sheet map-bottom-sheet">
               {loading ? (
                 <p className="py-2 text-center text-[13px] text-[var(--muted)]">{t("map.loadingGame")}</p>
               ) : complete ? (
