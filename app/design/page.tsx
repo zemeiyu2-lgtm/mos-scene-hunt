@@ -153,7 +153,7 @@ export default function DesignPage() {
         radiusMeters: working.huntArea?.radiusMeters ?? 100,
         shape: "polygon",
         points: [],
-        name: working.huntArea?.name ?? (en ? "Custom play area" : "自定义游戏区域"),
+        name: working.huntArea?.name ?? "自定义游戏区域",
       },
     });
   };
@@ -216,7 +216,7 @@ export default function DesignPage() {
             ? Math.max(30, working.huntArea.radiusMeters)
             : working.huntArea?.radiusMeters ?? 100,
         shape: "circle",
-        name: working.huntArea?.name ?? (en ? "Circular play area" : "圆形游戏区域"),
+        name: working.huntArea?.name ?? "圆形游戏区域",
       },
     });
   };
@@ -235,7 +235,7 @@ export default function DesignPage() {
         center: { lat, lng },
         radiusMeters: working.huntArea?.radiusMeters ?? 100,
         shape: "circle",
-        name: working.huntArea?.name ?? (en ? "Circular play area" : "圆形游戏区域"),
+        name: working.huntArea?.name ?? "圆形游戏区域",
       },
     });
   };
@@ -261,7 +261,7 @@ export default function DesignPage() {
       update({
         huntArea: {
           center, radiusMeters, shape: "polygon", points,
-          name: current?.name ?? (en ? "Custom play area" : "自定义游戏区域"),
+          name: current?.name ?? "自定义游戏区域",
         },
       });
       return;
@@ -283,18 +283,18 @@ export default function DesignPage() {
     const id = `scene-${Date.now().toString(36)}`;
     const newScene: Scene = {
       id,
-      title: en ? `Stop ${index} · New location` : `第${index}站 · 新地点`,
-      story: en ? "Write the scene players will discover when they arrive." : "在这里写下玩家到达现场后看到的情境。",
-      briefing: en ? "Go to this location to unlock the task." : "前往这个地点，到达后解锁任务。",
-      location: { lat: base.lat, lng: base.lng, radius: 15, name: en ? "New location" : "新地点" },
+      title: `第${index}站 · 新地点`,
+      story: "在这里写下玩家到达现场后看到的情境。",
+      briefing: "前往这个地点，到达后解锁任务。",
+      location: { lat: base.lat, lng: base.lng, radius: 15, name: "新地点" },
       nextSceneId: null,
       challenge: {
         type: "choice",
-        question: en ? "What do you notice at this location?" : "你在现场观察到了什么？",
+        question: "你在现场观察到了什么？",
         options: ["A", "B", "C"],
         answer: 0,
       },
-      reward: { type: "keyword", title: en ? "New clue" : "新线索", value: en ? "Clue" : "线索" },
+      reward: { type: "keyword", title: "新线索", value: "线索" },
     };
     const scenes = working.scenes.map((scene, i) =>
       i === working.scenes.length - 1 ? { ...scene, nextSceneId: id } : scene,
@@ -349,7 +349,7 @@ export default function DesignPage() {
       const missing: string[] = [];
       if (!configured(working.startLocation)) missing.push((en ? "real start point" : "真实起点"));
       if (!working.huntArea) {
-        missing.push(en ? "play area" : "游戏区域");
+        missing.push("游戏区域");
       } else if (working.huntArea.shape === "polygon") {
         if ((working.huntArea.points?.length ?? 0) < MIN_POLYGON_POINTS) missing.push((en ? "complete play-area boundary" : "完整的游戏区域边界"));
         else if (working.huntArea.points?.some((point) => !configured(point))) missing.push((en ? "real coordinates for the play-area boundary" : "游戏区域边界上的真实坐标"));
