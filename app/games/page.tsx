@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Screen, LoadingState } from "@/components/ui";
+import { useUiLocale } from "@/components/ui-locale-provider";
 import { importGamePackage } from "@/lib/content";
 import { loadCloudCatalog, packUrl, publishedGames, type CloudGameEntry } from "@/lib/cloud";
 
