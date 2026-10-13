@@ -149,7 +149,7 @@ export default function SelectPage() {
             </div>
           ) : null}
 
-          <div className="mt-4 space-y-2">
+          <div className="select-scene-list mt-4 space-y-2">
             {game.scenes.map((scene, i) => (
               <div key={scene.id} className="flex items-start gap-3">
                 <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--line)] text-[11px] font-bold text-[var(--muted)]">
