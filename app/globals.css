@@ -1035,8 +1035,9 @@ body {
 .quest-location-card {
   transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
-.quest-location-card:has(.bg-\[var\(--accent\)\]) {
+.quest-location-card[data-active="true"] {
   border-color: rgba(16, 155, 129, 0.5);
+  box-shadow: 0 8px 24px -20px rgba(8, 118, 95, 0.45);
 }
 .quest-location-actions > .btn {
   min-width: 0;
