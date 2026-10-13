@@ -16,9 +16,11 @@ import { useGps } from "@/components/gps-provider";
 import { findManifestEntry, importGamePackage } from "@/lib/content";
 import { ErrorState, Screen } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
+import { useUiLocale } from "@/components/ui-locale-provider";
 
 export default function SelectPage() {
   const router = useRouter();
+  const { t } = useUiLocale();
   const { game, loadError, reloadContent, state, statuses, startHunt, contentSource } = useHunt();
   const { start, status, permission } = useGps();
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -45,19 +47,19 @@ export default function SelectPage() {
       const text = await file.text();
       const result = importGamePackage(text);
       const warningCount = result.issues.filter((issue) => issue.severity === "warning").length;
-      setImportMessage(warningCount ? "已安装「" + result.game.title + "」，有 " + warningCount + " 个提示，正在打开。" : "已安装「" + result.game.title + "」，正在打开。");
+      setImportMessage(warningCount ? t("select.installedWarnings").replace("{title}", result.game.title).replace("{count}", String(warningCount)) : t("select.installed").replace("{title}", result.game.title));
       window.setTimeout(() => window.location.reload(), 250);
     } catch (error) {
-      setImportMessage(error instanceof Error ? error.message : "导入失败");
+      setImportMessage(error instanceof Error ? error.message : t("select.importFailed"));
     } finally { setImporting(false); }
   };
   const hasProgress = Boolean(state && state.inventory.length > 0);
 
   if (loadError) {
     return (
-      <Screen title="选择寻宝" subtitle="加载失败">
+      <Screen title={t("select.title")} subtitle={t("select.loadFailed")}>
         <ErrorState
-          title="无法加载游戏内容"
+          title={t("select.contentUnavailable")}
           detail={loadError}
           onRetry={() => reloadContent(true)}
         />
@@ -67,7 +69,7 @@ export default function SelectPage() {
 
   if (!game) {
     return (
-      <Screen title="选择寻宝">
+      <Screen title={t("select.title")}>
         <div className="card h-40 animate-pulse" />
       </Screen>
     );
@@ -81,18 +83,18 @@ export default function SelectPage() {
    */
   const manifest = findManifestEntry(game.id);
   const isAuthored = contentSource === "local";
-  const triggerRange = formatTriggerRange(game.scenes.map((s) => s.location.radius));
+  const triggerRange = formatTriggerRange(game.scenes.map((s) => s.location.radius), t);
 
   return (
     <>
-    <Screen title="选择寻宝" subtitle="确认信息后开始">
+    <Screen title={t("select.title")} subtitle={t("select.confirmStart")}>
       <section className="card mb-4 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[13px] font-bold">📦 导入游戏包</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">设计者可以把游戏导出为 JSON 游戏包。导入后保存在本机，不需要登录，也不需要打开设计器。</p>
+            <p className="text-[13px] font-bold">📦 {t("select.importPackage")}</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">{t("select.importDescription")}</p>
           </div>
-          <button type="button" className="btn btn-secondary shrink-0" onClick={() => importInputRef.current?.click()} disabled={importing}>{importing ? "正在导入…" : "选择游戏包"}</button>
+          <button type="button" className="btn btn-secondary shrink-0" onClick={() => importInputRef.current?.click()} disabled={importing}>{importing ? t("select.importing") : t("select.choosePackage")}</button>
           <input ref={importInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleImport} />
         </div>
         {importMessage ? <p className="mt-2 rounded-xl bg-[var(--surface)] px-3 py-2 text-[11.5px] leading-relaxed">{importMessage}</p> : null}
@@ -100,11 +102,11 @@ export default function SelectPage() {
       <section className="card story-card overflow-hidden">
         <div className="hero-explore px-5 py-6">
           <p className="game-kicker">
-            {isAuthored ? "本机创作" : manifest?.difficulty === "easy" ? "入门" : "进阶"} ·{" "}
+            {isAuthored ? t("select.localCreation") : manifest?.difficulty === "easy" ? t("games.easy") : t("games.hard")} ·{" "}
             {game.language}
           </p>
           <h2 className="mt-2 text-[24px] font-bold leading-tight">{game.title}</h2>
-          <div className="game-route mt-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span></div>
+          <div className="game-route mt-4"><span>{t("select.explore")}</span><i>→</i><span>{t("select.choose")}</span><i>→</i><span>{t("select.act")}</span><i>→</i><span>{t("select.reflect")}</span></div>
         </div>
 
         <div className="p-5">
@@ -114,17 +116,17 @@ export default function SelectPage() {
 
           {game.id === "bsop-eight-secrets" ? (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
-              <p className="text-sm font-bold">户外校园寻宝 · 8 个站点</p>
-              <p className="mt-1 text-xs leading-relaxed">找到地点，回答一道圣经记忆题，收集钥匙。轻松玩，不用写长答案。</p>
+              <p className="text-sm font-bold">{t("select.bsopTitle")}</p>
+              <p className="mt-1 text-xs leading-relaxed">{t("select.bsopDescription")}</p>
             </div>
           ) : null}
 
           <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
-              { k: "地点", v: `${game.scenes.length} 个` },
-              { k: "区域", v: formatArea(game.huntArea?.radiusMeters) },
-              { k: "触发", v: triggerRange },
-              { k: "预计", v: `${game.estimatedMinutes ?? 20} 分钟` },
+              { k: t("select.locations"), v: `${game.scenes.length}` },
+              { k: t("select.area"), v: formatArea(game.huntArea?.radiusMeters, t) },
+              { k: t("select.trigger"), v: triggerRange },
+              { k: t("select.estimated"), v: `${game.estimatedMinutes ?? 20} ${t("home.minutes")}` },
             ].map((item) => (
               <div key={item.k} className="rounded-xl bg-[var(--surface)] px-3 py-2">
                 <dt className="text-[11px] text-[var(--muted)]">{item.k}</dt>
@@ -136,14 +138,13 @@ export default function SelectPage() {
           {game.huntArea ? (
             <div className="mt-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[12px] leading-relaxed text-amber-900">
               <p className="font-semibold">
-                探索区域 · {game.huntArea.name ?? formatArea(game.huntArea.radiusMeters)}
+                {t("select.playArea")} · {game.huntArea.name ?? formatArea(game.huntArea.radiusMeters, t)}
                 {game.huntArea.shape === "polygon"
-                  ? `（自定义多边形 · ${game.huntArea.points?.length ?? 0} 个顶点）`
+                  ? `（${t("select.customPolygon")} · ${game.huntArea.points?.length ?? 0} ${t("select.vertices")}）`
                   : ""}
               </p>
               <p className="mt-0.5">
-                整个寻宝在约 {formatArea(game.huntArea.radiusMeters)} 范围内展开；到达每个具体地点后，才会在
-                约 {triggerRange} 的触发圈内解锁任务。
+                {t("select.areaExplanation").replace("{area}", formatArea(game.huntArea.radiusMeters, t)).replace("{range}", triggerRange)}
               </p>
             </div>
           ) : null}
@@ -157,8 +158,8 @@ export default function SelectPage() {
                 <div className="min-w-0">
                   <p className="text-[13.5px] font-medium leading-snug">{scene.title}</p>
                   <p className="text-[11.5px] text-[var(--muted)]">
-                    {scene.challenge ? challengeLabel(scene.challenge.type) : "无任务"}
-                    {scene.reward ? ` · 奖励：${scene.reward.title}` : ""}
+                    {scene.challenge ? challengeLabel(scene.challenge.type, t) : t("select.noChallenge")}
+                    {scene.reward ? ` · ${t("select.reward")}${scene.reward.title}` : ""}
                   </p>
                 </div>
               </div>
@@ -170,48 +171,48 @@ export default function SelectPage() {
       {hasProgress ? (
         <div className="card mt-4 p-4">
           <p className="text-[13px]">
-            你已有进行中的进度：
+            {t("select.existingProgress")}
             <span className="font-semibold">
               {" "}
-              {completedCount} / {statuses.length} 个地点已完成
+              {completedCount} / {statuses.length} {t("select.completedLocations")}
             </span>
           </p>
           <p className="mt-1 text-[12px] text-[var(--muted)]">
-            继续寻宝不会清空已有进度。
+            {t("select.progressKept")}
           </p>
         </div>
       ) : null}
 
       <div className="card mt-4 p-4">
-        <p className="text-[13px] font-semibold">开始前只需记住</p>
+        <p className="text-[13px] font-semibold">{t("select.beforeStart")}</p>
         <ul className="mt-2 space-y-1.5 text-[12.5px] leading-relaxed text-[var(--muted)]">
-          <li>· 本游戏仅适合户外游玩；室内定位可能不稳定。</li>
-          <li>· 允许浏览器使用位置权限，才能触发站点。</li>
-          <li>· 无需注册或登录，进度保存在本机。</li>
+          <li>· {t("home.gpsSafety")}</li>
+          <li>· {t("select.locationPermission")}</li>
+          <li>· {t("select.noAccount")}</li>
         </ul>
         {permission === "denied" ? (
           <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-[12px] leading-snug text-red-700">
-            检测到定位权限已被拒绝。请在浏览器地址栏的站点设置中重新允许定位，否则无法开始。
+            {t("select.permissionDenied")}
           </p>
         ) : null}
       </div>
 
       <div className="mt-4 grid gap-2">
         <button type="button" className="btn btn-primary btn-block" onClick={begin}>
-          {hasProgress ? "继续寻宝" : "开始寻宝"}
+          {hasProgress ? t("home.continueHunt") : t("select.startHunt")}
         </button>
         <button
           type="button"
           className="btn btn-ghost btn-block"
           onClick={() => router.back()}
         >
-          返回
+          {t("common.back")}
         </button>
       </div>
 
       {status === "unsupported" ? (
         <p className="mt-3 text-center text-[12px] text-red-700">
-          当前浏览器不支持定位功能，游戏无法运行。
+          {t("select.gpsUnsupported")}
         </p>
       ) : null}
     </Screen>
@@ -220,10 +221,10 @@ export default function SelectPage() {
   );
 }
 
-function formatArea(radiusMeters?: number): string {
-  if (!Number.isFinite(radiusMeters)) return "未设定";
+function formatArea(radiusMeters: number | undefined, t: (key: import("@/lib/i18n/locale").UiMessageKey) => string): string {
+  if (!Number.isFinite(radiusMeters)) return t("select.notSet");
   const km = (radiusMeters as number) / 1000;
-  return km >= 1 ? `约 ${km.toFixed(km < 10 ? 1 : 0)} km` : `约 ${Math.round(radiusMeters as number)} m`;
+  return km >= 1 ? `${t("select.about")} ${km.toFixed(km < 10 ? 1 : 0)} km` : `${t("select.about")} ${Math.round(radiusMeters as number)} m`;
 }
 
 /**
@@ -233,25 +234,25 @@ function formatArea(radiusMeters?: number): string {
  * radii, and a briefing that claims "30–50 m" for a pack whose rings are 15 m
  * sends the player looking in the wrong place.
  */
-function formatTriggerRange(radii: Array<number | undefined>): string {
+function formatTriggerRange(radii: Array<number | undefined>, t: (key: import("@/lib/i18n/locale").UiMessageKey) => string): string {
   const values = radii
     .map((r) => (typeof r === "number" && Number.isFinite(r) ? Math.round(r) : null))
     .filter((r): r is number => r !== null);
-  if (values.length === 0) return "未设定";
+  if (values.length === 0) return t("select.notSet");
   const min = Math.min(...values);
   const max = Math.max(...values);
   return min === max ? `${min} m` : `${min}–${max} m`;
 }
 
-function challengeLabel(type: string): string {
+function challengeLabel(type: string, t: (key: import("@/lib/i18n/locale").UiMessageKey) => string): string {
   switch (type) {
     case "choice":
-      return "选择题";
+      return t("challenge.choiceType");
     case "keyword":
-      return "关键词题";
+      return t("challenge.keywordType");
     case "text":
-      return "简答题";
+      return t("challenge.textType");
     default:
-      return "任务";
+      return t("select.task");
   }
 }

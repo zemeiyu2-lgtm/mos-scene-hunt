@@ -25,6 +25,7 @@ const BASE = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
 const ARTIFACTS = path.join(process.cwd(), "tests", "e2e", "artifacts");
 const SETTINGS_KEY = "mos-scene-hunt:settings";
 const SAVE_KEY = "mos-scene-hunt:active-save";
+const UI_LOCALE_KEY = "mos-scene-hunt:ui-locale";
 
 /**
  * 与 content/demo-hunt.json（V0.3，五站）保持一致的坐标镜像。
@@ -245,6 +246,9 @@ async function main() {
     page.on("pageerror", (err) => pageErrors.push(String(err)));
 
     const homeResponse = await page.goto(BASE, { waitUntil: "networkidle2", timeout: 45_000 });
+    // This suite asserts Chinese UI copy; pin the test locale explicitly now that new users default to English.
+    await page.evaluate((key) => localStorage.setItem(key, "zh-CN"), UI_LOCALE_KEY);
+    await page.reload({ waitUntil: "networkidle2" });
 
     await check("首页可访问且为 200", async () => {
       assert(homeResponse, "没有拿到响应");

@@ -15,11 +15,13 @@ import { useGps } from "@/components/gps-provider";
 import { ProgressBar, Screen } from "@/components/ui";
 import { formatDistance } from "@/lib/location";
 import { playSound } from "@/components/sound";
+import { useUiLocale } from "@/components/ui-locale-provider";
 
 export default function RewardPage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
   const { sceneId } = use(params);
   const router = useRouter();
+  const { t } = useUiLocale();
   const { game, state, distances, ratio, complete, statuses } = useHunt();
   const { fix } = useGps();
 
@@ -40,11 +42,11 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
 
   if (!scene || !state) {
     return (
-      <Screen title="奖励" subtitle="场景不存在">
+      <Screen title={t("reward.title")} subtitle={t("reward.sceneMissing")}>
         <div className="card p-4">
-          <p className="text-[14px]">找不到这个场景。</p>
+          <p className="text-[14px]">{t("reward.notFound")}</p>
           <button type="button" className="btn btn-secondary mt-3" onClick={() => router.push("/map")}>
-            返回地图
+            {t("reward.backToMap")}
           </button>
         </div>
       </Screen>
@@ -52,17 +54,17 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
   }
 
   return (
-    <Screen title="任务完成" subtitle={scene.title}>
+    <Screen title={t("reward.taskComplete")} subtitle={scene.title}>
       <section className="card overflow-hidden">
         <div className="completion-hero px-5 py-8 text-center">
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/15 text-[34px] shadow-lg">{granted ? reward?.icon ?? "✓" : "!"}</div>
           <p className="mt-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-white/75">
             {granted
-              ? "获得" + (reward?.type === "keyword" ? "关键词" : reward?.type === "badge" ? "徽章" : "奖励")
-              : "任务尚未完成"}
+              ? `${t("reward.earned")}${reward?.type === "keyword" ? t("reward.keyword") : reward?.type === "badge" ? t("reward.badge") : t("reward.reward")}`
+              : t("reward.incompleteTitle")}
           </p>
           <h2 className="mt-1 text-[26px] font-bold leading-tight">
-            {granted ? reward?.title ?? "已完成" : "尚未领取奖励"}
+            {granted ? reward?.title ?? t("reward.completed") : t("reward.notClaimed")}
           </h2>
           {granted && reward?.description ? (
             <p className="mx-auto mt-2 max-w-[320px] text-[13px] leading-relaxed text-white/85">
@@ -75,7 +77,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           {scene.challenge?.explanation ? (
             <div className="rounded-xl bg-[var(--surface)] px-3.5 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                解答
+                {t("reward.explanation")}
               </p>
               <p className="mt-1 text-[13.5px] leading-relaxed">{scene.challenge.explanation}</p>
             </div>
@@ -83,15 +85,15 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
 
           {!granted ? (
             <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[12px] leading-snug text-amber-900">
-              注意：这个场景似乎还没有被正式完成。请返回任务列表重新作答。
+              {t("reward.incompleteNote")}
             </p>
           ) : null}
 
           <div className="mt-4">
             <div className="flex items-center justify-between text-[12px]">
-              <span className="text-[var(--muted)]">整体进度</span>
+              <span className="text-[var(--muted)]">{t("reward.overallProgress")}</span>
               <span className="tabular font-semibold">
-                {statuses.filter((s) => s.status === "completed").length} / {statuses.length} 个地点
+                {statuses.filter((s) => s.status === "completed").length} / {statuses.length} {t("reward.locations")}
               </span>
             </div>
             <ProgressBar ratio={ratio} className="mt-2" />
@@ -99,11 +101,11 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
 
           <div className="mt-3 flex flex-wrap gap-1.5">
             <span className="chip bg-[var(--surface)] text-[11px] text-[var(--muted)]">
-              背包共 {totalCollected} 件
+              {t("reward.inventoryCount")} {totalCollected} {t("reward.items")}
             </span>
             {state.keywords.length ? (
               <span className="chip bg-amber-100 text-[11px] text-amber-800">
-                关键词：{state.keywords.join(" · ")}
+                {t("reward.keywords")}{state.keywords.join(" · ")}
               </span>
             ) : null}
           </div>
@@ -112,8 +114,8 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
             <div className="bsop-keys mt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">七把关键词钥匙</p>
-                  <p className="mt-0.5 text-[12px] text-amber-900/70">集齐七个关键词，最后一站领取完成徽章</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">{t("reward.sevenKeys")}</p>
+                  <p className="mt-0.5 text-[12px] text-amber-900/70">{t("reward.collectSeven")}</p>
                 </div>
                 <span className="text-[12px] font-bold text-amber-900">{state.keywords.length}/7</span>
               </div>
@@ -137,28 +139,28 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
         <section className={`card mt-4 p-5 text-center ${isBsop ? "bsop-final-card" : ""}`}>
           <p className="text-[30px]">{isBsop ? "🎓" : "🏁"}</p>
           <p className="mt-2 text-[16px] font-bold">
-            {isBsop ? "八把钥匙已经交到你手里" : "你已走完全部地点"}
+            {isBsop ? t("reward.eightKeys") : t("reward.allLocations")}
           </p>
           <p className="mt-1 text-[13px] leading-relaxed text-[var(--muted)]">
             {isBsop
-              ? "神学院不是终点。请把最后一把钥匙变成一个真实行动：这一周，你准备去哪里服事、陪伴或门训一个人？"
-              : "现实移动 → GPS → 地点触发 → 情境 → 任务 → 奖励 → 下一地点。"}
+              ? t("reward.finalBsop")
+              : t("reward.gameLoop")}
           </p>
           {isBsop ? (
             <div className="mt-4 rounded-xl bg-white/70 px-3.5 py-3 text-left">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">最后任务 · 带走</p>
-              <p className="mt-1 text-[13px] font-semibold">想一想：这一周，你准备去哪里服事、陪伴或门训一个人？</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">{t("reward.lastTask")}</p>
+              <p className="mt-1 text-[13px] font-semibold">{t("reward.reflection")}</p>
             </div>
           ) : null}
         </section>
       ) : nextScene ? (
         <section className="card mt-4 p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-            已解锁 · 下一个地点
+            {t("reward.nextUnlocked")}
           </p>
           <p className="mt-1.5 text-[16px] font-bold">{nextScene.title}</p>
           <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">
-            {nextScene.location.name ?? "目标地点"}
+            {nextScene.location.name ?? t("reward.targetLocation")}
           </p>
 
           {nextScene.briefing ? (
@@ -169,13 +171,13 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
 
           {nextDistance ? (
             <p className="mt-3 text-[13px]">
-              <span className="text-[var(--muted)]">距离：</span>
+              <span className="text-[var(--muted)]">{t("reward.distance")}</span>
               <span className="tabular font-semibold">
                 {formatDistance(nextDistance.distance)}
               </span>
             </p>
           ) : fix ? null : (
-            <p className="mt-3 text-[12px] text-[var(--muted)]">正在获取定位以计算距离…</p>
+            <p className="mt-3 text-[12px] text-[var(--muted)]">{t("reward.locating")}</p>
           )}
         </section>
       ) : null}
@@ -187,12 +189,12 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           onClick={() => router.push(!granted ? "/scene/" + scene.id : complete ? "/bag" : "/map")}
         >
           {!granted
-            ? "返回情境继续任务"
+            ? t("reward.returnScene")
             : complete
-              ? "查看全部收获 →"
+              ? t("reward.viewFindings")
               : nextScene
-                ? "去寻找下一站 →"
-                : "回到地图 →"}
+                ? t("reward.nextStop")
+                : t("reward.returnMap")}
         </button>
 
         <button
@@ -200,7 +202,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           className="btn btn-ghost btn-block"
           onClick={() => router.push(complete ? "/quest" : "/bag")}
         >
-          {complete ? "查看任务进度" : "查看背包"}
+          {complete ? t("reward.viewProgress") : t("reward.viewBag")}
         </button>
       </div>
     </Screen>

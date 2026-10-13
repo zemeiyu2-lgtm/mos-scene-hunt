@@ -16,11 +16,13 @@ import { Screen, StatusChip } from "@/components/ui";
 import { formatDistance } from "@/lib/location";
 import { playSound } from "@/components/sound";
 import { MediaGallery } from "@/components/media-gallery";
+import { useUiLocale } from "@/components/ui-locale-provider";
 
 export default function ScenePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
   const { sceneId } = use(params);
   const router = useRouter();
+  const { t } = useUiLocale();
   const { game, state, openChallenge, enterScene, distances, statuses } = useHunt();
 
   const scene = game?.scenes.find((s) => s.id === sceneId) ?? null;
@@ -39,11 +41,11 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
 
   if (!scene || !state) {
     return (
-      <Screen title="情境" subtitle="场景不存在">
+      <Screen title={t("scene.title")} subtitle={t("scene.missing")}>
         <div className="card p-4">
-          <p className="text-[14px]">找不到这个场景。</p>
+          <p className="text-[14px]">{t("scene.notFound")}</p>
           <button type="button" className="btn btn-secondary mt-3" onClick={() => router.push("/map")}>
-            返回地图
+            {t("scene.backToMap")}
           </button>
         </div>
       </Screen>
@@ -60,13 +62,13 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
   return (
     <Screen
       title={scene.title}
-      subtitle={scene.location.name ?? "情境"}
+      subtitle={scene.location.name ?? t("scene.title")}
       headerRight={<StatusChip status={isComplete ? "completed" : "arrived"} />}
     >
       {!isComplete && distance && !distance.inRange ? (
         <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-[12.5px] leading-snug text-amber-900">
-            你已离开任务区域（当前 {formatDistance(distance.distance)}）。情境已解锁，可以继续阅读与作答。
+            {t("scene.leftArea").replace("{distance}", formatDistance(distance.distance))}
           </p>
         </div>
       ) : null}
@@ -91,7 +93,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
           <div className="scene-observation mt-4">
             <div className="scene-observation__icon">◉</div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">现场观察</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">{t("scene.observation")}</p>
               <p className="mt-0.5 text-[13px] font-semibold">{scene.place.observationFocus}</p>
               {scene.place.accessNote ? (
                 <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">{scene.place.accessNote}</p>
@@ -109,7 +111,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
             rel="noreferrer"
             className="scene-source mt-2"
           >
-            <span>资料来源</span>
+            <span>{t("scene.source")}</span>
             <span className="min-w-0 flex-1 truncate">{scene.place.source.name}</span>
             <span aria-hidden="true">↗</span>
           </a>
@@ -147,9 +149,9 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
               >
                 <span className="mr-1.5 text-[11px] font-semibold text-[var(--muted)]">
                   {line.speaker === "narrator"
-                    ? "旁白"
+                    ? t("scene.narrator")
                     : line.speaker === "player"
-                      ? "你"
+                      ? t("scene.player")
                       : scene.npc?.name ?? line.speaker}
                 </span>
                 {line.text}
@@ -164,7 +166,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
           <>
             <div className="card mb-1 p-4 text-center">
               <p className="text-[24px]">✓</p>
-              <p className="mt-1 text-[14px] font-semibold">这个情境已经完成</p>
+              <p className="mt-1 text-[14px] font-semibold">{t("scene.completed")}</p>
             </div>
             <button
               type="button"
@@ -173,14 +175,14 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
                 router.push(scene.nextSceneId ? `/scene/${scene.nextSceneId}` : "/quest")
               }
             >
-              {scene.nextSceneId ? "前往下一个地点" : "查看全部收获"}
+              {scene.nextSceneId ? t("scene.nextLocation") : t("scene.viewFindings")}
             </button>
             <button
               type="button"
               className="btn btn-secondary btn-block"
               onClick={() => router.push("/map")}
             >
-              返回地图
+              {t("scene.backToMap")}
             </button>
           </>
         ) : (
@@ -194,14 +196,14 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
                 router.push(`/challenge/${scene.id}`);
               }}
             >
-              {scene.challenge ? "开始任务 →" : "完成这一站 →"}
+              {scene.challenge ? t("scene.startTask") : t("scene.completeStop")}
             </button>
             <button
               type="button"
               className="btn btn-ghost btn-block"
               onClick={() => router.push("/map")}
             >
-              稍后再做
+              {t("scene.later")}
             </button>
           </>
         )}

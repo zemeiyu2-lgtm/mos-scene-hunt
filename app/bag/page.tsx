@@ -18,15 +18,17 @@ import { SimulatorPanel, SimulatorUnavailableNotice } from "@/components/simulat
 import { classifyFix, formatDistance } from "@/lib/location";
 import { isPersistentStorageAvailable, saveSizeBytes } from "@/lib/storage";
 import { TabBar } from "@/components/tab-bar";
+import { useUiLocale } from "@/components/ui-locale-provider";
 
-const REWARD_LABEL: Record<string, string> = {
-  keyword: "关键词",
-  item: "物品",
-  badge: "徽章",
-  story: "故事碎片",
+const REWARD_LABEL: Record<string, "bag.rewardKeyword" | "bag.rewardItem" | "bag.rewardBadge" | "bag.rewardStory"> = {
+  keyword: "bag.rewardKeyword",
+  item: "bag.rewardItem",
+  badge: "bag.rewardBadge",
+  story: "bag.rewardStory",
 };
 
 export default function BagPage() {
+  const { t } = useUiLocale();
   const { game, state, statuses, distances, resetHunt, exportCurrentSave, importSaveText } =
     useHunt();
   const { fix, status: gpsStatus, permission, isSimulated } = useGps();
@@ -41,7 +43,7 @@ export default function BagPage() {
 
   if (!game || !state) {
     return (
-      <Screen title="背包">
+      <Screen title={t("bag.title")}>
         <div className="card h-40 animate-pulse" />
       </Screen>
     );
@@ -57,15 +59,15 @@ export default function BagPage() {
     // into a bug report than a file in the Downloads folder.
     void navigator.clipboard
       ?.writeText(text)
-      .then(() => setImportMsg("存档已复制到剪贴板。"))
-      .catch(() => setImportMsg("复制失败，请改为手动导出。"));
+      .then(() => setImportMsg(t("bag.saveCopied")))
+      .catch(() => setImportMsg(t("bag.copyFailed")));
   };
 
   return (
     <>
     <Screen
-      title="背包"
-      subtitle={`${state.inventory.length} 件收获 · ${state.keywords.length} 个关键词`}
+      title={t("bag.title")}
+      subtitle={`${state.inventory.length} ${t("bag.items")} · ${state.keywords.length} ${t("bag.keywordsCount")}`}
       headerRight={
         <span className="chip bg-[var(--surface)] text-[11px] text-[var(--muted)]">
           {completedCount}/{statuses.length}
@@ -76,7 +78,7 @@ export default function BagPage() {
       {state.keywords.length ? (
         <Card className="border-amber-200 bg-amber-50">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-800">
-            已收集关键词
+            {t("bag.collectedKeywords")}
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {state.keywords.map((word) => (
@@ -89,13 +91,13 @@ export default function BagPage() {
             ))}
           </div>
           <p className="mt-2.5 text-[11.5px] leading-relaxed text-amber-800">
-            关键词会被后续情境引用。它们由确定性游戏逻辑发放，不会因为刷新页面而改变。
+            {t("bag.keywordExplanation")}
           </p>
         </Card>
       ) : null}
 
       <section className="mt-4">
-        <h2 className="px-1 text-[13px] font-semibold text-[var(--muted)]">全部收获</h2>
+        <h2 className="px-1 text-[13px] font-semibold text-[var(--muted)]">{t("bag.allFindings")}</h2>
         {state.inventory.length ? (
           <ul className="mt-2 space-y-2">
             {state.inventory.map((item) => (
@@ -108,7 +110,7 @@ export default function BagPage() {
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-[14.5px] font-semibold leading-snug">{item.title}</p>
                       <span className="chip shrink-0 bg-[var(--surface)] text-[10.5px] text-[var(--muted)]">
-                        {REWARD_LABEL[item.type] ?? item.type}
+                        {t(REWARD_LABEL[item.type] ?? "bag.rewardOther")}
                       </span>
                     </div>
                     {item.description ? (
@@ -117,7 +119,7 @@ export default function BagPage() {
                       </p>
                     ) : null}
                     <p className="mt-1 text-[11px] text-[var(--muted)]">
-                      来自「{game.scenes.find((s) => s.id === item.sceneId)?.title ?? item.sceneId}」
+                      {t("bag.from")}「{game.scenes.find((s) => s.id === item.sceneId)?.title ?? item.sceneId}」
                     </p>
                   </div>
                 </Card>
@@ -127,8 +129,8 @@ export default function BagPage() {
         ) : (
           <div className="mt-2">
             <EmptyState
-              title="背包还是空的"
-              hint="走到第一个地点并完成任务，就会获得第一个关键词。"
+              title={t("bag.emptyTitle")}
+              hint={t("bag.emptyHint")}
             />
           </div>
         )}
@@ -144,43 +146,43 @@ export default function BagPage() {
           onClick={() => setShowDiagnostics((v) => !v)}
           aria-expanded={showDiagnostics}
         >
-          <span className="text-[13px] font-semibold">设备与运行状态</span>
+          <span className="text-[13px] font-semibold">{t("bag.deviceStatus")}</span>
           <span className="text-[12px] text-[var(--muted)]">
-            {showDiagnostics ? "收起 ▴" : "展开 ▾"}
+            {showDiagnostics ? t("bag.collapse") : t("bag.expand")}
           </span>
         </button>
 
         {showDiagnostics ? (
           <Card className="mt-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-              定位
+              {t("bag.location")}
             </p>
-            <KV k="GPS 状态" v={gpsStatus} />
-            <KV k="权限" v={permission} />
-            <KV k="来源" v={isSimulated ? "模拟器" : fix ? "真实设备" : "—"} />
-            <KV k="定位质量" v={quality ? qualityLabel(quality.quality) : "—"} />
+            <KV k={t("bag.gpsStatus")} v={gpsStatus} />
+            <KV k={t("bag.permission")} v={permission} />
+            <KV k={t("bag.source")} v={isSimulated ? t("bag.simulator") : fix ? t("bag.realDevice") : "—"} />
+            <KV k={t("bag.fixQuality")} v={quality ? qualityLabel(quality.quality, t) : "—"} />
             <KV
-              k="当前坐标"
+              k={t("bag.coordinates")}
               v={fix ? `${fix.lat.toFixed(5)}, ${fix.lng.toFixed(5)}` : "—"}
               mono
             />
-            <KV k="精度" v={fix ? `±${Math.round(fix.accuracy)} m` : "—"} mono />
+            <KV k={t("bag.accuracy")} v={fix ? `±${Math.round(fix.accuracy)} m` : "—"} mono />
             {quality?.message ? (
               <p className="mt-1 text-[11.5px] leading-snug text-amber-700">{quality.message}</p>
             ) : null}
 
             <div className="my-3 h-px bg-[var(--line)]" />
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-              网络与存储
+              {t("bag.networkStorage")}
             </p>
-            <KV k="网络" v={online ? "在线" : "离线"} />
-            <KV k="本地存储" v={isPersistentStorageAvailable() ? "可用" : "不可用（内存模式）"} />
-            <KV k="存档大小" v={`${saveSizeBytes()} B`} mono />
-            <KV k="视口宽度" v={`${viewportWidth} px`} mono />
+            <KV k={t("bag.network")} v={online ? t("common.online") : t("common.offline")} />
+            <KV k={t("bag.localStorage")} v={isPersistentStorageAvailable() ? t("bag.available") : t("bag.unavailableMemory")} />
+            <KV k={t("bag.saveSize")} v={`${saveSizeBytes()} B`} mono />
+            <KV k={t("bag.viewportWidth")} v={`${viewportWidth} px`} mono />
 
             <div className="my-3 h-px bg-[var(--line)]" />
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-              各地点距离
+              {t("bag.sceneDistances")}
             </p>
             {statuses.map((row) => {
               const d = distances[row.scene.id];
@@ -202,10 +204,10 @@ export default function BagPage() {
 
             <div className="my-3 h-px bg-[var(--line)]" />
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-              偏好
+              {t("bag.preferences")}
             </p>
             <label className="flex items-center justify-between gap-3 py-1.5">
-              <span className="text-[12px]">允许精度补偿（更易触发）</span>
+              <span className="text-[12px]">{t("bag.accuracySlack")}</span>
               <input
                 type="checkbox"
                 className="h-5 w-5 accent-[var(--accent)]"
@@ -214,7 +216,7 @@ export default function BagPage() {
               />
             </label>
             <label className="flex items-center justify-between gap-3 py-1.5">
-              <span className="text-[12px]">减少动画</span>
+              <span className="text-[12px]">{t("bag.reduceMotion")}</span>
               <input
                 type="checkbox"
                 className="h-5 w-5 accent-[var(--accent)]"
@@ -232,9 +234,9 @@ export default function BagPage() {
       {/* Save management                                            */}
       {/* ---------------------------------------------------------- */}
       <section className="card mt-4 p-4">
-        <p className="text-[13px] font-semibold">存档</p>
+        <p className="text-[13px] font-semibold">{t("bag.saveManagement")}</p>
         <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
-          进度保存在本机浏览器中。刷新页面、切到后台再回来，进度都会保留。
+          {t("bag.saveExplanation")}
         </p>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -243,14 +245,14 @@ export default function BagPage() {
             className="btn btn-secondary h-9 min-h-0 px-3 text-[13px]"
             onClick={exportSave}
           >
-            复制存档
+            {t("bag.copySave")}
           </button>
           <button
             type="button"
             className="btn btn-ghost h-9 min-h-0 px-3 text-[13px]"
             onClick={() => setShowReset((v) => !v)}
           >
-            重置进度
+            {t("bag.resetProgress")}
           </button>
         </div>
 
@@ -260,34 +262,34 @@ export default function BagPage() {
 
         <details className="mt-3">
           <summary className="cursor-pointer text-[12px] text-[var(--muted)]">
-            从文本导入存档
+            {t("bag.importFromText")}
           </summary>
           <textarea
             className="input mt-2 min-h-[100px] font-mono text-[11px]"
             value={importText}
             onChange={(e) => setImportText(e.target.value)}
-            placeholder="粘贴导出的 JSON…"
+            placeholder={t("bag.pasteJson")}
           />
           <button
             type="button"
             className="btn btn-secondary mt-2 h-9 min-h-0 px-3 text-[13px]"
             onClick={() => {
               const ok = importSaveText(importText);
-              setImportMsg(ok ? "导入成功。" : "导入失败：内容不是有效的存档。");
+              setImportMsg(ok ? t("bag.importSuccess") : t("bag.importFailed"));
               if (ok) setImportText("");
             }}
           >
-            导入
+            {t("bag.import")}
           </button>
         </details>
 
         {showReset ? (
           <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
             <p className="text-[12.5px] font-semibold text-red-800">
-              ⚠️ 重置会清空全部进度
+              {t("bag.resetWarning")}
             </p>
             <p className="mt-1 text-[12px] leading-relaxed text-red-700">
-              已完成的地点、全部关键词与奖励都会被删除，且无法恢复。此操作只影响本机存档。
+              {t("bag.resetExplanation")}
             </p>
             <div className="mt-3 flex gap-2">
               <button
@@ -296,17 +298,17 @@ export default function BagPage() {
                 onClick={() => {
                   resetHunt();
                   setShowReset(false);
-                  setImportMsg("进度已重置。");
+                  setImportMsg(t("bag.progressReset"));
                 }}
               >
-                确认重置
+                {t("bag.confirmReset")}
               </button>
               <button
                 type="button"
                 className="btn btn-secondary h-9 min-h-0 px-3 text-[13px]"
                 onClick={() => setShowReset(false)}
               >
-                取消
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -315,7 +317,7 @@ export default function BagPage() {
 
       {settings.simulatorEnabled ? (
         <p className="mt-3 text-center text-[11.5px] text-purple-700">
-          GPS 模拟器已启用。可在「地图」页展开模拟器面板调整位置。
+          {t("bag.simulatorEnabled")}
         </p>
       ) : null}
     </Screen>
@@ -324,16 +326,16 @@ export default function BagPage() {
   );
 }
 
-function qualityLabel(q: string): string {
+function qualityLabel(q: string, t: (key: import("@/lib/i18n/locale").UiMessageKey) => string): string {
   switch (q) {
     case "good":
-      return "良好";
+      return t("bag.qualityGood");
     case "fair":
-      return "一般";
+      return t("bag.qualityFair");
     case "poor":
-      return "较差";
+      return t("bag.qualityPoor");
     case "stale":
-      return "已过期";
+      return t("bag.qualityStale");
     default:
       return q;
   }

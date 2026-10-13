@@ -43,7 +43,7 @@ export async function createGameShareUrl(game: Game): Promise<string> {
 
 /** Reads a self-contained shared game from the current URL, if present. */
 export async function readSharedGameFromUrl(): Promise<Game | null> {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || !window.location || typeof window.location.hash !== "string") return null;
   const hash = window.location.hash;
   if (!hash.startsWith(PREFIX)) return null;
   try {

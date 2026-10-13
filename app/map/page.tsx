@@ -19,9 +19,11 @@ import { SimulatorPanel } from "@/components/simulator-panel";
 import { StatusChip } from "@/components/ui";
 import { calculateDistance, classifyFix, formatDistance, resolveRadius } from "@/lib/location";
 import { TabBar } from "@/components/tab-bar";
+import { useUiLocale } from "@/components/ui-locale-provider";
 import type { MapSceneEntry } from "@/components/game-map";
 
 export default function MapPage() {
+  const { t } = useUiLocale();
   const router = useRouter();
   const { settings, update } = useSettings();
   const { fix, start, status, error, isSimulated, retry, simulatorAvailable } = useGps();
@@ -96,11 +98,11 @@ export default function MapPage() {
               <Link
                 href="/quest"
                 className="card flex min-w-0 flex-1 items-center gap-3 px-3 py-2"
-                aria-label="查看任务列表"
+                aria-label={t("map.viewQuests")}
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold">
-                    {complete ? "全部完成 🎉" : current?.title ?? "加载中…"}
+                    {complete ? t("map.allComplete") : current?.title ?? t("common.loading")}
                   </p>
                   <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]">
                     <div
@@ -118,8 +120,8 @@ export default function MapPage() {
                 type="button"
                 onClick={() => setRecenterToken((t) => t + 1)}
                 className="card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px]"
-                aria-label="回到我的位置"
-                title="回到我的位置"
+                aria-label={t("map.recenter")}
+                title={t("map.recenter")}
               >
                 ⌖
               </button>
@@ -130,7 +132,7 @@ export default function MapPage() {
             {outsideHuntArea ? (
               <div className="pointer-events-auto mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
                 <p className="text-[12.5px] leading-snug text-amber-900">
-                  你已离开本次寻宝区域。当前距区域中心约 {huntAreaDistance !== null ? formatDistance(huntAreaDistance) : "--"}。
+                  {t("map.leftHuntArea").replace("{distance}", huntAreaDistance !== null ? formatDistance(huntAreaDistance) : "--")}
                 </p>
               </div>
             ) : null}
@@ -143,7 +145,7 @@ export default function MapPage() {
                   className="mt-1.5 text-[12px] font-semibold text-red-700 underline"
                   onClick={retry}
                 >
-                  重新请求定位
+                  {t("map.retryLocation")}
                 </button>
               </div>
             ) : null}
@@ -151,14 +153,14 @@ export default function MapPage() {
             {status === "idle" && !fix ? (
               <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
                 <p className="text-[12.5px] leading-snug text-amber-900">
-                  尚未开始定位。允许定位后才能看到你与目标地点的距离。
+                  {t("map.locationNotStarted")}
                 </p>
                 <button
                   type="button"
                   className="btn btn-primary mt-2 h-9 min-h-0 px-3 text-[13px]"
                   onClick={start}
                 >
-                  获取我的位置
+                  {t("map.getMyLocation")}
                 </button>
               </div>
             ) : null}
@@ -166,7 +168,7 @@ export default function MapPage() {
             {isSimulated ? (
               <div className="pointer-events-auto mt-2">
                 <span className="chip bg-purple-100 text-purple-700">
-                  模拟定位中 · 非真实位置
+                  {t("map.simulatedLocation")}
                 </span>
               </div>
             ) : null}
@@ -187,14 +189,14 @@ export default function MapPage() {
           <div className="page">
             <div className="card p-3 shadow-sheet">
               {loading ? (
-                <p className="py-2 text-center text-[13px] text-[var(--muted)]">正在加载游戏数据…</p>
+                <p className="py-2 text-center text-[13px] text-[var(--muted)]">{t("map.loadingGame")}</p>
               ) : complete ? (
                 <div className="py-1 text-center">
                   <p className="text-[15px] font-semibold text-emerald-700">
-                    🎉 你已走完全部 {statuses.length} 个地点
+                    {t("map.allLocationsDone").replace("{count}", String(statuses.length))}
                   </p>
                   <Link href="/bag" className="btn btn-primary btn-block mt-3">
-                    查看我的收获
+                    {t("map.viewFindings")}
                   </Link>
                 </div>
               ) : current ? (
@@ -206,7 +208,7 @@ export default function MapPage() {
                         <StatusChip status={statuses.find((s) => s.scene.id === current.id)?.status ?? "available"} />
                       </div>
                       <p className="mt-0.5 truncate text-[12px] text-[var(--muted)]">
-                        {current.location.name ?? "目标地点"}
+                        {current.location.name ?? t("map.targetLocation")}
                       </p>
                     </div>
                   </div>
@@ -215,21 +217,21 @@ export default function MapPage() {
                     {currentDistance ? (
                       currentDistance.inRange ? (
                         <p className="text-[15px] font-bold text-emerald-600">
-                          ◉ 你已经找到这里
+                          {t("map.arrivedHere")}
                         </p>
                       ) : (
                         <div className="flex items-baseline gap-2">
-                          <span className="text-[13px] text-[var(--muted)]">距离目标：</span>
+                          <span className="text-[13px] text-[var(--muted)]">{t("distance.target")}</span>
                           <span className="tabular text-[19px] font-bold">
                             {formatDistance(currentDistance.distance)}
                           </span>
                           <span className="text-[11px] text-[var(--muted)]">
-                            （触发半径 {currentRadius} m）
+                            （{t("distance.triggerRadius")} {currentRadius} m）
                           </span>
                         </div>
                       )
                     ) : (
-                      <p className="text-[13px] text-[var(--muted)]">等待定位以计算距离…</p>
+                      <p className="text-[13px] text-[var(--muted)]">{t("map.waitingForDistance")}</p>
                     )}
                   </div>
 
@@ -245,23 +247,23 @@ export default function MapPage() {
                       className="btn btn-primary btn-block mt-3"
                       onClick={() => router.push(`/scene/${arrivedScene.id}`)}
                     >
-                      解锁情境 →
+                      {t("map.unlockScene")}
                     </button>
                   ) : (
                     <Link href="/quest" className="btn btn-secondary btn-block mt-3">
-                      查看任务详情
+                      {t("map.viewTaskDetails")}
                     </Link>
                   )}
 
                   {insideAnyScene && arrivedScene && arrivedScene.id !== current.id ? (
                     <p className="mt-2 text-[11.5px] text-[var(--muted)]">
-                      你正在「{arrivedScene.title}」的范围内，但它尚未解锁。先去完成当前目标。
+                      {t("map.arrivedLockedScene").replace("{title}", arrivedScene.title)}
                     </p>
                   ) : null}
                 </>
               ) : (
                 <p className="py-2 text-center text-[13px] text-[var(--muted)]">
-                  没有可进行的任务。
+                  {t("map.noAvailableTasks")}
                 </p>
               )}
             </div>

@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useHunt } from "./hunt-provider";
+import { useUiLocale } from "./ui-locale-provider";
 
 interface TabDef {
   href: string;
@@ -21,28 +22,29 @@ interface TabDef {
 
 export function TabBar() {
   const pathname = usePathname();
+  const { t } = useUiLocale();
   const { state, complete } = useHunt();
 
   const newItems = state?.inventory.length ?? 0;
 
   const tabs: TabDef[] = [
-    { href: "/map", label: "地图", icon: "◎" },
+    { href: "/map", label: t("nav.map"), icon: "◎" },
     {
       href: "/quest",
-      label: "任务",
+      label: t("nav.quests"),
       icon: "◆",
       // A dot on 任务 when there is something new to do, not a count: a number
       // here would compete with the distance readout for attention.
       badge: complete ? null : 1,
     },
-    { href: "/bag", label: "背包", icon: "▤", badge: newItems || null },
+    { href: "/bag", label: t("nav.bag"), icon: "▤", badge: newItems || null },
   ];
 
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--card)]"
       style={{ paddingBottom: "var(--safe-bottom)" }}
-      aria-label="主导航"
+      aria-label={t("nav.main")}
     >
       <ul className="mx-auto flex w-full max-w-[480px]">
         {tabs.map((tab) => {

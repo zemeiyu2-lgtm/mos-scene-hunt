@@ -14,14 +14,16 @@ import { useHunt } from "@/components/hunt-provider";
 import { EmptyState, ProgressBar, Screen, StatusChip } from "@/components/ui";
 import { formatDistance, resolveRadius } from "@/lib/location";
 import { TabBar } from "@/components/tab-bar";
+import { useUiLocale } from "@/components/ui-locale-provider";
 
 export default function QuestPage() {
   const router = useRouter();
+  const { t } = useUiLocale();
   const { game, state, statuses, distances, current, ratio, complete, loading } = useHunt();
 
   if (loading || !game || !state) {
     return (
-      <Screen title="任务" subtitle="正在加载">
+      <Screen title={t("quest.title")} subtitle={t("quest.loading")}>
         <div className="card h-40 animate-pulse" />
       </Screen>
     );
@@ -32,27 +34,27 @@ export default function QuestPage() {
   return (
     <>
     <Screen
-      title="任务"
-      subtitle={`${game.title} · ${completedCount}/${statuses.length} 个地点已完成`}
+      title={t("quest.title")}
+      subtitle={`${game.title} · ${completedCount}/${statuses.length} ${t("quest.completedPlaces")}`}
       headerRight={
-        complete ? <span className="chip bg-emerald-100 text-emerald-700">全部完成</span> : null
+        complete ? <span className="chip bg-emerald-100 text-emerald-700">{t("quest.allDone")}</span> : null
       }
     >
       <div className="card story-card p-5">
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-semibold">
-            {complete ? "你已经走完整条路线" : current ? `当前目标：${current.title}` : "准备开始"}
+            {complete ? t("quest.routeComplete") : current ? `${t("quest.currentTarget")}${current.title}` : t("quest.ready")}
           </p>
           <span className="tabular text-[13px] font-bold">{Math.round(ratio * 100)}%</span>
         </div>
         <ProgressBar ratio={ratio} className="mt-2.5" />
         {!complete ? (
           <Link href="/map" className="btn btn-primary btn-block mt-3.5">
-            打开地图继续
+            {t("quest.openMap")}
           </Link>
         ) : (
           <Link href="/bag" className="btn btn-primary btn-block mt-3.5">
-            查看全部收获
+            {t("quest.viewFindings")}
           </Link>
         )}
       </div>
@@ -92,30 +94,30 @@ export default function QuestPage() {
                     </div>
 
                     <p className="mt-0.5 text-[12px] text-[var(--muted)]">
-                      {row.scene.location.name ?? "地点"}
-                      {row.scene.reward ? ` · 奖励：${row.scene.reward.title}` : ""}
+                      {row.scene.location.name ?? t("quest.place")}
+                      {row.scene.reward ? ` · ${t("quest.reward")}${row.scene.reward.title}` : ""}
                     </p>
 
                     {!isLocked && d ? (
                       <p className="mt-2 text-[12.5px]">
                         {d.inRange ? (
-                          <span className="font-semibold text-emerald-600">✓ 已进入任务区域</span>
+                          <span className="font-semibold text-emerald-600">✓ {t("quest.insideArea")}</span>
                         ) : (
                           <>
-                            <span className="text-[var(--muted)]">距离目标：</span>
+                            <span className="text-[var(--muted)]">{t("quest.distance")}</span>
                             <span className="tabular font-semibold">
                               {formatDistance(d.distance)}
                             </span>
                             <span className="text-[11px] text-[var(--muted)]">
                               {" "}
-                              / 触发半径 {radius} m
+                              / {t("quest.triggerRadius")} {radius} m
                             </span>
                           </>
                         )}
                       </p>
                     ) : isLocked ? (
                       <p className="mt-2 text-[12px] text-[var(--muted)]">
-                        完成「{statuses[index - 1]?.scene.title ?? "前一个地点"}」后解锁
+                        {t("quest.unlockAfter").replace("{title}", statuses[index - 1]?.scene.title ?? t("quest.previousLocation"))}
                       </p>
                     ) : null}
 
@@ -133,13 +135,13 @@ export default function QuestPage() {
                               href={`/scene/${row.scene.id}`}
                               className="btn btn-secondary h-9 min-h-0 flex-1 px-3 text-[13px]"
                             >
-                              重看情境
+                              {t("quest.revisitScene")}
                             </Link>
                             <Link
                               href={`/reward/${row.scene.id}`}
                               className="btn btn-ghost h-9 min-h-0 px-3 text-[13px]"
                             >
-                              奖励
+                              {t("quest.rewardButton")}
                             </Link>
                           </>
                         ) : canEnter ? (
@@ -148,7 +150,7 @@ export default function QuestPage() {
                               href={`/scene/${row.scene.id}`}
                               className="btn btn-primary h-9 min-h-0 flex-1 px-3 text-[13px]"
                             >
-                              解锁情境 →
+                              {t("quest.unlockScene")}
                             </Link>
                           </>
                         ) : (
@@ -157,7 +159,7 @@ export default function QuestPage() {
                             className="btn btn-secondary h-9 min-h-0 flex-1 px-3 text-[13px]"
                             onClick={() => router.push("/map")}
                           >
-                            在地图上查看路线
+                            {t("quest.viewRoute")}
                           </button>
                         )}
                       </div>
@@ -171,14 +173,14 @@ export default function QuestPage() {
       </ul>
 
       {!statuses.length ? (
-        <EmptyState title="这个寻宝还没有场景" hint="请检查内容包是否正确加载。" />
+        <EmptyState title={t("quest.noScenes")} hint={t("quest.checkPack")} />
       ) : null}
 
       {complete ? (
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center">
-          <p className="text-[15px] font-semibold text-emerald-800">🎉 全部完成</p>
+          <p className="text-[15px] font-semibold text-emerald-800">🎉 {t("quest.allComplete")}</p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-emerald-700">
-            你已走完 {statuses.length} 个真实地点。进度已保存在本机，刷新页面也不会丢失。
+            {t("quest.savedProgress").replace("{count}", String(statuses.length))}
           </p>
         </div>
       ) : null}
