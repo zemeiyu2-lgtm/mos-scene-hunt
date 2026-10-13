@@ -153,7 +153,7 @@ export default function DesignPage() {
         radiusMeters: working.huntArea?.radiusMeters ?? 100,
         shape: "polygon",
         points: [],
-        name: working.huntArea?.name ?? "自定义游戏区域",
+        name: working.huntArea?.name ?? (en ? "Custom play area" : "自定义游戏区域"),
       },
     });
   };
@@ -216,7 +216,7 @@ export default function DesignPage() {
             ? Math.max(30, working.huntArea.radiusMeters)
             : working.huntArea?.radiusMeters ?? 100,
         shape: "circle",
-        name: working.huntArea?.name ?? "圆形游戏区域",
+        name: working.huntArea?.name ?? (en ? "Circular play area" : "圆形游戏区域"),
       },
     });
   };
@@ -261,7 +261,7 @@ export default function DesignPage() {
       update({
         huntArea: {
           center, radiusMeters, shape: "polygon", points,
-          name: current?.name ?? "自定义游戏区域",
+          name: current?.name ?? (en ? "Custom play area" : "自定义游戏区域"),
         },
       });
       return;
@@ -283,18 +283,18 @@ export default function DesignPage() {
     const id = `scene-${Date.now().toString(36)}`;
     const newScene: Scene = {
       id,
-      title: `第${index}站 · 新地点`,
-      story: "在这里写下玩家到达现场后看到的情境。",
-      briefing: "前往这个地点，到达后解锁任务。",
-      location: { lat: base.lat, lng: base.lng, radius: 15, name: "新地点" },
+      title: en ? `Stop ${index} · New location` : `第${index}站 · 新地点`,
+      story: en ? "Write the scene players will discover when they arrive." : "在这里写下玩家到达现场后看到的情境。",
+      briefing: en ? "Go to this location to unlock the task." : "前往这个地点，到达后解锁任务。",
+      location: { lat: base.lat, lng: base.lng, radius: 15, name: en ? "New location" : "新地点" },
       nextSceneId: null,
       challenge: {
         type: "choice",
-        question: "你在现场观察到了什么？",
+        question: en ? "What do you notice at this location?" : "你在现场观察到了什么？",
         options: ["A", "B", "C"],
         answer: 0,
       },
-      reward: { type: "keyword", title: "新线索", value: "线索" },
+      reward: { type: "keyword", title: en ? "New clue" : "新线索", value: en ? "Clue" : "线索" },
     };
     const scenes = working.scenes.map((scene, i) =>
       i === working.scenes.length - 1 ? { ...scene, nextSceneId: id } : scene,
@@ -506,7 +506,7 @@ export default function DesignPage() {
           <h2 className="mt-1.5 text-[21px] font-bold">{en ? "Seminary's Eight Secrets" : "《神学院的八个秘密》"}</h2>
           <p className="mt-1 text-[12.5px] leading-relaxed text-white/75">{en ? "Turn a real campus into a memorable journey: explore → choose → act → reflect → take something with you." : "把真实校园变成一条会留下记忆的路：探索 → 选择 → 行动 → 反思 → 带走。"}</p>
           <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadBsopClassicTemplate}>
-            载入 BSOP 经典母版
+            {en ? "Load BSOP classic template" : "载入 BSOP 经典母版"}
           </button>
           <p className="mt-2 text-[10.5px] text-white/55">{en ? "After loading, move all eight scenes to their real campus locations, then draw the play area." : "载入后请把 8 个场景拖到校园真实位置，再绘制游戏区域。"}</p>
         </div>
@@ -536,7 +536,7 @@ export default function DesignPage() {
           <p className="mt-1 text-[var(--muted)]">
             {drawingArea ? (
               <span className="font-semibold text-[var(--accent)]">
-                请在地图上依次点击游戏区域的边界点
+                {en ? "Click the play-area boundary points on the map in order" : "请在地图上依次点击游戏区域的边界点"}
               </span>
             ) : placingCircle ? (
               <span className="font-semibold text-[var(--accent)]">
@@ -549,8 +549,8 @@ export default function DesignPage() {
           <div className="mt-2 flex flex-wrap gap-2">
             <span className="chip bg-amber-100 text-amber-800">
               {isPolygon
-                ? `自定义区域 · ${polygonPoints.length} 个边界点`
-                : `圆形 · 半径 ${Math.round(area?.radiusMeters ?? 100)}m`}
+                ? (en ? `Custom area · ${polygonPoints.length} boundary points` : `自定义区域 · ${polygonPoints.length} 个边界点`)
+                : (en ? `Circle · radius ${Math.round(area?.radiusMeters ?? 100)} m` : `圆形 · 半径 ${Math.round(area?.radiusMeters ?? 100)}m`)}
             </span>
           </div>
         </div>
@@ -586,7 +586,7 @@ export default function DesignPage() {
         {drawingArea ? (
           <>
             <div className="mt-3 rounded-xl border border-dashed border-[var(--accent)] bg-[var(--surface)] p-3">
-              <p className="text-[12px] font-semibold">{en ? "Click the boundary points of the play area on the map" : (en ? "Click the play-area boundary points on the map in order" : "请在地图上依次点击游戏区域的边界点")}</p>
+              <p className="text-[12px] font-semibold">{en ? "Click the boundary points of the play area on the map" : (en ? "Click the play-area boundary points on the map in order" : "{en ? "Click the play-area boundary points on the map in order" : "请在地图上依次点击游戏区域的边界点"}")}</p>
               <p className="mt-1 font-mono text-[11px] leading-relaxed text-[var(--muted)]">
                 ●──────●<br />
                 /&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br />
@@ -597,7 +597,7 @@ export default function DesignPage() {
               <p className="mt-2 text-[13px] font-bold">{en ? `Selected ${polygonPoints.length} points` : `已选择 ${polygonPoints.length} 个点`}</p>
               <p className="text-[11.5px] text-[var(--muted)]">
                 {polygonPoints.length < MIN_POLYGON_POINTS
-                  ? `至少 ${MIN_POLYGON_POINTS} 个点才能完成。`
+                  ? (en ? `At least ${MIN_POLYGON_POINTS} points are required.` : `至少 ${MIN_POLYGON_POINTS} 个点才能完成。`)
                   : (en ? "Select “Finish area” to close the shape." : "可以点「完成区域」闭合形状。")}
               </p>
             </div>
