@@ -1096,3 +1096,29 @@ body {
     padding: 16px;
   }
 }
+
+
+/* Tutorial demo — keep the guided preview legible on narrow phones. */
+.tutorial-shell {
+  padding-bottom: calc(32px + var(--safe-bottom));
+}
+.tutorial-demo-card {
+  box-shadow: 0 12px 32px -24px rgba(20, 37, 31, 0.42);
+}
+.tutorial-demo-stage {
+  isolation: isolate;
+}
+.tutorial-controls {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+}
+@media (max-width: 360px) {
+  .tutorial-shell {
+    padding-inline: 12px;
+  }
+  .tutorial-demo-stage {
+    padding: 12px;
+  }
+  .tutorial-controls {
+    padding: 14px;
+  }
+}
