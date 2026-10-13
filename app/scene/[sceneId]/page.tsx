@@ -73,7 +73,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
         </div>
       ) : null}
 
-      <article className="card story-card p-5 scene-reveal">
+      <article className="card story-card scene-story-card p-5 scene-reveal">
         {scene.briefing ? (
           <p className="mb-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[12.5px] italic leading-relaxed text-amber-900">
             {scene.briefing}
