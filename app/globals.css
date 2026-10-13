@@ -1023,3 +1023,75 @@ body {
     text-align: center;
   }
 }
+
+
+/* ------------------------------------------------------------------ */
+/* Phase A — quest, briefing and discovery reading polish              */
+/* ------------------------------------------------------------------ */
+.quest-progress-card {
+  border-color: rgba(16, 155, 129, 0.22);
+  box-shadow: 0 8px 26px -20px rgba(8, 118, 95, 0.45);
+}
+.quest-location-card {
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.quest-location-card:has(.bg-\[var\(--accent\)\]) {
+  border-color: rgba(16, 155, 129, 0.5);
+}
+.quest-location-actions > .btn {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.select-import-card {
+  border-style: dashed;
+  border-color: #c9d9d1;
+  background: rgba(255, 255, 255, 0.88);
+}
+.select-metrics > div {
+  min-width: 0;
+  border: 1px solid rgba(221, 231, 226, 0.8);
+}
+.select-metrics dd {
+  overflow-wrap: anywhere;
+}
+.select-scene-list > div {
+  border-bottom: 1px solid rgba(221, 231, 226, 0.7);
+  padding: 0 0 9px;
+}
+.select-scene-list > div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.scene-story-card {
+  overflow-wrap: anywhere;
+}
+.scene-story-card p {
+  text-wrap: pretty;
+}
+.scene-actions .btn {
+  min-width: 0;
+}
+@media (max-width: 360px) {
+  .quest-location-actions {
+    flex-direction: column;
+  }
+  .quest-location-actions > .btn {
+    width: 100%;
+  }
+  .select-import-card > div {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .select-import-card > div > button {
+    width: 100%;
+  }
+  .select-metrics {
+    gap: 6px;
+  }
+  .select-metrics > div {
+    padding: 8px;
+  }
+  .scene-story-card {
+    padding: 16px;
+  }
+}
