@@ -986,3 +986,40 @@ body {
     padding: 8px 5px;
   }
 }
+
+ 
+/* Inventory and selected-answer polish — no save or scoring changes */
+.bag-findings-section > ul > li > .card {
+  border-color: rgba(20, 37, 31, 0.1);
+  box-shadow: 0 6px 20px -18px rgba(20, 37, 31, 0.38);
+}
+.bag-findings-section > ul > li > .card > span:first-child {
+  border: 1px solid rgba(8, 118, 95, 0.1);
+}
+.bag-diagnostics-section > button {
+  min-height: 48px;
+  border-color: rgba(20, 37, 31, 0.12);
+}
+.bag-save-management {
+  border-color: rgba(8, 118, 95, 0.18);
+  background: linear-gradient(145deg, #ffffff 0%, #f7fbf9 100%);
+}
+.challenge-options .choice-card[data-active="true"] {
+  border-color: rgba(8, 118, 95, 0.55);
+  background: #eaf7f2;
+  box-shadow: 0 0 0 1px rgba(8, 118, 95, 0.12);
+}
+.challenge-options .choice-card:focus-visible {
+  outline: 3px solid rgba(16, 155, 129, 0.42);
+  outline-offset: 2px;
+}
+@media (max-width: 360px) {
+  .bag-findings-section > ul > li > .card {
+    gap: 10px;
+    padding: 12px;
+  }
+  .bag-findings-section .chip {
+    white-space: normal;
+    text-align: center;
+  }
+}
