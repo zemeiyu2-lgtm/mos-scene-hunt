@@ -820,3 +820,57 @@ body {
     padding: 24px 16px;
   }
 }
+
+
+/* Challenge and reward hierarchy refinement — presentation only */
+.challenge-question-card {
+  border-color: rgba(20, 37, 31, 0.08);
+  box-shadow: 0 10px 26px -20px rgba(20, 37, 31, 0.32);
+}
+.challenge-question-card h2 {
+  text-wrap: pretty;
+}
+.challenge-options {
+  gap: 10px;
+}
+.challenge-options .choice-card {
+  min-height: 60px;
+  border-color: #d8e4df;
+  box-shadow: 0 3px 12px -10px rgba(20, 37, 31, 0.28);
+}
+.challenge-options .choice-card[data-active="true"] {
+  border-color: var(--accent-deep);
+  background: #edf8f4;
+  box-shadow: 0 6px 18px -14px rgba(8, 118, 95, 0.5);
+}
+.challenge-options .choice-card[data-active="true"] > span:first-child {
+  background: var(--accent-deep);
+  color: #ffffff;
+}
+.challenge-actions {
+  padding-bottom: 4px;
+}
+.reward-main-card {
+  border-color: rgba(8, 118, 95, 0.16);
+  box-shadow: 0 14px 32px -24px rgba(20, 37, 31, 0.38);
+}
+.reward-hero {
+  padding-top: 34px;
+  padding-bottom: 32px;
+}
+.reward-hero h2 {
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.reward-next-card {
+  border-color: rgba(8, 118, 95, 0.2);
+  background: linear-gradient(135deg, #ffffff 0%, #f7fbf9 100%);
+}
+@media (max-width: 360px) {
+  .reward-hero {
+    padding: 28px 16px;
+  }
+  .reward-hero h2 {
+    font-size: 23px;
+  }
+}
