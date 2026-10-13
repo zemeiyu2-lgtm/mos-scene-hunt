@@ -141,7 +141,7 @@ export default function TutorialPage() {
     <main className="mx-auto min-h-[100dvh] w-full max-w-xl px-4 pb-8 pt-4 text-[var(--text)]">
       <header className="mb-4 flex items-center justify-between gap-3">
         <Link href="/" className="inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-sm font-semibold text-[var(--muted)]">
-          <span aria-hidden="true">←</span> 返回首页
+          <span aria-hidden="true">←</span> {en ? "Back home" : "返回首页"}
         </Link>
         <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">{en ? "Guided tour" : "新手演示"}</span>
       </header>
@@ -188,11 +188,11 @@ export default function TutorialPage() {
                 <text x="220" y="58" fill="#ffffff" fontSize="8">{en ? "Sample target" : "示意目标"}</text>
               </svg>
               <div className="absolute z-10 transition-all duration-1000 ease-in-out" style={{ left: marker.left, top: marker.top, transform: "translate(-50%, -50%)" }}>
-                <div className="grid h-9 w-9 place-items-center rounded-full border-[3px] border-white bg-teal-300 text-sm font-black text-[#12323e] shadow-lg">你</div>
+                <div className="grid h-9 w-9 place-items-center rounded-full border-[3px] border-white bg-teal-300 text-sm font-black text-[#12323e] shadow-lg">{en ? "You" : "你"}</div>
                 <div className="mx-auto mt-1 h-2 w-2 rounded-full bg-teal-200 ring-4 ring-teal-200/20" />
               </div>
               <div className="absolute bottom-2 left-2 rounded-lg bg-black/35 px-2.5 py-1.5 text-[10px] font-semibold backdrop-blur">
-                {step >= 4 ? (en ? "✦ Stop 1 discovered" : "✦ 发现第一站") : `↗ 距离目标 ${current.distance}`}
+                {step >= 4 ? (en ? "✦ Stop 1 discovered" : "✦ 发现第一站") : `${en ? "↗ Distance to target" : "↗ 距离目标"} ${current.distance}`}
               </div>
               <div className="absolute bottom-2 right-2 rounded-lg bg-black/35 px-2.5 py-1.5 text-[9px] text-white/80">{en ? "Illustrative map · not measured" : "示意地图 · 非实测"}</div>
             </div>
