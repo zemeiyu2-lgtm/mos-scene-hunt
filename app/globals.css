@@ -1237,3 +1237,27 @@ textarea,
     grid-column: auto;
   }
 }
+
+
+/* Presentation-only theme tokens. No gameplay, GPS, or persistence selectors. */
+/* No attribute (or an unknown attribute) deliberately keeps the existing default. */
+html[data-visual-theme="story-journal"] {
+  --surface: #f8f5ee;
+  --card: #fffefa;
+  --line: #e5dccb;
+  --text: #2e3028;
+  --muted: #68695f;
+  --accent: #497565;
+  --accent-deep: #315b4c;
+  --ok: #10b981;
+}
+html[data-visual-theme="city-detective"] {
+  --surface: #f3f5f7;
+  --card: #ffffff;
+  --line: #d9e0e7;
+  --text: #1d2935;
+  --muted: #596a79;
+  --accent: #247f83;
+  --accent-deep: #176368;
+  --ok: #10b981;
+}
