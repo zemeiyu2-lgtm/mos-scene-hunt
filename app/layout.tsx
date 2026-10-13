@@ -30,7 +30,7 @@ export const viewport: Viewport = {
   // Zoom stays available: a map game should never trap a low-vision player.
   maximumScale: 5,
   userScalable: true,
-  themeColor: "#f6f7fb",
+  themeColor: "#F5F8F6",
   viewportFit: "cover",
 };
 
