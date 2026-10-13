@@ -40,7 +40,7 @@ export default function QuestPage() {
         complete ? <span className="chip bg-emerald-100 text-emerald-700">{t("quest.allDone")}</span> : null
       }
     >
-      <div className="card story-card p-5">
+      <div className="card story-card quest-progress-card p-5">
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-semibold">
             {complete ? t("quest.routeComplete") : current ? `${t("quest.currentTarget")}${current.title}` : t("quest.ready")}
