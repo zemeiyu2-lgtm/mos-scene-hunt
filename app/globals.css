@@ -263,8 +263,9 @@ body {
 }
 
 .scene-marker--available {
-  background: var(--accent);
-  color: #3a2400;
+  /* Keep status markers legible across every presentation theme. */
+  background: var(--accent-deep);
+  color: #ffffff;
 }
 
 .scene-marker--arrived,
