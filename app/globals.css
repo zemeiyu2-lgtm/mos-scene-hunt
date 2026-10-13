@@ -15,14 +15,14 @@
   /* Height of the persistent bottom tab bar, excluding the safe-area inset. */
   --tabbar-h: 56px;
 
-  --surface: #f6f7fb;
+  --surface: #f5f8f6;
   --card: #ffffff;
-  --line: #e4e7ef;
-  --text: #101527;
-  --muted: #5f6779;
-  --accent: #f5a524;
-  --accent-deep: #c47c0a;
-  --ok: #2ec27e;
+  --line: #dde7e2;
+  --text: #14251f;
+  --muted: #64748b;
+  --accent: #109b81;
+  --accent-deep: #08765f;
+  --ok: #10b981;
 }
 
 html,
@@ -104,10 +104,16 @@ body {
   cursor: not-allowed;
 }
 
+/* Keep keyboard focus visible without changing the normal touch appearance. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 3px solid rgba(16, 155, 129, 0.55);
+  outline-offset: 3px;
+}
+
 .btn-primary {
   background: var(--accent);
   color: #2b1a00;
-  box-shadow: 0 6px 18px -10px rgba(196, 124, 10, 0.85);
+  box-shadow: 0 6px 18px -10px rgba(8, 118, 95, 0.38);
 }
 
 .btn-primary:active:not(:disabled) {
