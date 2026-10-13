@@ -6,9 +6,8 @@
  */
 export type UiLocale = "en" | "zh-CN";
 
-// Keep the draft experience consistently Chinese until the main routes are bilingual.
-// Switch new-user default back to English when the language selector is released.
-export const DEFAULT_UI_LOCALE: UiLocale = "zh-CN";
+// English is the default for new users; saved language preferences remain unchanged.
+export const DEFAULT_UI_LOCALE: UiLocale = "en";
 const UI_LOCALE_KEY = "mos-scene-hunt:ui-locale";
 
 const messages = {
