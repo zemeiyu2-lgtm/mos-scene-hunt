@@ -359,7 +359,23 @@ export default function DesignPage() {
       if (working.scenes.some((scene) => !configured(scene.location))) missing.push((en ? "real GPS coordinates for all stops" : "所有站点的真实 GPS 坐标"));
       if (missing.length) throw new Error((en ? "Cannot publish yet. Please set: " : "暂不能发布，请先设置：") + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。");
       if (!save()) throw new Error((en ? "The game could not be saved on this device. Check browser storage and try again." : "游戏未能保存到本机，请检查浏览器存储空间后重试。"));
-      const url = await createGameShareUrl(working);
+      let url: string;
+      try {
+        const response = await fetch("/api/shares", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ game: working }),
+        });
+        const result = await response.json() as { path?: string; error?: string };
+        if (!response.ok || !result.path) throw new Error(result.error || "短链接服务暂时不可用");
+        url = new URL(result.path, window.location.origin).toString();
+        setShareMessage(en ? "Cloud share link created. Recipients can open it without your phone staying online." : "云端短链接已创建；接收者打开链接即可获取游戏，不需要你的手机一直在线。");
+      } catch {
+        url = await createGameShareUrl(working);
+        setShareMessage(en
+          ? "Short-link service is unavailable; a self-contained fallback link was created. Large games may still need the export package."
+          : "短链接服务暂时不可用，已改用原有自包含链接。若游戏内容仍然很大，请使用下方导出游戏包。");
+      }
       setShareUrl(url);
       if (navigator.share) {
         try {
