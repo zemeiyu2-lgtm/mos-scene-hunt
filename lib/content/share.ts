@@ -3,6 +3,9 @@ import { validateGame } from "@/lib/game/types";
 
 const PREFIX = "#hunt=";
 
+/** Keep share URLs short enough for reliable on-screen QR scanning. */
+export const MAX_QR_URL_LENGTH = 2900;
+
 function toBase64Url(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
