@@ -16,13 +16,16 @@ afterEach(() => {
 });
 
 describe("self-contained game sharing", () => {
-  it("encodes a game into a share URL and restores the same validated game", async () => {
+  it("encodes a game into a QR-compatible share URL and restores the same validated game", async () => {
     vi.stubGlobal("window", fakeWindow);
     const game = structuredClone(BSOP_CLASSIC_TEMPLATE);
     game.title = "分享测试：神学院的八个秘密";
 
     const url = await createGameShareUrl(game);
     expect(url.startsWith("https://scene-hunt.example/select#hunt=")).toBe(true);
+    // Keep the built-in eight-scene template within the UI's QR-generation limit.
+    // If future content changes push this above the limit, CI should flag the regression.
+    expect(url.length).toBeLessThanOrEqual(2600);
 
     fakeWindow.location.hash = url.slice(url.indexOf("#"));
     const restored = await readSharedGameFromUrl();
