@@ -548,8 +548,8 @@ async function main() {
           binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
         }
         const payload = btoa(binary)
-          .replace(/\\+/g, "-")
-          .replace(/\\//g, "_")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
           .replace(/=+$/g, "");
         // A receiving browser starts without the author's local game or progress.
         localStorage.clear();
