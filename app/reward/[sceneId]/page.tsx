@@ -55,8 +55,8 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
 
   return (
     <Screen title={t("reward.taskComplete")} subtitle={scene.title}>
-      <section className="card overflow-hidden">
-        <div className="completion-hero px-5 py-8 text-center">
+      <section className="card overflow-hidden reward-main-card">
+        <div className="completion-hero reward-hero px-5 py-8 text-center">
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/15 text-[34px] shadow-lg">{granted ? reward?.icon ?? "✓" : "!"}</div>
           <p className="mt-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-white/75">
             {granted
@@ -154,7 +154,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           ) : null}
         </section>
       ) : nextScene ? (
-        <section className="card mt-4 p-4">
+        <section className="card mt-4 p-4 reward-next-card">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
             {t("reward.nextUnlocked")}
           </p>

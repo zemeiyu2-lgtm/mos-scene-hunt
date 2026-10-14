@@ -15,14 +15,14 @@
   /* Height of the persistent bottom tab bar, excluding the safe-area inset. */
   --tabbar-h: 56px;
 
-  --surface: #f6f7fb;
+  --surface: #f5f8f6;
   --card: #ffffff;
-  --line: #e4e7ef;
-  --text: #101527;
-  --muted: #5f6779;
-  --accent: #f5a524;
-  --accent-deep: #c47c0a;
-  --ok: #2ec27e;
+  --line: #dde7e2;
+  --text: #14251f;
+  --muted: #5f6b7b;
+  --accent: #109b81;
+  --accent-deep: #08765f;
+  --ok: #10b981;
 }
 
 html,
@@ -104,14 +104,20 @@ body {
   cursor: not-allowed;
 }
 
+/* Keep keyboard focus visible without changing the normal touch appearance. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 3px solid rgba(16, 155, 129, 0.55);
+  outline-offset: 3px;
+}
+
 .btn-primary {
-  background: var(--accent);
-  color: #2b1a00;
-  box-shadow: 0 6px 18px -10px rgba(196, 124, 10, 0.85);
+  background: var(--accent-deep);
+  color: #ffffff;
+  box-shadow: 0 6px 18px -10px rgba(8, 118, 95, 0.38);
 }
 
 .btn-primary:active:not(:disabled) {
-  background: var(--accent-deep);
+  background: #065b49;
 }
 
 .btn-secondary {
@@ -155,7 +161,7 @@ body {
 
 .input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.18);
+  box-shadow: 0 0 0 3px rgba(16, 155, 129, 0.18);
 }
 
 /* Bottom sheet used by the simulator and the inventory. */
@@ -257,8 +263,9 @@ body {
 }
 
 .scene-marker--available {
-  background: var(--accent);
-  color: #3a2400;
+  /* Keep status markers legible across every presentation theme. */
+  background: var(--accent-deep);
+  color: #ffffff;
 }
 
 .scene-marker--arrived,
@@ -776,5 +783,507 @@ body {
   .scene-marker-wrap--active .scene-marker,
   .scene-marker__beacon {
     animation: none !important;
+  }
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Home hierarchy refinement — presentation only                      */
+/* ------------------------------------------------------------------ */
+.home-hero-card {
+  border-color: rgba(20, 37, 31, 0.08);
+  box-shadow: 0 12px 28px -20px rgba(20, 37, 31, 0.34);
+}
+.home-hero-card .hero-explore {
+  padding-top: 30px;
+  padding-bottom: 28px;
+}
+.home-hero-card .hero-explore h2 {
+  max-width: 18ch;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.home-resume-card {
+  border-color: rgba(8, 118, 95, 0.24);
+  box-shadow: 0 8px 22px -18px rgba(8, 118, 95, 0.35);
+}
+.home-demo-card {
+  box-shadow: 0 4px 18px -15px rgba(20, 37, 31, 0.28);
+}
+.home-available-section > h3 {
+  letter-spacing: 0.01em;
+}
+.home-create-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbf9 100%);
+}
+@media (max-width: 360px) {
+  .home-hero-card .hero-explore {
+    padding: 24px 16px;
+  }
+}
+
+
+/* Challenge and reward hierarchy refinement — presentation only */
+.challenge-question-card {
+  border-color: rgba(20, 37, 31, 0.08);
+  box-shadow: 0 10px 26px -20px rgba(20, 37, 31, 0.32);
+}
+.challenge-question-card h2 {
+  text-wrap: pretty;
+}
+.challenge-options {
+  gap: 10px;
+}
+.challenge-options .choice-card {
+  min-height: 60px;
+  border-color: #d8e4df;
+  box-shadow: 0 3px 12px -10px rgba(20, 37, 31, 0.28);
+}
+.challenge-options .choice-card[data-active="true"] {
+  border-color: var(--accent-deep);
+  background: #edf8f4;
+  box-shadow: 0 6px 18px -14px rgba(8, 118, 95, 0.5);
+}
+.challenge-options .choice-card[data-active="true"] > span:first-child {
+  background: var(--accent-deep);
+  color: #ffffff;
+}
+.challenge-actions {
+  padding-bottom: 4px;
+}
+.reward-main-card {
+  border-color: rgba(8, 118, 95, 0.16);
+  box-shadow: 0 14px 32px -24px rgba(20, 37, 31, 0.38);
+}
+.reward-hero {
+  padding-top: 34px;
+  padding-bottom: 32px;
+}
+.reward-hero h2 {
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.reward-next-card {
+  border-color: rgba(8, 118, 95, 0.2);
+  background: linear-gradient(135deg, #ffffff 0%, #f7fbf9 100%);
+}
+@media (max-width: 360px) {
+  .reward-hero {
+    padding: 28px 16px;
+  }
+  .reward-hero h2 {
+    font-size: 23px;
+  }
+}
+
+
+/* Map HUD refinement — preserve GPS and interaction behavior */
+.map-hud > .card {
+  border-color: rgba(20, 37, 31, 0.12);
+  box-shadow: 0 8px 24px -16px rgba(20, 37, 31, 0.42);
+  backdrop-filter: blur(10px);
+}
+.map-bottom-sheet {
+  border-color: rgba(8, 118, 95, 0.18);
+  box-shadow: 0 14px 34px -18px rgba(20, 37, 31, 0.4);
+  backdrop-filter: blur(12px);
+}
+.scene-marker--available {
+  background: linear-gradient(145deg, #20b99a 0%, #08765f 100%);
+  color: #ffffff;
+  box-shadow: 0 3px 0 #065b49, 0 6px 15px rgba(8, 118, 95, 0.32), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.scene-marker-wrap--active .scene-marker {
+  outline-color: rgba(16, 155, 129, 0.72);
+  box-shadow: 0 0 0 2px rgba(16, 155, 129, 0.14), 0 6px 16px rgba(8, 118, 95, 0.28);
+}
+.scene-marker__beacon {
+  border-color: rgba(16, 155, 129, 0.65);
+  box-shadow: 0 0 0 4px rgba(16, 155, 129, 0.1);
+}
+@media (max-width: 360px) {
+  .map-hud {
+    gap: 6px;
+  }
+  .map-hud > .card {
+    padding-inline: 10px;
+  }
+}
+
+ 
+/* Creator flow polish — visual hierarchy only; preserve authoring behavior */
+.creator-entry-hero {
+  border-color: rgba(8, 118, 95, 0.22);
+  background: linear-gradient(145deg, #ffffff 0%, #f2faf6 100%);
+  box-shadow: 0 14px 34px -26px rgba(20, 37, 31, 0.42);
+}
+.creator-entry-hero h2 {
+  max-width: 18ch;
+  line-height: 1.18;
+  text-wrap: balance;
+}
+.creator-library-card,
+.creator-validation-card,
+.creator-save-card {
+  border-color: rgba(20, 37, 31, 0.11);
+}
+.creator-library-card > div > div > div {
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.creator-save-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f6fbf8 100%);
+}
+.creator-step-nav li {
+  min-height: 46px;
+  line-height: 1.25;
+}
+.creator-step-nav li span:first-child {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+.creator-spatial-card {
+  border-color: rgba(59, 130, 246, 0.18);
+  background: linear-gradient(150deg, #ffffff 0%, #f8fbff 100%);
+}
+.creator-stage-card {
+  scroll-margin-top: 16px;
+  border-color: rgba(20, 37, 31, 0.12);
+}
+.creator-stage-card > div > div > p:first-child,
+.creator-stage-card > p:first-child {
+  line-height: 1.35;
+  text-wrap: balance;
+}
+.creator-area-stage {
+  border-top: 3px solid rgba(59, 130, 246, 0.65);
+}
+.creator-stops-stage {
+  border-top: 3px solid rgba(16, 155, 129, 0.72);
+}
+.creator-radius-stage {
+  border-top: 3px solid rgba(8, 118, 95, 0.55);
+}
+.creator-save-stage {
+  border-color: rgba(8, 118, 95, 0.22);
+  border-top: 3px solid #08765f;
+  background: linear-gradient(145deg, #ffffff 0%, #f5fbf8 100%);
+}
+.creator-stage-card input[type="range"] {
+  min-height: 30px;
+  cursor: pointer;
+}
+@media (max-width: 360px) {
+  .creator-entry-hero,
+  .creator-library-card,
+  .creator-validation-card,
+  .creator-save-card {
+    padding: 14px;
+  }
+  .creator-step-nav li {
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+  .creator-spatial-card .grid-cols-3 > div {
+    padding: 8px 5px;
+  }
+}
+
+ 
+/* Inventory and selected-answer polish — no save or scoring changes */
+.bag-findings-section > ul > li > .card {
+  border-color: rgba(20, 37, 31, 0.1);
+  box-shadow: 0 6px 20px -18px rgba(20, 37, 31, 0.38);
+}
+.bag-findings-section > ul > li > .card > span:first-child {
+  border: 1px solid rgba(8, 118, 95, 0.1);
+}
+.bag-diagnostics-section > button {
+  min-height: 48px;
+  border-color: rgba(20, 37, 31, 0.12);
+}
+.bag-save-management {
+  border-color: rgba(8, 118, 95, 0.18);
+  background: linear-gradient(145deg, #ffffff 0%, #f7fbf9 100%);
+}
+.challenge-options .choice-card[data-active="true"] {
+  border-color: rgba(8, 118, 95, 0.55);
+  background: #eaf7f2;
+  box-shadow: 0 0 0 1px rgba(8, 118, 95, 0.12);
+}
+.challenge-options .choice-card:focus-visible {
+  outline: 3px solid rgba(16, 155, 129, 0.42);
+  outline-offset: 2px;
+}
+@media (max-width: 360px) {
+  .bag-findings-section > ul > li > .card {
+    gap: 10px;
+    padding: 12px;
+  }
+  .bag-findings-section .chip {
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Phase A — quest, briefing and discovery reading polish              */
+/* ------------------------------------------------------------------ */
+.quest-progress-card {
+  border-color: rgba(16, 155, 129, 0.22);
+  box-shadow: 0 8px 26px -20px rgba(8, 118, 95, 0.45);
+}
+.quest-location-card {
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.quest-location-card[data-active="true"] {
+  border-color: rgba(16, 155, 129, 0.5);
+  box-shadow: 0 8px 24px -20px rgba(8, 118, 95, 0.45);
+}
+.quest-location-actions > .btn {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.select-import-card {
+  border-style: dashed;
+  border-color: #c9d9d1;
+  background: rgba(255, 255, 255, 0.88);
+}
+.select-metrics > div {
+  min-width: 0;
+  border: 1px solid rgba(221, 231, 226, 0.8);
+}
+.select-metrics dd {
+  overflow-wrap: anywhere;
+}
+.select-scene-list > div {
+  border-bottom: 1px solid rgba(221, 231, 226, 0.7);
+  padding: 0 0 9px;
+}
+.select-scene-list > div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.scene-story-card {
+  overflow-wrap: anywhere;
+}
+.scene-story-card p {
+  text-wrap: pretty;
+}
+.scene-actions .btn {
+  min-width: 0;
+}
+@media (max-width: 360px) {
+  .quest-location-actions {
+    flex-direction: column;
+  }
+  .quest-location-actions > .btn {
+    width: 100%;
+  }
+  .select-import-card > div {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .select-import-card > div > button {
+    width: 100%;
+  }
+  .select-metrics {
+    gap: 6px;
+  }
+  .select-metrics > div {
+    padding: 8px;
+  }
+  .scene-story-card {
+    padding: 16px;
+  }
+}
+
+
+/* Tutorial demo — keep the guided preview legible on narrow phones. */
+.tutorial-shell {
+  padding-bottom: calc(32px + var(--safe-bottom));
+}
+.tutorial-demo-card {
+  box-shadow: 0 12px 32px -24px rgba(20, 37, 31, 0.42);
+}
+.tutorial-demo-stage {
+  isolation: isolate;
+}
+.tutorial-controls {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+}
+@media (max-width: 360px) {
+  .tutorial-shell {
+    padding-inline: 12px;
+  }
+  .tutorial-demo-stage {
+    padding: 12px;
+  }
+  .tutorial-controls {
+    padding: 14px;
+  }
+}
+
+
+/* Accessibility finish — honor system motion preferences and prevent mobile overflow. */
+html {
+  background: var(--surface, #f5f8f6);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  min-width: 320px;
+  overflow-wrap: anywhere;
+}
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  -webkit-tap-highlight-color: rgba(16, 155, 129, 0.12);
+}
+:where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid rgba(8, 118, 95, 0.72);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* Creator guide — readable instructional hierarchy on small screens. */
+.how-to-hero-card {
+  border-top: 3px solid var(--accent-deep);
+  background: linear-gradient(145deg, #ffffff 0%, #f5fbf8 100%);
+}
+.how-to-steps-card,
+.how-to-prompt-card,
+.how-to-safety-card,
+.how-to-sharing-card,
+.how-to-start-card {
+  min-width: 0;
+}
+.how-to-step-list > li {
+  padding-left: 2px;
+  text-wrap: pretty;
+}
+.how-to-step-list > li b {
+  line-height: 1.5;
+}
+.how-to-prompt-card {
+  border-color: rgba(8, 118, 95, 0.22);
+}
+.how-to-prompt-heading {
+  align-items: center;
+}
+.how-to-prompt-heading > div {
+  min-width: 0;
+}
+.how-to-prompt-heading > button {
+  flex-shrink: 0;
+}
+.how-to-prompt-text {
+  border: 1px solid rgba(20, 37, 31, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overscroll-behavior: contain;
+}
+.how-to-safety-card {
+  border-left: 3px solid #d97706;
+}
+.how-to-sharing-card {
+  border-left: 3px solid var(--accent);
+}
+.how-to-start-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f7fbf9 100%);
+}
+.how-to-start-card .btn {
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.35;
+  padding-block: 10px;
+}
+@media (max-width: 360px) {
+  .how-to-hero-card,
+  .how-to-steps-card,
+  .how-to-prompt-card,
+  .how-to-safety-card,
+  .how-to-sharing-card,
+  .how-to-start-card {
+    padding: 14px;
+  }
+  .how-to-prompt-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .how-to-prompt-heading > button {
+    width: 100%;
+  }
+  .how-to-prompt-text {
+    max-height: 360px;
+    padding: 10px;
+    font-size: 11px;
+  }
+  .how-to-start-card .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .how-to-start-card .grid > a {
+    grid-column: auto;
+  }
+}
+
+
+/* Presentation-only theme tokens. No gameplay, GPS, or persistence selectors. */
+/* No attribute (or an unknown attribute) deliberately keeps the existing default. */
+html[data-visual-theme="story-journal"] {
+  --surface: #f8f5ee;
+  --card: #fffefa;
+  --line: #e5dccb;
+  --text: #2e3028;
+  --muted: #68695f;
+  --accent: #497565;
+  --accent-deep: #315b4c;
+  --ok: #10b981;
+}
+html[data-visual-theme="city-detective"] {
+  --surface: #f3f5f7;
+  --card: #ffffff;
+  --line: #d9e0e7;
+  --text: #1d2935;
+  --muted: #596a79;
+  --accent: #247f83;
+  --accent-deep: #176368;
+  --ok: #10b981;
+}
+
+
+/* Compact theme control: presentation preference only, never game content. */
+.visual-theme-select {
+  max-width: 104px;
+  min-height: 36px;
+  padding: 0 22px 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.visual-theme-select:focus-visible {
+  outline: 3px solid rgba(16, 155, 129, 0.55);
+  outline-offset: 2px;
+}
+@media (max-width: 360px) {
+  .visual-theme-select {
+    max-width: 82px;
+    padding-inline: 6px 18px;
+    font-size: 11px;
   }
 }

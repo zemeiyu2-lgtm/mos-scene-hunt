@@ -88,7 +88,7 @@ export default function SelectPage() {
   return (
     <>
     <Screen title={t("select.title")} subtitle={t("select.confirmStart")}>
-      <section className="card mb-4 p-4">
+      <section className="card select-import-card mb-4 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[13px] font-bold">📦 {t("select.importPackage")}</p>
@@ -99,7 +99,7 @@ export default function SelectPage() {
         </div>
         {importMessage ? <p className="mt-2 rounded-xl bg-[var(--surface)] px-3 py-2 text-[11.5px] leading-relaxed">{importMessage}</p> : null}
       </section>
-      <section className="card story-card overflow-hidden">
+      <section className="card select-game-card story-card overflow-hidden">
         <div className="hero-explore px-5 py-6">
           <p className="game-kicker">
             {isAuthored ? t("select.localCreation") : manifest?.difficulty === "easy" ? t("games.easy") : t("games.hard")} ·{" "}
@@ -121,7 +121,7 @@ export default function SelectPage() {
             </div>
           ) : null}
 
-          <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <dl className="select-metrics mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { k: t("select.locations"), v: `${game.scenes.length}` },
               { k: t("select.area"), v: formatArea(game.huntArea?.radiusMeters, t) },
@@ -149,7 +149,7 @@ export default function SelectPage() {
             </div>
           ) : null}
 
-          <div className="mt-4 space-y-2">
+          <div className="select-scene-list mt-4 space-y-2">
             {game.scenes.map((scene, i) => (
               <div key={scene.id} className="flex items-start gap-3">
                 <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--line)] text-[11px] font-bold text-[var(--muted)]">
@@ -197,7 +197,7 @@ export default function SelectPage() {
         ) : null}
       </div>
 
-      <div className="mt-4 grid gap-2">
+      <div className="select-start-actions mt-4 grid gap-2">
         <button type="button" className="btn btn-primary btn-block" onClick={begin}>
           {hasProgress ? t("home.continueHunt") : t("select.startHunt")}
         </button>

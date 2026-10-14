@@ -40,7 +40,7 @@ export default function QuestPage() {
         complete ? <span className="chip bg-emerald-100 text-emerald-700">{t("quest.allDone")}</span> : null
       }
     >
-      <div className="card story-card p-5">
+      <div className="card story-card quest-progress-card p-5">
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-semibold">
             {complete ? t("quest.routeComplete") : current ? `${t("quest.currentTarget")}${current.title}` : t("quest.ready")}
@@ -70,7 +70,8 @@ export default function QuestPage() {
           return (
             <li key={row.scene.id}>
               <div
-                className={`card p-4 transition-transform ${isLocked ? "opacity-60" : ""} ${
+                data-active={row.isActive ? "true" : "false"}
+                className={`card quest-location-card p-4 transition-transform ${
                   row.isActive ? "border-[var(--accent)]" : ""
                 }`}
               >
@@ -128,7 +129,7 @@ export default function QuestPage() {
                     ) : null}
 
                     {!isLocked ? (
-                      <div className="mt-3 flex gap-2">
+                      <div className="quest-location-actions mt-3 flex gap-2">
                         {isDone ? (
                           <>
                             <Link

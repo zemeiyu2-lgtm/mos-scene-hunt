@@ -138,7 +138,7 @@ export default function TutorialPage() {
   }
 
   return (
-    <main className="mx-auto min-h-[100dvh] w-full max-w-xl px-4 pb-8 pt-4 text-[var(--text)]">
+    <main className="tutorial-shell mx-auto min-h-[100dvh] w-full max-w-xl px-4 pb-8 pt-4 text-[var(--text)]">
       <header className="mb-4 flex items-center justify-between gap-3">
         <Link href="/" className="inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-sm font-semibold text-[var(--muted)]">
           <span aria-hidden="true">←</span> {en ? "Back home" : "返回首页"}
@@ -157,8 +157,8 @@ export default function TutorialPage() {
         <span><strong>{en ? "Simulated demo — no real GPS." : "模拟演示，不使用真实 GPS。"}</strong>{en ? "Map positions, distances, and discovery feedback are preset examples, not measured BSOP results. Your real game progress is not changed." : "地图位置、距离与到达反馈均为预设演示数据，不是 BSOP 实测结果，也不会改动真实游戏进度。"}</span>
       </div>
 
-      <section className="overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--card)] shadow-sm">
-        <div className="relative min-h-[300px] overflow-hidden bg-[#102b3a] p-4 text-white">
+      <section className="tutorial-demo-card overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--card)] shadow-sm">
+        <div className="tutorial-demo-stage relative min-h-[300px] overflow-hidden bg-[#102b3a] p-4 text-white">
           <div className="absolute inset-0 opacity-30" aria-hidden="true">
             <svg viewBox="0 0 400 320" className="h-full w-full" preserveAspectRatio="xMidYMid slice">
               <path d="M-20 60 C80 30 80 120 160 100 S270 30 430 85" fill="none" stroke="#82b5ad" strokeWidth="18" />
@@ -205,7 +205,7 @@ export default function TutorialPage() {
           )}
         </div>
 
-        <div className="p-4 sm:p-5">
+        <div className="tutorial-controls p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-xs font-bold text-[var(--muted)]">{current.eyebrow}</p>
             <p className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{stepLabel}</p>

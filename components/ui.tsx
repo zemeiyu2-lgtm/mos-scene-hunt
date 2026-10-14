@@ -12,6 +12,7 @@ import type { SceneStatus } from "@/lib/game/state";
 import { formatDistance } from "@/lib/location";
 import { SoundToggle } from "@/components/sound";
 import { useUiLocale } from "@/components/ui-locale-provider";
+import { useVisualTheme, VISUAL_THEME_OPTIONS } from "@/components/visual-theme-provider";
 
 /* ------------------------------------------------------------------ */
 /* Status presentation                                                */
@@ -100,6 +101,26 @@ export function DistanceReadout({
 /* Structure                                                          */
 /* ------------------------------------------------------------------ */
 
+function VisualThemeSelect() {
+  const { locale } = useUiLocale();
+  const { theme, setTheme } = useVisualTheme();
+  const labels: Record<string, string> = locale === "zh-CN"
+    ? { "natural-expedition": "自然探索", "story-journal": "故事手记", "city-detective": "城市侦探" }
+    : { "natural-expedition": "Nature", "story-journal": "Journal", "city-detective": "Detective" };
+  return (
+    <select
+      aria-label={locale === "zh-CN" ? "视觉主题" : "Visual theme"}
+      className="visual-theme-select"
+      value={theme}
+      onChange={(event) => setTheme(event.target.value as (typeof VISUAL_THEME_OPTIONS)[number]["id"])}
+    >
+      {VISUAL_THEME_OPTIONS.map((option) => (
+        <option key={option.id} value={option.id}>{labels[option.id]}</option>
+      ))}
+    </select>
+  );
+}
+
 export function Screen({
   title,
   subtitle,
@@ -123,7 +144,7 @@ export function Screen({
               <p className="mt-0.5 text-[13px] leading-snug text-[var(--muted)]">{subtitle}</p>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5"><SoundToggle />{headerRight}</div>
+          <div className="flex shrink-0 items-center gap-1.5"><VisualThemeSelect /><SoundToggle />{headerRight}</div>
         </div>
       </header>
       <div className="scroll-area">

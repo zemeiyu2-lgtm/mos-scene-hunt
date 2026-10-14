@@ -36,7 +36,7 @@ export default function HomePage() {
         </div>
       }
     >
-      <section className="card overflow-hidden">
+      <section className="card home-hero-card overflow-hidden">
         <div className="hero-explore px-5 py-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
             {t("home.eyebrow")}
@@ -64,7 +64,7 @@ export default function HomePage() {
       </section>
 
       {hasProgress && game ? (
-        <section className="card mt-4 p-4">
+        <section className="card home-resume-card mt-4 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[13px] text-[var(--muted)]">{t("home.resume")}</p>
@@ -90,7 +90,7 @@ export default function HomePage() {
 
 
 
-      <section className="card mt-4 overflow-hidden bsop-reference">
+      <section className="card home-demo-card mt-4 overflow-hidden bsop-reference">
         <div className="bsop-reference__cover">
           {/* Official BSOP handbook thumbnail; the game itself can replace this with licensed field photography later. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -118,7 +118,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mt-4">
+      <section className="home-available-section mt-5">
         <h3 className="px-1 text-[13px] font-semibold text-[var(--muted)]">{t("home.availableGames")}</h3>
         <div className="mt-2 space-y-3">
           {loading ? (
@@ -169,7 +169,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="card mt-4 p-4">
+      <section className="card home-create-card mt-4 p-4">
         <div className="flex items-start gap-3">
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-xl" aria-hidden="true">✦</div>
           <div className="min-w-0 flex-1">

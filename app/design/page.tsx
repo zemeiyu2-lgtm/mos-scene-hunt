@@ -40,7 +40,7 @@ import {
 import type { MapSceneEntry } from "@/components/game-map";
 import type { TileProviderId } from "@/lib/map/tiles";
 import { useHunt } from "@/components/hunt-provider";
-import { createGameShareUrl } from "@/lib/content/share";
+import { createGameShareUrl, MAX_QR_URL_LENGTH } from "@/lib/content/share";
 import { MediaEditor } from "@/components/media-gallery";
 import { summarizeSpatial, validateGamePackage } from "@/lib/game/package";
 import { useUiLocale } from "@/components/ui-locale-provider";
@@ -359,7 +359,23 @@ export default function DesignPage() {
       if (working.scenes.some((scene) => !configured(scene.location))) missing.push((en ? "real GPS coordinates for all stops" : "所有站点的真实 GPS 坐标"));
       if (missing.length) throw new Error((en ? "Cannot publish yet. Please set: " : "暂不能发布，请先设置：") + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。");
       if (!save()) throw new Error((en ? "The game could not be saved on this device. Check browser storage and try again." : "游戏未能保存到本机，请检查浏览器存储空间后重试。"));
-      const url = await createGameShareUrl(working);
+      let url: string;
+      try {
+        const response = await fetch("/api/shares", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ game: working }),
+        });
+        const result = await response.json() as { path?: string; error?: string };
+        if (!response.ok || !result.path) throw new Error(result.error || "短链接服务暂时不可用");
+        url = new URL(result.path, window.location.origin).toString();
+        setShareMessage(en ? "Cloud share link created. Recipients can open it without your phone staying online." : "云端短链接已创建；接收者打开链接即可获取游戏，不需要你的手机一直在线。");
+      } catch {
+        url = await createGameShareUrl(working);
+        setShareMessage(en
+          ? "Short-link service is unavailable; a self-contained fallback link was created. Large games may still need the export package."
+          : "短链接服务暂时不可用，已改用原有自包含链接。若游戏内容仍然很大，请使用下方导出游戏包。");
+      }
       setShareUrl(url);
       if (navigator.share) {
         try {
@@ -479,7 +495,7 @@ export default function DesignPage() {
       headerRight={<Link href="/" className="btn btn-ghost h-9 min-h-0 px-3">{en ? "Back" : "返回"}</Link>}
     >
       {/* ------------------------------------------------ 步骤导航 */}
-      <ol className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <ol className="creator-step-nav mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
           { n: "①", label: (en ? "Draw play area" : "画游戏区域"), done: Boolean(area) && !areaIncomplete && !drawingArea },
           { n: "②", label: en ? "Place stops" : "放置场景", done: working.scenes.length > 0 && !drawingArea },
@@ -557,7 +573,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ 空间摘要 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-spatial-card">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[15px] font-bold">{en ? "Spatial overview" : "空间设计总览"}</p>
@@ -575,7 +591,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ ① 选择游戏区域 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-stage-card creator-area-stage">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[15px] font-bold">{en ? "① Choose play area" : "① 选择游戏区域"}</p>
@@ -725,7 +741,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ ② 放置场景 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-stage-card creator-stops-stage">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[15px] font-bold">{en ? "② Place stops" : "② 放置场景"}</p>
@@ -809,7 +825,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ ③ 设置触发距离 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-stage-card creator-radius-stage">
         <p className="text-[15px] font-bold">{en ? "③ Set trigger radius" : "③ 设置触发距离"}</p>
         <p className="mt-1 text-[11.5px] text-[var(--muted)]">
           {en ? "Each stop’s unlock radius. 15–30 m is usually more reliable given real-world GPS error." : "每个场景的解锁半径。15–30m 在真实 GPS 误差下最稳。"}
@@ -848,7 +864,7 @@ export default function DesignPage() {
       </section>
 
       {/* ------------------------------------------------ ④ 保存游戏 */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 creator-stage-card creator-save-stage">
         <p className="text-[15px] font-bold">{en ? "④ Save game" : "④ 保存游戏"}</p>
         <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
           {en ? "Saving keeps a creator copy on this device. You can playtest without an account; this editor remains the authoring entry point if cloud publishing is added later." : "保存后，这台设备会把你的游戏作为本地创作版本。没有账号也能立即试玩；未来接入云端发布时，这个编辑器仍可作为内容制作入口。"}
@@ -886,16 +902,16 @@ export default function DesignPage() {
           {shareUrl ? (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
               <p className="text-[12px] font-semibold">{en ? "Game QR code generated" : "游戏二维码已生成"}</p>
-              {shareUrl.length <= 2600 ? (
+              {shareUrl.length <= MAX_QR_URL_LENGTH ? (
                 <>
-                  <div ref={qrContainerRef} className="mx-auto mt-3 flex w-full max-w-[320px] justify-center rounded-xl bg-white p-3">
-                    <QRCodeCanvas value={shareUrl} size={280} level="L" marginSize={2} />
+                  <div ref={qrContainerRef} className="mx-auto mt-3 flex w-full max-w-[440px] justify-center rounded-xl bg-white p-3">
+                    <QRCodeCanvas value={shareUrl} size={420} level="L" marginSize={4} className="h-auto max-w-full" title={en ? "Game sharing QR code" : "游戏分享二维码"} />
                   </div>
                   <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">{en ? "Ask friends to scan with their phone camera. For in-person use, increase screen brightness and keep the full QR code visible." : "让朋友用手机相机或微信扫一扫。现场展示时请调亮屏幕，并保持二维码完整可见。"}</p>
                   <button type="button" className="btn btn-primary btn-block mt-3" onClick={downloadQrCode}>{en ? "Download QR code (PNG)" : "下载二维码图片（PNG）"}</button>
                 </>
               ) : (
-                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">{en ? "This game's share link is long, so the QR code may be too complex. For now, copy and share the link; a short-link option may be considered later." : "这款游戏的分享链接较长，二维码可能过于复杂，因此暂不生成二维码。请先复制链接分享；以后可以考虑短链接方案。"}</p>
+                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">{en ? "This share URL exceeds the practical QR capacity, so a potentially unscannable code is not shown. Copy the share link instead; supporting larger games requires a short-link service." : "这份游戏内容生成的链接超过了二维码的可靠容量，因此不生成可能无法扫描的二维码。请复制分享链接发送；要支持更大的游戏，需要后续接入短链接服务。"}</p>
               )}
               <p className="mt-3 text-[12px] font-semibold">{en ? "Share link" : "分享链接"}</p>
               <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>

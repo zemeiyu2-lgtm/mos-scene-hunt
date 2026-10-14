@@ -96,7 +96,7 @@ export default function BagPage() {
         </Card>
       ) : null}
 
-      <section className="mt-4">
+      <section className="mt-4 bag-findings-section">
         <h2 className="px-1 text-[13px] font-semibold text-[var(--muted)]">{t("bag.allFindings")}</h2>
         {state.inventory.length ? (
           <ul className="mt-2 space-y-2">
@@ -139,7 +139,7 @@ export default function BagPage() {
       {/* ---------------------------------------------------------- */}
       {/* Diagnostics                                                */}
       {/* ---------------------------------------------------------- */}
-      <section className="mt-5">
+      <section className="mt-5 bag-diagnostics-section">
         <button
           type="button"
           className="card flex w-full items-center justify-between px-4 py-3"
@@ -233,7 +233,7 @@ export default function BagPage() {
       {/* ---------------------------------------------------------- */}
       {/* Save management                                            */}
       {/* ---------------------------------------------------------- */}
-      <section className="card mt-4 p-4">
+      <section className="card mt-4 p-4 bag-save-management">
         <p className="text-[13px] font-semibold">{t("bag.saveManagement")}</p>
         <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
           {t("bag.saveExplanation")}
