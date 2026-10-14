@@ -67,6 +67,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
   const [simulatorAvailable, setSimulatorAvailable] = useState(false);
 
   const watcherRef = useRef<{ stop: () => void } | null>(null);
+  const startRef = useRef<() => void>(() => {});
   const mountedRef = useRef(true);
   /**
    * True while the DEV simulator is enabled and therefore authoritative.
@@ -114,7 +115,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
         setPermission("granted");
         setStatus("watching");
         // A one-shot fix proves permission works again; resume ongoing updates.
-        start();
+        startRef.current();
       })
       .catch((err: GeoError) => {
         if (!mountedRef.current) return;
@@ -153,6 +154,9 @@ export function GpsProvider({ children }: { children: ReactNode }) {
       { maximumAgeMs: 2000 },
     );
   }, []);
+
+  // Keep the retry callback stable while allowing it to restart the latest watcher.
+  startRef.current = start;
 
   /**
    * Auto-start positioning on first mount.
