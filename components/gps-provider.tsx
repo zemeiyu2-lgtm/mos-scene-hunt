@@ -100,6 +100,11 @@ export function GpsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const retry = useCallback(() => {
+    // A permission-denied watch stops inside the provider layer, but its handle
+    // remains here. Clear it before retrying so a successful one-shot read can
+    // establish a fresh continuous watch instead of leaving the marker stale.
+    watcherRef.current?.stop();
+    watcherRef.current = null;
     setError(null);
     setStatus("requesting");
     getCurrentPosition()
@@ -108,6 +113,8 @@ export function GpsProvider({ children }: { children: ReactNode }) {
         setFix(first);
         setPermission("granted");
         setStatus("watching");
+        // A one-shot fix proves permission works again; resume ongoing updates.
+        start();
       })
       .catch((err: GeoError) => {
         if (!mountedRef.current) return;
@@ -115,7 +122,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
         setStatus(err.code === "UNSUPPORTED" ? "unsupported" : "error");
         if (err.code === "PERMISSION_DENIED") setPermission("denied");
       });
-  }, []);
+  }, [start]);
 
   const start = useCallback(() => {
     if (watcherRef.current) return;
