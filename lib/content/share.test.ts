@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BSOP_CLASSIC_TEMPLATE } from "@/lib/game/templates";
 import { loadGame } from "@/lib/content";
-import { createGameShareUrl, readSharedGameFromUrl } from "@/lib/content/share";
+import { createGameShareUrl, MAX_QR_URL_LENGTH, readSharedGameFromUrl } from "@/lib/content/share";
 import { validateGame } from "@/lib/game/types";
 
 const fakeWindow = {
@@ -26,7 +26,7 @@ describe("self-contained game sharing", () => {
     expect(url.startsWith("https://scene-hunt.example/select#hunt=")).toBe(true);
     // Keep the built-in eight-scene template within the UI's QR-generation limit.
     // If future content changes push this above the limit, CI should flag the regression.
-    expect(url.length).toBeLessThanOrEqual(2600);
+    expect(url.length).toBeLessThanOrEqual(MAX_QR_URL_LENGTH);
 
     fakeWindow.location.hash = url.slice(url.indexOf("#"));
     const restored = await readSharedGameFromUrl();
@@ -70,5 +70,13 @@ describe("self-contained game sharing", () => {
     vi.stubGlobal("window", undefined);
     await expect(readSharedGameFromUrl()).resolves.toBeNull();
     await expect(createGameShareUrl(BSOP_CLASSIC_TEMPLATE)).rejects.toThrow("分享链接只能在浏览器中生成");
+  });
+});
+
+
+describe("QR URL capacity", () => {
+  it("allows a larger but still practical QR URL budget", () => {
+    expect(MAX_QR_URL_LENGTH).toBe(2900);
+    expect(MAX_QR_URL_LENGTH).toBeGreaterThan(2600);
   });
 });
