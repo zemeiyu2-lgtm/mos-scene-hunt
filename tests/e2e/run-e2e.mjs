@@ -537,6 +537,45 @@ async function main() {
       pack = json;
     });
 
+    await check("接收端浏览器通过分享链接恢复完整游戏（无需创建者本地存储）", async () => {
+      assert(pack, "内容包未加载");
+      const sharedUrl = await page.evaluate(async (game) => {
+        const raw = JSON.stringify(game);
+        const stream = new Blob([raw]).stream().pipeThrough(new CompressionStream("gzip"));
+        const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        }
+        const payload = btoa(binary)
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/g, "");
+        // A receiving browser starts without the author's local game or progress.
+        localStorage.clear();
+        localStorage.setItem("mos-scene-hunt:ui-locale", "zh-CN");
+        return location.origin + "/select#hunt=g." + payload;
+      }, pack);
+
+      const response = await page.goto(sharedUrl, { waitUntil: "networkidle2" });
+      assert(response && response.status() === 200, `分享页状态码 ${response?.status()}`);
+      await waitFor(
+        async () => {
+          const text = await bodyText(page);
+          return pack.title && text.includes(pack.title);
+        },
+        { timeout: 12_000, message: "接收端未显示分享游戏标题" },
+      );
+      const receivedText = await bodyText(page);
+      const missingScenes = pack.scenes
+        .map((scene) => scene.title)
+        .filter((title) => title && !receivedText.includes(title));
+      assert(
+        missingScenes.length === 0,
+        `接收端缺少分享中的地点：${missingScenes.join("、")}\\n正文：\\n${receivedText.slice(0, 700)}`,
+      );
+    });
+
     /*
      * 内容几何不变式。
      *
