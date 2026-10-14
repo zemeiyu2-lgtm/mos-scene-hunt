@@ -18,12 +18,13 @@
     "test:acceptance:only": "node tests/e2e/run-e2e.mjs"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.2",
     "idb-keyval": "^6.2.1",
     "leaflet": "^1.9.4",
     "next": "15.1.11",
+    "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "qrcode.react": "^4.2.0"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",
