@@ -31,6 +31,21 @@ describe("self-contained game sharing", () => {
     expect(restored?.title).toBe("分享测试：神学院的八个秘密");
   });
 
+  it("uses the uncompressed fallback when CompressionStream is unavailable", async () => {
+    vi.stubGlobal("window", fakeWindow);
+    vi.stubGlobal("CompressionStream", undefined);
+    vi.stubGlobal("DecompressionStream", undefined);
+
+    const game = structuredClone(BSOP_CLASSIC_TEMPLATE);
+    game.title = "无压缩环境分享测试";
+
+    const url = await createGameShareUrl(game);
+    expect(url).toContain("#hunt=j.");
+
+    fakeWindow.location.hash = url.slice(url.indexOf("#"));
+    await expect(readSharedGameFromUrl()).resolves.toEqual(validateGame(game).game);
+  });
+
   it("returns null for unrelated or malformed share fragments", async () => {
     vi.stubGlobal("window", fakeWindow);
 
