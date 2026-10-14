@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BSOP_CLASSIC_TEMPLATE } from "@/lib/game/templates";
+import { loadGame } from "@/lib/content";
 import { createGameShareUrl, readSharedGameFromUrl } from "@/lib/content/share";
 import { validateGame } from "@/lib/game/types";
 
@@ -16,7 +17,7 @@ afterEach(() => {
 });
 
 describe("self-contained game sharing", () => {
-  it("encodes a game into a QR-compatible share URL and restores the same validated game", async () => {
+  it("encodes a game into a QR-compatible share URL and restores it through the real content loader", async () => {
     vi.stubGlobal("window", fakeWindow);
     const game = structuredClone(BSOP_CLASSIC_TEMPLATE);
     game.title = "分享测试：神学院的八个秘密";
@@ -32,6 +33,12 @@ describe("self-contained game sharing", () => {
 
     expect(restored).toEqual(validateGame(game).game);
     expect(restored?.title).toBe("分享测试：神学院的八个秘密");
+
+    // The receiver must get the game from the URL even when a different game ID
+    // is requested; this proves the real app loader honors self-contained links.
+    const loaded = await loadGame("some-other-game");
+    expect(loaded.source).toBe("shared");
+    expect(loaded.game).toEqual(validateGame(game).game);
   });
 
   it("uses the uncompressed fallback when CompressionStream is unavailable", async () => {
