@@ -40,7 +40,7 @@ import {
 import type { MapSceneEntry } from "@/components/game-map";
 import type { TileProviderId } from "@/lib/map/tiles";
 import { useHunt } from "@/components/hunt-provider";
-import { createGameShareUrl } from "@/lib/content/share";
+import { createGameShareUrl, MAX_QR_URL_LENGTH } from "@/lib/content/share";
 import { MediaEditor } from "@/components/media-gallery";
 import { summarizeSpatial, validateGamePackage } from "@/lib/game/package";
 import { useUiLocale } from "@/components/ui-locale-provider";
@@ -886,16 +886,16 @@ export default function DesignPage() {
           {shareUrl ? (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
               <p className="text-[12px] font-semibold">{en ? "Game QR code generated" : "游戏二维码已生成"}</p>
-              {shareUrl.length <= 2600 ? (
+              {shareUrl.length <= MAX_QR_URL_LENGTH ? (
                 <>
-                  <div ref={qrContainerRef} className="mx-auto mt-3 flex w-full max-w-[320px] justify-center rounded-xl bg-white p-3">
-                    <QRCodeCanvas value={shareUrl} size={280} level="L" marginSize={2} />
+                  <div ref={qrContainerRef} className="mx-auto mt-3 flex w-full max-w-[440px] justify-center rounded-xl bg-white p-3">
+                    <QRCodeCanvas value={shareUrl} size={420} level="L" marginSize={4} className="h-auto max-w-full" title={en ? "Game sharing QR code" : "游戏分享二维码"} />
                   </div>
                   <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">{en ? "Ask friends to scan with their phone camera. For in-person use, increase screen brightness and keep the full QR code visible." : "让朋友用手机相机或微信扫一扫。现场展示时请调亮屏幕，并保持二维码完整可见。"}</p>
                   <button type="button" className="btn btn-primary btn-block mt-3" onClick={downloadQrCode}>{en ? "Download QR code (PNG)" : "下载二维码图片（PNG）"}</button>
                 </>
               ) : (
-                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">{en ? "This game's share link is long, so the QR code may be too complex. For now, copy and share the link; a short-link option may be considered later." : "这款游戏的分享链接较长，二维码可能过于复杂，因此暂不生成二维码。请先复制链接分享；以后可以考虑短链接方案。"}</p>
+                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">{en ? "This share URL exceeds the practical QR capacity, so a potentially unscannable code is not shown. Copy the share link instead; supporting larger games requires a short-link service." : "这份游戏内容生成的链接超过了二维码的可靠容量，因此不生成可能无法扫描的二维码。请复制分享链接发送；要支持更大的游戏，需要后续接入短链接服务。"}</p>
               )}
               <p className="mt-3 text-[12px] font-semibold">{en ? "Share link" : "分享链接"}</p>
               <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>
