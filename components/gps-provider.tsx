@@ -123,7 +123,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
         setStatus(err.code === "UNSUPPORTED" ? "unsupported" : "error");
         if (err.code === "PERMISSION_DENIED") setPermission("denied");
       });
-  }, [start]);
+  }, []);
 
   const start = useCallback(() => {
     if (watcherRef.current) return;
