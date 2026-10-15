@@ -715,7 +715,11 @@ export default function DesignPage() {
                       这是<strong>反思型选择</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
                     </div>
                   ) : (
-                    <label className="mt-2 block text-xs">正确答案<input className="input mt-1" type="number" min={0} max={Math.max(0, (selected.challenge.options?.length ?? 1) - 1)} value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : 0} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })} /></label>
+                    <label className="mt-2 block text-xs">正确答案
+                      <select className="input mt-1" value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : Math.max(0, (selected.challenge.options ?? []).findIndex((option) => option === selected.challenge?.answer))} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })}>
+                        {(selected.challenge.options ?? []).map((option, i) => <option key={i} value={i}>{i + 1}. {option || "（空选项）"}</option>)}
+                      </select>
+                    </label>
                   )}
                 </>
               ) : selected.challenge?.type === "text" || selected.challenge?.type === "keyword" ? (
@@ -724,6 +728,14 @@ export default function DesignPage() {
                 </label>
               ) : null}
               <label className="mt-2 block text-xs">卡住时的提示<textarea className="input mt-1 min-h-14" value={selected.challenge?.hint ?? ""} placeholder="给一个帮助思考的提示，不要直接泄露答案。" onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, hint: e.target.value } : undefined })} /></label>
+              <label className="mt-2 block text-xs">答错几次后显示提示
+                <select className="input mt-1" value={selected.challenge?.hintAfterAttempts ?? 1} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, hintAfterAttempts: Number(e.target.value) } : undefined })}>
+                  <option value={1}>答错 1 次后</option>
+                  <option value={2}>答错 2 次后</option>
+                  <option value={3}>答错 3 次后</option>
+                  <option value={0}>不自动显示</option>
+                </select>
+              </label>
               <label className="mt-2 block text-xs">答对后的故事反馈<textarea className="input mt-1 min-h-14" value={selected.challenge?.explanation ?? ""} placeholder="例如：你找到了藏宝者留下的第一段密码！" onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
               <MediaEditor media={selected.challenge?.media} onChange={(media) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, media } : undefined })} />
             </div>
