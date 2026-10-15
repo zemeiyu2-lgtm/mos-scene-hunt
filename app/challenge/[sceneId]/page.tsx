@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { use } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { Screen, StatusChip } from "@/components/ui";
-import { matchTextAnswer } from "@/lib/game/answers";
+import { matchChoiceAnswer, matchTextAnswer } from "@/lib/game/answers";
 import { playSound } from "@/components/sound";
 import { MediaGallery } from "@/components/media-gallery";
 
@@ -40,7 +40,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
 
   const hintVisible = useMemo(() => {
     if (!challenge) return false;
-    const threshold = challenge.hintAfterAttempts ?? 0;
+    const threshold = challenge.hintAfterAttempts ?? 1;
     if (threshold <= 0) return false;
     return attempts >= threshold;
   }, [challenge, attempts]);
@@ -91,7 +91,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       // Verify locally so the screen can distinguish "wrong" from "correct"
       // without waiting for a state round-trip; the engine re-verifies and is
       // the only thing that actually advances the game.
-      const isCorrect = Boolean(challenge.reflective) || selected === challenge.answer;
+      const isCorrect = Boolean(challenge.reflective) || matchChoiceAnswer(selected, challenge.answer as number | string, challenge.options ?? []);
       submitAnswer(scene.id, { selectedIndex: selected });
       if (isCorrect) {
         setSolved(true);
@@ -219,7 +219,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       {feedback === "correct" ? (
         <div className="success-pulse mt-3">
           <p className="text-[15px] font-bold text-emerald-800">✓ 完成了</p>
-          <p className="mt-0.5 text-[12px] text-emerald-700">这一站的钥匙正在交到你手里…</p>
+          <p className="mt-0.5 text-[12px] text-emerald-700">{challenge.explanation || "这一站的钥匙正在交到你手里…"}</p>
         </div>
       ) : feedback === "wrong" ? (
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">

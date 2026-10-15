@@ -44,16 +44,20 @@ export function MediaEditor({
     if (!files?.length) return;
     const additions: MediaItem[] = [];
     for (const file of Array.from(files).slice(0, 8)) {
-      if (!file.type.startsWith("image/") && file.type !== "application/pdf" &&
-          !file.name.endsWith(".doc") && !file.name.endsWith(".docx") &&
-          !file.name.endsWith(".ppt") && !file.name.endsWith(".pptx")) continue;
-      const data = await readAsDataUrl(file);
+      const isImage = file.type.startsWith("image/");
+      const isDocument = file.type === "application/pdf" ||
+        /\.(doc|docx|ppt|pptx)$/i.test(file.name);
+      if (!isImage && !isDocument) continue;
+      // Photos are resized and JPEG-compressed before embedding in the game pack.
+      // This keeps real location photos while reducing the chance of unshareable URLs.
+      const prepared = isImage ? await prepareImage(file) : file;
+      const data = await readAsDataUrl(prepared);
       additions.push({
         id: `media-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-        kind: file.type.startsWith("image/") ? "image" : "document",
+        kind: isImage ? "image" : "document",
         title: file.name,
         url: data,
-        mimeType: file.type || "application/octet-stream",
+        mimeType: prepared.type || file.type || "application/octet-stream",
       });
     }
     if (additions.length) onChange([...(media ?? []), ...additions]);
@@ -91,7 +95,40 @@ export function MediaEditor({
   );
 }
 
-function readAsDataUrl(file: File): Promise<string> {
+/** Resize photos to a mobile-friendly maximum edge and JPEG quality. */
+async function prepareImage(file: File): Promise<Blob> {
+  const MAX_EDGE = 1600;
+  const QUALITY = 0.8;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      bitmap.close();
+      return file;
+    }
+    // JPEG has no transparency; use a white background for predictable results.
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+    const compressed = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", QUALITY),
+    );
+    const wasResized = scale < 1;
+    return compressed && (wasResized || compressed.size < file.size) ? compressed : file;
+  } catch {
+    // Unsupported formats or browser limitations: keep the original photo.
+    return file;
+  }
+}
+
+function readAsDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
