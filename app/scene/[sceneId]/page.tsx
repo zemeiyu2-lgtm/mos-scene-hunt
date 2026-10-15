@@ -100,6 +100,13 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
           </div>
         ) : null}
 
+        {scene.hint ? (
+          <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">本关任务</p>
+            <p className="mt-1 text-[13.5px] leading-relaxed">{scene.hint}</p>
+          </div>
+        ) : null}
+
         <MediaGallery media={scene.media} />
 
         {scene.place?.source ? (
