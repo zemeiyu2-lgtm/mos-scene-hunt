@@ -120,7 +120,8 @@ async function prepareImage(file: File): Promise<Blob> {
     const compressed = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", QUALITY),
     );
-    return compressed && compressed.size < file.size ? compressed : file;
+    const wasResized = scale < 1;
+    return compressed && (wasResized || compressed.size < file.size) ? compressed : file;
   } catch {
     // Unsupported formats or browser limitations: keep the original photo.
     return file;
