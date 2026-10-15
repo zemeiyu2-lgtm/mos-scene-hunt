@@ -40,7 +40,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
 
   const hintVisible = useMemo(() => {
     if (!challenge) return false;
-    const threshold = challenge.hintAfterAttempts ?? 0;
+    const threshold = challenge.hintAfterAttempts ?? 1;
     if (threshold <= 0) return false;
     return attempts >= threshold;
   }, [challenge, attempts]);
