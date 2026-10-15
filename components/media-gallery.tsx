@@ -46,7 +46,7 @@ export function MediaEditor({
     for (const file of Array.from(files).slice(0, 8)) {
       const isImage = file.type.startsWith("image/");
       const isDocument = file.type === "application/pdf" ||
-        /\\.(doc|docx|ppt|pptx)$/i.test(file.name);
+        /\.(doc|docx|ppt|pptx)$/i.test(file.name);
       if (!isImage && !isDocument) continue;
       // Photos are resized and JPEG-compressed before embedding in the game pack.
       // This keeps real location photos while reducing the chance of unshareable URLs.
