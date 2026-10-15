@@ -480,7 +480,7 @@ export function evaluateChallenge(
       return { correct: false, method: "none" };
     }
     if (challenge.reflective) return { correct: true, method: "exact" };
-    if (typeof challenge.answer !== "number") return { correct: false, method: "none" };
+    if (typeof challenge.answer !== "number" && typeof challenge.answer !== "string") return { correct: false, method: "none" };
     return {
       correct: matchChoiceAnswer(action.selectedIndex, challenge.answer, challenge.options ?? []),
       method: "exact",
