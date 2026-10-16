@@ -173,7 +173,8 @@ export function GpsProvider({ children }: { children: ReactNode }) {
    * The tick is deliberately slow (1 Hz): a jittering marker at 60 fps is
    * unreadable and would thrash the game reducer.
    */
-  const simEnabled = settings.simulatorEnabled && settings.simulatorCoordinate !== null;
+  const simulatorCoordinate = settings.simulatorCoordinate;
+  const simEnabled = settings.simulatorEnabled && simulatorCoordinate !== null;
   useEffect(() => {
     if (!simEnabled || !simulatorAvailable) {
       simulatorActiveRef.current = false;
@@ -185,7 +186,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
     const push = () => {
       const next = simulateFix({
         enabled: true,
-        coordinate: settings.simulatorCoordinate,
+        coordinate: simulatorCoordinate,
         jitter: false,
         jitterMetres: 0,
         accuracy: 8,
@@ -199,8 +200,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
   }, [
     simEnabled,
     simulatorAvailable,
-    settings.simulatorCoordinate?.lat,
-    settings.simulatorCoordinate?.lng,
+    simulatorCoordinate,
     injectFix,
   ]);
 
