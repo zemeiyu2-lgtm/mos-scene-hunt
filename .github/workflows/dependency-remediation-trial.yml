@@ -1,0 +1,47 @@
+name: Dependency Remediation Trial
+
+on:
+  push:
+    branches: ["deps/security-next-15-5-28"]
+
+permissions:
+  contents: read
+
+jobs:
+  remediation-trial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out isolated remediation branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install baseline dependencies
+        run: npm ci
+      - name: Upgrade Next.js within major version 15
+        run: npm install --save-exact next@15.5.28
+      - name: Apply non-breaking npm audit fixes only
+        run: npm audit fix
+      - name: Record remaining audit findings
+        shell: bash
+        run: |
+          npm audit --json > npm-audit-after.json || true
+          node -e "const r=require('./npm-audit-after.json'); console.log('AUDIT_AFTER', JSON.stringify(r.metadata?.vulnerabilities ?? {})); for (const [name,v] of Object.entries(r.vulnerabilities ?? {})) console.log(JSON.stringify({name,severity:v.severity,direct:v.isDirect,fixAvailable:v.fixAvailable,via:(v.via??[]).map(x=>typeof x==='string'?x:x.title)}))"
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Save reviewed dependency proposal
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-remediation-proposal
+          path: |
+            package.json
+            package-lock.json
+            npm-audit-after.json
+          retention-days: 7
