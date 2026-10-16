@@ -1,6 +1,4 @@
-// @vitest-environment jsdom
-
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Game } from "@/lib/game/types";
 import { createGameShareUrl, readSharedGameFromUrl } from "@/lib/content/share";
 
@@ -25,17 +23,26 @@ const game: Game = {
   ],
 };
 
+beforeEach(() => {
+  vi.stubGlobal("window", {
+    location: { origin: "https://mos-scene-hunt.test", hash: "" },
+  });
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
-  window.history.replaceState({}, "", "/");
 });
+
+function setSharedUrl(url: string) {
+  window.location.hash = new URL(url).hash;
+}
 
 describe("self-contained game sharing", () => {
   it("creates a share URL that restores the same validated game", async () => {
     const url = await createGameShareUrl(game);
     expect(url).toContain("/select#hunt=");
 
-    window.history.replaceState({}, "", new URL(url).pathname + new URL(url).hash);
+    setSharedUrl(url);
     const restored = await readSharedGameFromUrl();
 
     expect(restored).not.toBeNull();
@@ -45,10 +52,10 @@ describe("self-contained game sharing", () => {
   });
 
   it("returns null for a missing or malformed share payload", async () => {
-    window.history.replaceState({}, "", "/select");
+    window.location.hash = "";
     await expect(readSharedGameFromUrl()).resolves.toBeNull();
 
-    window.history.replaceState({}, "", "/select#hunt=not-a-valid-payload");
+    window.location.hash = "#hunt=not-a-valid-payload";
     await expect(readSharedGameFromUrl()).resolves.toBeNull();
   });
 
@@ -59,8 +66,7 @@ describe("self-contained game sharing", () => {
     const url = await createGameShareUrl(game);
     expect(url).toContain("#hunt=j.");
 
-    const parsed = new URL(url);
-    window.history.replaceState({}, "", parsed.pathname + parsed.hash);
+    setSharedUrl(url);
     const restored = await readSharedGameFromUrl();
 
     expect(restored?.id).toBe(game.id);
