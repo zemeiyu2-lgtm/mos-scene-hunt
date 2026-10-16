@@ -362,7 +362,7 @@ export default function GameMap({
       huntAreaRef.current.setLatLng(center);
       huntAreaRef.current.setRadius(huntArea.radiusMeters);
     }
-  }, [huntArea?.shape, huntArea?.center.lat, huntArea?.center.lng, huntArea?.radiusMeters, JSON.stringify(huntArea?.points ?? []), editable]);
+  }, [huntArea, editable]);
 
   /* ------------------------------------------------ 绘制中的边界顶点 */
   const verticesSignature = useMemo(
@@ -470,7 +470,7 @@ export default function GameMap({
         store.delete(id);
       }
     }
-  }, [markersSignature, entries]);
+  }, [markersSignature, entries, editable]);
 
   /* ------------------------------------------------ 玩家标记与精度晕 */
   useEffect(() => {
