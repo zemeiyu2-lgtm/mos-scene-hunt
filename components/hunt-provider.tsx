@@ -145,11 +145,11 @@ export function HuntProvider({
   /* ---------------------------------------------------------------- */
 
   const load = useCallback(
-    async () => {
+    async (force = false) => {
       setLoading(true);
       setLoadError(null);
       try {
-        const result = await loadGame(gameId);
+        const result = await loadGame(gameId, { forceNetwork: force });
         loadedGameRef.current = result.game;
         setLoaded(result);
 
