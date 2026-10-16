@@ -23,6 +23,17 @@ jobs:
       - run: npm ci
       - name: Upgrade Next.js to patched major version 16
         run: npm install --save-exact next@16.4.2
+      - name: Remove deprecated Next.js ESLint config option
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('next.config.ts')
+          s = p.read_text()
+          old = '  eslint: { ignoreDuringBuilds: true },\n'
+          if old not in s:
+              raise SystemExit('Expected deprecated Next.js 15 eslint option not found; refusing to rewrite config blindly.')
+          p.write_text(s.replace(old, '', 1))
+          PY
       - name: Apply tested Vitest, Tailwind, and Puppeteer candidates
         run: npm install --save-dev --save-exact vitest@4.1.12 @vitest/coverage-v8@4.1.12 tailwindcss@4.3.3 @tailwindcss/postcss@4.3.3 puppeteer-core@25.14.0
       - name: Configure Tailwind v4 while retaining project theme
