@@ -619,6 +619,14 @@ export default function GameMap({
   return (
     <div className={`map-root ${drawingMode ? "map-root--drawing" : ""}`}>
       <div ref={containerRef} className="h-full w-full" />
+      {!drawingMode ? (
+        <div className="pointer-events-none absolute bottom-24 left-3 z-[450]">
+          <div className="rounded-2xl bg-black/60 px-3 py-2 text-white shadow-lg backdrop-blur-md">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">探索中</p>
+            <p className="mt-0.5 text-[12px] font-medium">跟着地图走，留意真实世界。</p>
+          </div>
+        </div>
+      ) : null}
 
       {/* Boundary-drawing guidance, kept in the DOM so it is readable by assistive tech. */}
       {drawingMode ? (

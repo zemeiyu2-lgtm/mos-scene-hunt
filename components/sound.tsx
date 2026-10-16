@@ -40,6 +40,40 @@ export function playSound(cue: SoundCue) {
   }
 }
 
+export function speak(text: string): void {
+  if (typeof window === "undefined" || window.localStorage.getItem(KEY) === "off" || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "zh-CN"; u.rate = 0.92; u.volume = 0.82;
+  window.speechSynthesis.speak(u);
+}
+
+export function playMusic(kind: "intro" | "explore" = "intro"): () => void {
+  if (typeof window === "undefined" || window.localStorage.getItem(KEY) === "off") return () => {};
+  const audio = getContext(); if (!audio) return () => {};
+  if (audio.state === "suspended") void audio.resume();
+  const master = audio.createGain();
+  master.gain.setValueAtTime(0.0001, audio.currentTime);
+  master.gain.exponentialRampToValueAtTime(0.018, audio.currentTime + 1.4);
+  master.connect(audio.destination);
+  const notes = kind === "intro" ? [220, 277.18, 329.63, 440] : [196, 246.94, 293.66, 392];
+  const oscillators = notes.map((frequency, index) => {
+    const osc = audio.createOscillator(); const gain = audio.createGain();
+    osc.type = index === 0 ? "sine" : "triangle"; osc.frequency.value = frequency;
+    gain.gain.value = index === 0 ? 0.55 : 0.18;
+    osc.connect(gain).connect(master); osc.start(); return osc;
+  });
+  let stopped = false;
+  return () => {
+    if (stopped) return; stopped = true;
+    const now = audio.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setValueAtTime(0.018, now);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+    window.setTimeout(() => { oscillators.forEach((o) => { try { o.stop(); } catch {} }); master.disconnect(); }, 900);
+  };
+}
+
 export function SoundToggle() {
   const [enabled, setEnabled] = useState(true);
   useEffect(() => setEnabled(window.localStorage.getItem(KEY) !== "off"), []);
