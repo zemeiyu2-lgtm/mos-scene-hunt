@@ -24,7 +24,7 @@ import process from "node:process";
 const BASE = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
 const ARTIFACTS = path.join(process.cwd(), "tests", "e2e", "artifacts");
 const SETTINGS_KEY = "mos-scene-hunt:settings";
-const SAVE_KEY = "mos-scene-hunt:active-save";
+const SAVE_KEY = "mos-scene-hunt:save:demo-hunt";
 
 /**
  * 与 content/demo-hunt.json（V0.3，五站）保持一致的坐标镜像。
