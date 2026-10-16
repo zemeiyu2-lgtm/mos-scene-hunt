@@ -18,7 +18,7 @@ export default function HomePage() {
         Object.values(state.scenes).some((scene) => scene.status === "completed" || scene.status === "challenging" || scene.status === "arrived")),
   );
   const actionHref = complete
-    ? "/map"
+    ? "/bag"
     : currentSceneId && currentSceneStatus === "challenging"
       ? `/challenge/${encodeURIComponent(currentSceneId)}`
       : currentSceneId && currentSceneStatus === "arrived"
