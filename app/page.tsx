@@ -1,204 +1,192 @@
 "use client";
 
-/**
- * Home - the landing screen.
- *
- * Job: explain the game in one screen, show whether a save exists, and get the
- * player to a hunt. No map, no GPS prompt yet - asking for location before the
- * player knows why is the fastest way to get a permanent denial.
- */
-
 import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
-import { ProgressBar, Screen } from "@/components/ui";
+import { Screen } from "@/components/ui";
 import { useOnlineStatus } from "@/components/providers";
 
 export default function HomePage() {
   const { game, state, loading, loadError, ratio, complete, contentSource, reloadContent } = useHunt();
   const online = useOnlineStatus();
 
-  const hasProgress = Boolean(state && state.inventory.length > 0);
+  const currentSceneId = state?.currentSceneId ?? null;
+  const currentSceneStatus = currentSceneId ? state?.scenes[currentSceneId]?.status : null;
+  const hasProgress = Boolean(
+    state &&
+      (state.currentSceneId !== null ||
+        state.inventory.length > 0 ||
+        Object.values(state.scenes).some((scene) => scene.status === "completed" || scene.status === "challenging" || scene.status === "arrived")),
+  );
+  const actionHref = complete
+    ? "/map"
+    : currentSceneId && currentSceneStatus === "challenging"
+      ? `/challenge/${encodeURIComponent(currentSceneId)}`
+      : currentSceneId && currentSceneStatus === "arrived"
+        ? `/scene/${encodeURIComponent(currentSceneId)}`
+        : hasProgress
+          ? "/map"
+          : "/select";
+  const actionLabel = loading
+    ? "正在恢复游戏…"
+    : loadError
+      ? "重新加载游戏"
+      : complete
+        ? "查看探索成果"
+        : currentSceneStatus === "challenging"
+          ? "继续当前任务"
+          : currentSceneStatus === "arrived"
+            ? "继续当前情境"
+            : hasProgress
+              ? "继续探索"
+              : "开始探索";
 
   return (
     <Screen
       title="MOS Scene Hunt"
-      subtitle="在真实世界里移动，解锁情境、线索与任务"
+      subtitle="把现实世界变成一场探索游戏"
       headerRight={
-        <span
-          className={`chip shrink-0 ${
-            online ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
-          }`}
-        >
+        <span className={`chip shrink-0 ${online ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
           {online ? "在线" : "离线"}
         </span>
       }
     >
       <section className="card overflow-hidden">
-        <div className="hero-explore px-5 py-7">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
-            V0.4 · Micro Designer
-          </p>
-          <h2 className="mt-2 text-[22px] font-bold leading-tight">
-            现实移动 → GPS → 地点触发
-            <br />
-            情境 → 任务 → 奖励 → 下一地点
+        <div className="relative overflow-hidden bg-[linear-gradient(145deg,#173f3b_0%,#27665c_55%,#d6ad67_140%)] px-5 pb-5 pt-5 text-white">
+          <div className="flex items-center justify-between gap-3">
+            <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/90">
+              Explore · Discover · Play
+            </span>
+            <span className="text-[11px] text-white/70">{game ? `${game.scenes.length} 个地点` : "GPS 探索游戏"}</span>
+          </div>
+          <h2 className="mt-4 max-w-[18rem] text-[25px] font-extrabold leading-tight">
+            下一条线索，<br />就在真实世界里。
           </h2>
-          <p className="mt-3 text-[13px] leading-relaxed text-white/75">
-            先看一分钟自动演示，再带上手机到户外，边走边找线索、解锁八个秘密。
+          <p className="mt-2 max-w-[19rem] text-[13px] leading-relaxed text-white/80">
+            带上手机，沿着地图探索地点、发现故事、完成任务。
           </p>
-        </div>
-
-        <div className="px-5 pb-5">
-          <p className="text-sm font-semibold text-[var(--text)]">仅限户外游玩</p>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">室内定位可能不稳定。请在安全、开放的户外区域探索。</p>
-        </div>
-      </section>
-
-      <section className="card mt-4 overflow-hidden border border-amber-300">
-        <div className="flex items-start gap-3 p-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-100 text-xl" aria-hidden="true">▶</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-800">新手先看 · 约 1 分钟</p>
-            <h3 className="mt-1 text-[17px] font-extrabold">自动演示：游戏是怎么玩的？</h3>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--muted)]">像录屏一样看地图移动、地点发现、任务解锁和奖励。使用模拟数据，不需要 GPS，也不会影响真实存档。</p>
-            <Link href="/tutorial" className="btn btn-primary mt-3 min-h-10 w-full">播放新手演示 →</Link>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/15 bg-[#f4ead4]">
+            <svg viewBox="0 0 640 300" role="img" aria-label="山丘、树木与探索路线组成的插画地图" className="block h-auto w-full">
+              <rect width="640" height="300" fill="#f4ead4" />
+              <path d="M0 65 Q95 15 190 70 T390 58 T640 42 V0 H0Z" fill="#e7d6b2" />
+              <path d="M0 188 Q110 130 215 182 T420 164 T640 184 V300 H0Z" fill="#b8c9a0" />
+              <path d="M0 235 Q125 190 250 236 T480 220 T640 228 V300 H0Z" fill="#8fae88" />
+              <path d="M-10 245 C95 255 95 125 220 146 S350 260 435 196 S545 88 660 120" fill="none" stroke="#fffaf0" strokeWidth="22" strokeLinecap="round" />
+              <path d="M-10 245 C95 255 95 125 220 146 S350 260 435 196 S545 88 660 120" fill="none" stroke="#d4a65c" strokeWidth="3" strokeDasharray="5 10" strokeLinecap="round" />
+              <g fill="#426d50">
+                <path d="M68 102 l-23 38 h46z" /><path d="M68 122 l-29 42 h58z" /><rect x="64" y="160" width="8" height="15" rx="2" />
+                <path d="M520 175 l-25 40 h50z" /><path d="M520 196 l-32 44 h64z" /><rect x="516" y="236" width="8" height="13" rx="2" />
+                <path d="M570 58 l-18 30 h36z" /><path d="M570 76 l-24 34 h48z" /><rect x="566" y="108" width="8" height="12" rx="2" />
+              </g>
+              <g transform="translate(220 146)">
+                <circle r="20" fill="#fffaf0" stroke="#d4a65c" strokeWidth="4" />
+                <path d="M0 -10 L3 -2 L11 0 L3 3 L0 11 L-3 3 L-11 0 L-3 -2Z" fill="#b77935" />
+              </g>
+              <g transform="translate(435 196)">
+                <circle r="18" fill="#fffaf0" stroke="#28685d" strokeWidth="4" />
+                <path d="M0 -8 L8 0 L0 8 L-8 0Z" fill="#28685d" />
+              </g>
+              <g transform="translate(565 111)">
+                <path d="M0 -22 L18 -5 L12 18 L-12 18 L-18 -5Z" fill="#b77935" stroke="#fffaf0" strokeWidth="4" />
+                <path d="M-7 -2 H7 M0 -9 V7" stroke="#fffaf0" strokeWidth="3" strokeLinecap="round" />
+              </g>
+              <g fill="#fffaf0" opacity=".85">
+                <circle cx="132" cy="73" r="3" /><circle cx="152" cy="91" r="2" /><circle cx="384" cy="92" r="3" /><circle cx="470" cy="61" r="2" /><circle cx="305" cy="70" r="2" />
+              </g>
+            </svg>
           </div>
-        </div>
-      </section>
-
-      <section className="card mt-4 p-4">
-        <div className="flex items-start gap-3">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-xl" aria-hidden="true">✦</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold">想设计自己的游戏？</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">用你平常使用的 AI 帮你想玩法，再导入游戏包。不需要编程，也不需要 MOS Scene Hunt 内置 AI。</p>
-            <Link href="/how-to-create" className="btn btn-secondary mt-3 min-h-10 w-full">学习如何设计游戏 →</Link>
+          <div className="mt-4 rounded-2xl bg-white p-2 text-[#173f3b] shadow-sm">
+            {loadError ? (
+              <button type="button" className="btn btn-primary w-full" onClick={() => reloadContent(true)}>
+                重新加载游戏
+              </button>
+            ) : (
+              <Link href={loading ? "#" : actionHref} aria-disabled={loading} className={`btn btn-primary flex w-full items-center justify-center gap-2 ${loading ? "pointer-events-none opacity-60" : ""}`}>
+                {actionLabel}<span aria-hidden="true">→</span>
+              </Link>
+            )}
           </div>
+          {game ? (
+            <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-white/75">
+              <span className="truncate">{game.title}</span>
+              <span className="shrink-0">{complete ? "已完成" : hasProgress ? `${Math.round(ratio * 100)}% 已探索` : "等待你的第一步"}</span>
+            </div>
+          ) : null}
         </div>
-      </section>
-
-      <section className="card mt-4 overflow-hidden bsop-reference">
-        <div className="bsop-reference__cover">
-          {/* Official BSOP handbook thumbnail; the game itself can replace this with licensed field photography later. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://bsop.edu.ph/wp-content/uploads/2026/04/BSOP-Student-Handbook-2025-2026-thumnail.png"
-            alt="BSOP 神学院校园资料图"
-            className="bsop-reference__image"
-          />
-          <div className="bsop-reference__overlay">
-            <span className="chip bg-white/15 text-white">REFERENCE GAME · 01</span>
-          </div>
-        </div>
-        <div className="p-4">
-          <p className="text-[13px] font-semibold">经典案例 · BSOP 神学院</p>
-          <h3 className="mt-1 text-[18px] font-bold leading-tight">《神学院的八个秘密》</h3>
-          <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--muted)]">
-            八个户外站点、八道轻松的圣经记忆题。找线索、答问题、集齐钥匙，看看你能不能一次通关！
-          </p>
-          <div className="mt-3 flex gap-2">
-            <Link href="/select?game=bsop-eight-secrets" className="btn btn-primary h-10 min-h-0 flex-1 px-3 text-[13px]">
-              试玩示范 →
-            </Link>
-            <Link href="/create" className="btn btn-secondary h-10 min-h-0 px-3 text-[13px]">设计 / 导入</Link>
-          </div>
+        <div className="flex items-start gap-2 px-4 py-3 text-[12px] leading-relaxed text-[var(--muted)]">
+          <span aria-hidden="true">ⓘ</span>
+          <p>请在安全、开放的户外区域游玩。GPS 在室内或高楼附近可能不够准确。</p>
         </div>
       </section>
 
       {hasProgress && game ? (
-        <section className="card mt-4 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[13px] text-[var(--muted)]">进行中的寻宝</p>
-              <p className="text-[16px] font-semibold">{game.title}</p>
+        <section className="card mt-3 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] text-[var(--muted)]">当前游戏</p>
+              <p className="truncate text-[15px] font-semibold">{game.title}</p>
             </div>
-            <span className="chip bg-amber-100 text-amber-800">
-              {complete ? "已完成" : `${Math.round(ratio * 100)}%`}
-            </span>
+            <span className="chip shrink-0 bg-amber-100 text-amber-800">{complete ? "已完成" : `${Math.round(ratio * 100)}%`}</span>
           </div>
-          <ProgressBar ratio={ratio} className="mt-3" />
-          <div className="mt-4 flex gap-2">
-            <Link href="/map" className="btn btn-primary flex-1">
-              继续寻宝
-            </Link>
-            <Link href="/bag" className="btn btn-secondary">
-              背包
-            </Link>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--line)]">
+            <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${Math.round(ratio * 100)}%` }} />
           </div>
+          <Link href="/bag" className="btn btn-secondary mt-3 w-full">查看背包与已获线索</Link>
+        </section>
+      ) : null}
+
+      {loading ? (
+        <section className="card mt-3 animate-pulse p-4">
+          <div className="h-4 w-1/2 rounded bg-[var(--line)]" />
+          <div className="mt-2 h-3 w-full rounded bg-[var(--line)]" />
+        </section>
+      ) : loadError ? (
+        <section className="card mt-3 p-4">
+          <p className="text-[14px] font-semibold text-red-700">游戏内容加载失败</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-red-600">{loadError}</p>
+          <button type="button" className="btn btn-secondary mt-3 w-full" onClick={() => reloadContent(true)}>重试加载</button>
         </section>
       ) : null}
 
       <section className="mt-4">
-        <h3 className="px-1 text-[13px] font-semibold text-[var(--muted)]">可用寻宝</h3>
-        <div className="mt-2 space-y-3">
-          {loading ? (
-            <div className="card animate-pulse p-4">
-              <div className="h-4 w-1/2 rounded bg-[var(--line)]" />
-              <div className="mt-2 h-3 w-full rounded bg-[var(--line)]" />
+        <h3 className="px-1 text-[12px] font-semibold text-[var(--muted)]">更多玩法与工具</h3>
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <Link href="/tutorial" className="card p-4 transition-transform active:scale-[0.99]">
+            <span className="text-xl" aria-hidden="true">▷</span>
+            <p className="mt-2 text-[14px] font-bold">一分钟演示</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">先看看怎么玩</p>
+          </Link>
+          <Link href="/select" className="card p-4 transition-transform active:scale-[0.99]">
+            <span className="text-xl" aria-hidden="true">⌖</span>
+            <p className="mt-2 text-[14px] font-bold">选择游戏</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">寻找新的探索</p>
+          </Link>
+          <Link href="/games" className="card p-4 transition-transform active:scale-[0.99]">
+            <span className="text-xl" aria-hidden="true">◇</span>
+            <p className="mt-2 text-[14px] font-bold">游戏中心</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">浏览可用游戏</p>
+          </Link>
+          <Link href="/create" className="card p-4 transition-transform active:scale-[0.99]">
+            <span className="text-xl" aria-hidden="true">✦</span>
+            <p className="mt-2 text-[14px] font-bold">创作 / 导入</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">设计自己的游戏</p>
+          </Link>
+        </div>
+        {game ? (
+          <Link href="/select?game=bsop-eight-secrets" className="card mt-3 flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-[13px] font-semibold">经典示范 ·《神学院的八个秘密》</p>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">八个地点、八道轻松任务，体验完整探索闭环。</p>
             </div>
-          ) : loadError ? (
-            <div className="card p-4">
-              <p className="text-[14px] font-semibold text-red-700">内容包加载失败</p>
-              <p className="mt-1 text-[12px] leading-relaxed text-red-600">{loadError}</p>
-              <button
-                type="button"
-                className="btn btn-secondary mt-3"
-                onClick={() => reloadContent(true)}
-              >
-                重新加载
-              </button>
-            </div>
-          ) : game ? (
-            <Link href="/select" className="card block p-4 transition-transform active:scale-[0.99]">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[16px] font-bold leading-tight">{game.title}</p>
-                  <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-[var(--muted)]">
-                    {game.description}
-                  </p>
-                </div>
-                <span className="chip shrink-0 bg-amber-100 text-amber-800">
-                  {game.scenes.length} 站
-                </span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                <span className="chip bg-[var(--surface)] text-[11px] text-[var(--muted)]">
-                  约 {game.estimatedMinutes ?? 20} 分钟
-                </span>
-                <span className="chip bg-[var(--surface)] text-[11px] text-[var(--muted)]">
-                  {game.language}
-                </span>
-                {contentSource === "cache" ? (
-                  <span className="chip bg-slate-200 text-[11px] text-slate-600">离线缓存</span>
-                ) : contentSource === "local" ? (
-                  <span className="chip bg-purple-100 text-[11px] text-purple-700">我的创作</span>
-                ) : null}
-              </div>
-            </Link>
-          ) : null}
-        </div>
+            <span className="shrink-0 text-sm font-bold text-[var(--accent)]">试玩 →</span>
+          </Link>
+        ) : null}
       </section>
 
-      <section className="card mt-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold">🎮 游戏中心</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">从官方云端游戏库选择游戏，下载到本机后直接游玩。</p>
-          </div>
-          <Link href="/games" className="btn btn-primary shrink-0">进入</Link>
-        </div>
-      </section>
-
-      <section className="card mt-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold">📦 游戏包中心</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">设计者负责制作游戏包；玩家平台负责导入、安装和游玩。两者可以完全分开。</p>
-          </div>
-          <Link href="/create" className="btn btn-secondary shrink-0">打开</Link>
-        </div>
-      </section>
-
+      {contentSource === "cache" ? (
+        <p className="mt-4 text-center text-[11px] text-[var(--muted)]">当前使用离线缓存内容</p>
+      ) : contentSource === "local" ? (
+        <p className="mt-4 text-center text-[11px] text-[var(--muted)]">当前使用本机创作的游戏</p>
+      ) : null}
     </Screen>
   );
 }
