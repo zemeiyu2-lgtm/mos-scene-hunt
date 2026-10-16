@@ -2,9 +2,11 @@ const u16=(b:Uint8Array,o:number)=>b[o]|(b[o+1]<<8);
 const u32=(b:Uint8Array,o:number)=>(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0;
 function bytesToString(b:Uint8Array){return new TextDecoder("utf-8").decode(b);}
 async function inflateRaw(data:Uint8Array){
-  const DS=(globalThis as any).DecompressionStream;
+  const DS = globalThis.DecompressionStream;
   if(!DS) throw new Error("当前浏览器不支持 Word 文件解压，请使用最新版 Chrome / Edge。");
-  const stream=new Blob([data as any]).stream().pipeThrough(new DS("deflate-raw"));
+  const copy = new Uint8Array(data.byteLength);
+  copy.set(data);
+  const stream = new Blob([copy.buffer]).stream().pipeThrough(new DS("deflate-raw" as CompressionFormat));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 async function readZipEntry(buf:ArrayBuffer,name:string){

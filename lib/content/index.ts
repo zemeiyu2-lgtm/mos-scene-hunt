@@ -190,10 +190,6 @@ export async function loadGame(
     }
   }
 
-  if (!options.forceNetwork) {
-    /* fall through to cached-first only if explicitly requested */
-  }
-
   try {
     const res = await fetch(packUrl(gameId), {
       cache: "no-cache",
@@ -229,7 +225,8 @@ export async function loadGame(
     networkError = err;
   }
 
-  const cached = await readCachedGameContent(gameId);
+  // A forced reload must not silently fall back to stale offline content.
+  const cached = options.forceNetwork ? null : await readCachedGameContent(gameId);
   if (cached?.game) {
     const { game, issues } = validateGame(cached.game);
     return { game, issues, source: "cache", cachedAt: cached.cachedAt };

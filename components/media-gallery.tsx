@@ -10,7 +10,6 @@ export function MediaGallery({ media }: { media?: MediaItem[] }) {
         item.kind === "image" ? (
           <figure key={item.id} className="media-card media-card--image">
             <a href={item.url} target="_blank" rel="noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={item.url} alt={item.title} className="media-image" loading="lazy" />
             </a>
             <figcaption>
@@ -77,7 +76,6 @@ export function MediaEditor({
             <div key={item.id} className="flex items-center gap-2 rounded-xl bg-[var(--card)] px-2.5 py-2">
               <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-[var(--surface)]">
                 {item.kind === "image" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={item.url} alt="" className="h-full w-full object-cover" />
                 ) : "▤"}
               </span>

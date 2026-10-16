@@ -20,7 +20,6 @@ import {
   isSceneComplete,
   reconcileState,
   rewardId,
-  resolveSceneStatus,
   sceneStatuses,
   statusOf,
   type GameState,

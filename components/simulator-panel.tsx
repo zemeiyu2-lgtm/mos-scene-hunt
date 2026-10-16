@@ -36,7 +36,7 @@ import { KV } from "./ui";
 export function SimulatorPanel({ activeSceneId }: { activeSceneId?: string | null }) {
   const available = isSimulatorAvailable();
   const { settings, update } = useSettings();
-  const { fix, injectFix, status } = useGps();
+  const { fix, status } = useGps();
   const { game, distances, statuses } = useHunt();
 
   const [open, setOpen] = useState(false);
@@ -47,14 +47,16 @@ export function SimulatorPanel({ activeSceneId }: { activeSceneId?: string | nul
 
   const walkTimer = useRef<number | null>(null);
   const coord = settings.simulatorCoordinate;
+  const coordLat = coord?.lat;
+  const coordLng = coord?.lng;
 
   // Mirror the current coordinate into the text fields whenever it changes from
   // an external source (map drag, preset, walk tick).
   useEffect(() => {
-    if (!coord) return;
-    setLatText(coord.lat.toFixed(6));
-    setLngText(coord.lng.toFixed(6));
-  }, [coord?.lat, coord?.lng]);
+    if (coordLat === undefined || coordLng === undefined) return;
+    setLatText(coordLat.toFixed(6));
+    setLngText(coordLng.toFixed(6));
+  }, [coordLat, coordLng]);
 
   useEffect(
     () => () => {

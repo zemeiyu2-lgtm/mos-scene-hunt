@@ -15,7 +15,7 @@
  * would be a self-inflicted bug.
  */
 const PUNCTUATION =
-  /[\s\u3000.,;:!?、。，；：！？…—\-_/\\'"“”‘’()（）\[\]【】{}《》·‧•・∙]+/g;
+  /[\s\u3000.,;:!?、。，；：！？…—\-_/\\'"“”‘’()（）\u005B\u005D【】{}《》·‧•・∙]+/g;
 
 /**
  * Full-width -> half-width folding for ASCII-range characters.
