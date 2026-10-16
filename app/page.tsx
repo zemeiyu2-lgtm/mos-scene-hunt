@@ -13,10 +13,12 @@ import { useHunt } from "@/components/hunt-provider";
 import { SimulatorUnavailableNotice } from "@/components/simulator-panel";
 import { ProgressBar, Screen } from "@/components/ui";
 import { useOnlineStatus } from "@/components/providers";
+import { useState } from "react";
 
 export default function HomePage() {
   const { game, state, loading, loadError, ratio, complete, contentSource, reloadContent } = useHunt();
   const online = useOnlineStatus();
+  const [coverFailed, setCoverFailed] = useState(false);
 
   const hasProgress = Boolean(state && state.inventory.length > 0);
 
@@ -73,11 +75,22 @@ export default function HomePage() {
         <div className="bsop-reference__cover">
           {/* Official BSOP handbook thumbnail; the game itself can replace this with licensed field photography later. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://bsop.edu.ph/wp-content/uploads/2026/04/BSOP-Student-Handbook-2025-2026-thumnail.png"
-            alt="BSOP 神学院校园资料图"
-            className="bsop-reference__image"
-          />
+          {!coverFailed ? (
+            <img
+              src="https://bsop.edu.ph/wp-content/uploads/2026/04/BSOP-Student-Handbook-2025-2026-thumnail.png"
+              alt="BSOP 神学院校园资料图"
+              className="bsop-reference__image"
+              onError={() => setCoverFailed(true)}
+            />
+          ) : (
+            <div className="bsop-reference__image grid place-items-center bg-gradient-to-br from-[#172b49] via-[#2c5368] to-[#4d8279]">
+              <div className="px-6 text-center text-white">
+                <p className="text-[11px] font-bold tracking-[0.2em] text-amber-300">MOS SCENE HUNT · CLASSIC 01</p>
+                <p className="mt-3 text-[25px] font-bold leading-tight">神学院的<br />八个秘密</p>
+                <p className="mt-2 text-[12px] text-white/75">从真实地点开始一段探索旅程</p>
+              </div>
+            </div>
+          )}
           <div className="bsop-reference__overlay">
             <span className="chip bg-white/15 text-white">REFERENCE GAME · 01</span>
           </div>
@@ -89,12 +102,12 @@ export default function HomePage() {
             不是把新功能堆在模板上，而是让图片、官方资料、声音、GPS 与任务共同服务一条生命形成路线：
             <span className="font-semibold text-[var(--text)]"> 呼召 → 真理 → 实践 → 敬拜 → 群体 → 生命 → 忠心 → 使命</span>。
           </p>
-          <div className="mt-3 flex gap-2">
-            <Link href="/select?game=bsop-eight-secrets" className="btn btn-primary h-10 min-h-0 flex-1 px-3 text-[13px]">
-              试玩示范 →
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Link href="/select?game=bsop-eight-secrets" className="btn btn-primary h-11 min-h-0 px-3 text-[13px]">
+              开始探索
             </Link>
-            <Link href="/design" className="btn btn-secondary h-10 min-h-0 px-3 text-[13px]">
-              进入设计
+            <Link href="/design" className="btn btn-secondary h-11 min-h-0 px-3 text-[13px]">
+              创作游戏
             </Link>
           </div>
         </div>
