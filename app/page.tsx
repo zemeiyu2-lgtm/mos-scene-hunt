@@ -26,7 +26,7 @@ export default function HomePage() {
   return (
     <Screen
       title="MOS Scene Hunt"
-      subtitle="在真实世界里移动，解锁情境、线索与任务"
+      subtitle="走进真实地点，发现隐藏线索"
       headerRight={
         <span
           className={`chip shrink-0 ${
@@ -40,7 +40,7 @@ export default function HomePage() {
       <section className="card overflow-hidden">
         <div className="hero-explore px-5 py-7">
           <p className="game-kicker">
-            V0.4 · Micro Designer
+            EXPLORE YOUR WORLD
           </p>
           <h2 className="mt-2 text-[22px] font-bold leading-tight">
             走进真实地点
@@ -48,7 +48,7 @@ export default function HomePage() {
             发现线索 · 完成任务 · 带走行动
           </h2>
           <p className="mt-3 text-[13px] leading-relaxed text-white/75">
-            一场手机里的真实世界探索。观察周围、寻找线索、完成任务，再把一个小小的行动带回生活。
+            走出去，发现身边不一样的故事。
           </p>
         </div>
 
@@ -79,34 +79,28 @@ export default function HomePage() {
 
       <section className="card mt-4 overflow-hidden bsop-reference">
         <div className="bsop-reference__cover">
-          {/* Official BSOP handbook thumbnail; the game itself can replace this with licensed field photography later. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {!coverFailed ? (
-            <img
-              src="https://bsop.edu.ph/wp-content/uploads/2026/04/BSOP-Student-Handbook-2025-2026-thumnail.png"
-              alt="BSOP 神学院校园资料图"
-              className="bsop-reference__image"
-              onError={() => setCoverFailed(true)}
-            />
-          ) : (
-            <div className="bsop-reference__image grid place-items-center bg-gradient-to-br from-[#172b49] via-[#2c5368] to-[#4d8279]">
-              <div className="px-6 text-center text-white">
-                <p className="text-[11px] font-bold tracking-[0.2em] text-amber-300">MOS SCENE HUNT · CLASSIC 01</p>
-                <p className="mt-3 text-[25px] font-bold leading-tight">神学院的<br />八个秘密</p>
-                <p className="mt-2 text-[12px] text-white/75">从真实地点开始一段探索旅程</p>
-              </div>
+          <div className="bsop-reference__cover culture-cover" aria-label="菲律宾文化灵感图形封面">
+            <div className="culture-cover__sun" aria-hidden="true" />
+            <svg className="culture-cover__mark" viewBox="0 0 240 120" role="img" aria-label="星辰与岛屿路径图形">
+              <path d="M22 84 C55 38 83 100 118 61 S184 31 218 65" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 8" opacity=".8" />
+              <path d="M36 72 L41 85 L55 86 L44 95 L48 109 L36 101 L24 109 L28 95 L17 86 L31 85 Z" fill="#f4bd45" />
+              <circle cx="118" cy="61" r="7" fill="#fff8e8" stroke="#173b5e" strokeWidth="3" />
+              <circle cx="218" cy="65" r="5" fill="#e77b5d" stroke="#fff8e8" strokeWidth="2" />
+              <path d="M87 26 L92 38 L105 39 L95 47 L98 60 L87 53 L76 60 L79 47 L69 39 L82 38 Z" fill="#fff8e8" opacity=".95" />
+              <path d="M158 75 l8 -10 l8 10 l-8 10 Z M174 75 l8 -10 l8 10 l-8 10 Z" fill="none" stroke="#fff8e8" strokeWidth="2" opacity=".75" />
+            </svg>
+            <div className="culture-cover__label">
+              <span>CLASSIC GAME · 01</span>
+              <strong>神学院的八个秘密</strong>
+              <small>一段从真实地点开始的探索</small>
             </div>
-          )}
-          <div className="bsop-reference__overlay">
-            <span className="chip bg-white/15 text-white">REFERENCE GAME · 01</span>
           </div>
-        </div>
         <div className="p-4">
-          <p className="text-[13px] font-semibold">经典案例 · BSOP 神学院</p>
+          <p className="text-[11px] font-bold tracking-[0.12em] text-[var(--island-green)]">经典模板 · 01</p>
           <h3 className="mt-1 text-[18px] font-bold leading-tight">《神学院的八个秘密》</h3>
           <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--muted)]">
-            不是把新功能堆在模板上，而是让图片、官方资料、声音、GPS 与任务共同服务一条生命形成路线：
-            <span className="font-semibold text-[var(--text)]"> 呼召 → 真理 → 实践 → 敬拜 → 群体 → 生命 → 忠心 → 使命</span>。
+            用八个地点串起一段真实探索，发现线索，完成任务。
+            
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <Link href="/select?game=bsop-eight-secrets" className="btn btn-primary h-11 min-h-0 px-3 text-[13px]">
