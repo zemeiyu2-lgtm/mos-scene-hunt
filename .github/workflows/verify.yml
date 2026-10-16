@@ -2,9 +2,9 @@ name: Verify
 
 on:
   pull_request:
-    branches: [main, master]
+    branches: [main, master, "fix/save-recovery-home-v1", "deps/security-combined-candidate"]
   push:
-    branches: [main, master, "fix/save-recovery-home-v1"]
+    branches: [main, master, "fix/save-recovery-home-v1", "deps/security-combined-candidate", "fix/next16-eslint-gate"]
 
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: Dependency security audit
         shell: bash
         run: |
@@ -49,6 +49,9 @@ jobs:
             }));
           }
           NODE
+      - name: Lint
+        run: npm run lint
+
       - name: Type check
         run: npm run typecheck
       - name: Unit tests
