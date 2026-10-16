@@ -2,7 +2,7 @@ name: Verify
 
 on:
   pull_request:
-    branches: [main, master]
+    branches: [main, master, "fix/save-recovery-home-v1"]
   push:
     branches: [main, master, "fix/save-recovery-home-v1"]
 
