@@ -18,6 +18,8 @@ export default defineConfig([
       "no-empty": "warn",
       "no-useless-assignment": "off",
       "no-useless-escape": "warn",
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
     },
   },
   globalIgnores([
