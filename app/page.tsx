@@ -38,16 +38,16 @@ export default function HomePage() {
     >
       <section className="card overflow-hidden">
         <div className="hero-explore px-5 py-7">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-signal-soft">
+          <p className="game-kicker">
             V0.4 · Micro Designer
           </p>
           <h2 className="mt-2 text-[22px] font-bold leading-tight">
-            现实移动 → GPS → 地点触发
+            走进真实地点
             <br />
-            情境 → 任务 → 奖励 → 下一地点
+            发现线索 · 完成任务 · 带走行动
           </h2>
           <p className="mt-3 text-[13px] leading-relaxed text-white/75">
-            不是坐着答题，而是走进真实地点。你会发现线索、做出选择，并把游戏里的一个决定带回现实。
+            一场手机里的真实世界探索。观察周围、寻找线索、完成任务，再把一个小小的行动带回生活。
           </p>
         </div>
 
@@ -55,9 +55,9 @@ export default function HomePage() {
           <div className="game-route mb-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span><i>→</i><span>带走</span></div>\n\n          <ol className="space-y-2.5">
             {[
               "允许浏览器获取你的位置",
-              "在地图上看到自己与目标地点",
+              "在地图上找到下一处目标",
               "走进目标地点约 50 米的范围内",
-              "情境自动解锁，回答问题",
+              "到达后开启线索，再由你主动开始任务",
               "获得关键词，解锁下一个地点",
             ].map((step, i) => (
               <li key={step} className="flex items-start gap-3">
