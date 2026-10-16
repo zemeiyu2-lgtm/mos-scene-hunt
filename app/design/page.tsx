@@ -29,7 +29,7 @@ import {
   markCurrentAuthoredGame,
   saveAuthoredGame,
 } from "@/lib/content";
-import type { Game, HuntArea, Scene } from "@/lib/game/types";
+import { validateGame, type Game, type HuntArea, type Scene } from "@/lib/game/types";
 import { BSOP_CLASSIC_TEMPLATE } from "@/lib/game/templates";
 import {
   isPointInPolygon,
@@ -55,6 +55,8 @@ export default function DesignPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
   // ① area-drawing session. While active, map clicks append boundary points.
   const [drawingArea, setDrawingArea] = useState(false);
   // One-shot circle placement: the next map click sets the area centre.
@@ -352,6 +354,10 @@ export default function DesignPage() {
       markCurrentAuthoredGame(working.id);
       setDraft(working);
       setSaved(true);
+      setImportMessage("游戏已保存在这台设备的浏览器中。注意：这不是云端备份，清理浏览器数据可能导致本地副本丢失。");
+    } else {
+      setSaved(false);
+      setImportMessage("保存失败：浏览器本地存储空间可能不足。请不要关闭或刷新此页面，以免未保存的修改丢失。当前导入仅在编辑器内存中，尚未写入设备。");
     }
   };
 
@@ -366,6 +372,67 @@ export default function DesignPage() {
   const play = () => {
     save();
     router.push("/select");
+  };
+
+  const importGamePack = async (file: File | undefined) => {
+    if (!file) return;
+    setImportBusy(true);
+    setImportMessage(null);
+    try {
+      if (!file.name.toLowerCase().endsWith(".json") && file.type !== "application/json") {
+        throw new Error("请选择 .json 格式的游戏包。");
+      }
+      if (file.size > 60 * 1024 * 1024) {
+        throw new Error("文件超过 60 MB。请先压缩游戏包中的图片，再重新导入。");
+      }
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("游戏包最外层必须是 JSON 对象。");
+      }
+      // Accept human-authored packs that store a choice answer as its option text.
+      // The engine schema uses the option index. If no option matches, preserve
+      // a reflective prompt without imposing a false single correct answer.
+      const candidate = structuredClone(parsed) as {
+        scenes?: Array<{ challenge?: { type?: string; options?: string[]; answer?: unknown; reflective?: boolean } }>;
+      };
+      candidate.scenes?.forEach((scene) => {
+        const challenge = scene.challenge;
+        if (!challenge || challenge.type !== "choice" || typeof challenge.answer !== "string") return;
+        const answerIndex = challenge.options?.findIndex((option) => option.trim() === (challenge.answer as string).trim()) ?? -1;
+        if (answerIndex >= 0) {
+          challenge.answer = answerIndex;
+          challenge.reflective = false;
+        } else {
+          delete challenge.answer;
+          challenge.reflective = true;
+        }
+      });
+      const { game: imported, issues } = validateGame(candidate);
+      const errors = issues.filter((issue) => issue.severity === "error");
+      if (errors.length) {
+        const details = errors.slice(0, 4).map((issue) => `${issue.path}：${issue.message}`).join("；");
+        throw new Error(`游戏包校验未通过（${errors.length} 项错误）：${details}${errors.length > 4 ? "；其余错误已省略" : ""}`);
+      }
+      if (!imported.scenes.length) throw new Error("游戏包中没有场景。");
+      setDraft(imported);
+      setSelectedId(imported.scenes[0]?.id ?? null);
+      setSaved(false);
+      setShareUrl(null);
+      setDrawingArea(false);
+      setPlacingCircle(false);
+      setAreaSnapshot(undefined);
+      const warnings = issues.filter((issue) => issue.severity === "warning").length;
+      const mediaCount = imported.scenes.reduce((total, scene) => total + (scene.media?.length ?? 0) + (scene.challenge?.media?.length ?? 0), 0);
+      const embeddedImages = imported.scenes.reduce((total, scene) => total + [...(scene.media ?? []), ...(scene.challenge?.media ?? [])].filter((media) => media.url.startsWith("data:")).length, 0);
+      const storageNote = embeddedImages
+        ? ` 含 ${embeddedImages} 个内嵌媒体文件；大包保存到浏览器可能受容量限制，请先使用“复制/导出 JSON”保留副本。`
+        : "";
+      setImportMessage(`已载入“${imported.title}”：${imported.scenes.length} 个场景，${mediaCount} 项媒体。${warnings ? `校验提示 ${warnings} 项。` : ""}${storageNote} 请检查后再保存。`);
+    } catch (error) {
+      setImportMessage(error instanceof Error ? error.message : "导入失败：请检查 JSON 文件是否完整。");
+    } finally {
+      setImportBusy(false);
+    }
   };
 
   const loadBsopClassicTemplate = () => {
@@ -393,7 +460,22 @@ export default function DesignPage() {
 
   const copyJson = async () => {
     await navigator.clipboard.writeText(JSON.stringify(working, null, 2));
-    setSaved(true);
+    setImportMessage("游戏 JSON 已复制到剪贴板。");
+  };
+
+  const downloadJson = () => {
+    const payload = JSON.stringify(working, null, 2);
+    const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const safeName = (working.title || "mos-scene-hunt-game").replace(/[\\/:*?\"<>|]/g, "-").slice(0, 80);
+    anchor.href = url;
+    anchor.download = `${safeName}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    setImportMessage("已导出 JSON 文件。请将它保存在电脑或备份位置；文件仍包含游戏包内嵌的媒体资源。");
   };
 
   return (
@@ -432,6 +514,25 @@ export default function DesignPage() {
           <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadBsopClassicTemplate}>
             载入 BSOP 经典母版
           </button>
+          <div className="mt-3 rounded-xl border border-white/20 bg-black/10 p-3">
+            <p className="text-[12px] font-semibold">导入你自己的游戏包</p>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-white/65">选择电脑上的 JSON 游戏包。导入只会载入编辑器，不会上传到云端；大图片包可能因浏览器本地存储限制而无法保存。</p>
+            <label className={`mt-2 inline-flex cursor-pointer items-center rounded-xl bg-white/95 px-4 py-2.5 text-[12px] font-bold text-[#15233d] ${importBusy ? "pointer-events-none opacity-60" : ""}`}>
+              {importBusy ? "正在导入…" : "选择 JSON 游戏包"}
+              <input
+                className="sr-only"
+                type="file"
+                accept=".json,application/json"
+                disabled={importBusy}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  void importGamePack(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+            {importMessage ? <p role="status" className="mt-2 break-words text-[11px] leading-relaxed text-white/85">{importMessage}</p> : null}
+          </div>
           <p className="mt-2 text-[10.5px] text-white/55">载入后请把 8 个场景拖到校园真实位置，再绘制游戏区域。</p>
         </div>
       </section>
@@ -665,9 +766,16 @@ export default function DesignPage() {
 
             <label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">现场名称<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
-            <label className="mt-3 block text-xs font-semibold">到达后故事<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
-            <label className="mt-3 block text-xs font-semibold">到达提示<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
-            <MediaEditor media={selected.media} onChange={(media) => updateScene(selected.id, { media })} />
+            <div className="mt-3 rounded-xl border border-[var(--line)] p-3">
+              <p className="text-xs font-bold">情景编辑</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">先让玩家看懂“这里发生了什么”，再告诉他要做什么。用短句即可，不需要写成长故事。</p>
+              <label className="mt-3 block text-xs font-semibold">到达后故事（玩家看到的情景）<textarea className="input mt-1 min-h-24" value={selected.story} placeholder="例如：你找到了一张神秘藏宝者留下的照片……" onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
+              <label className="mt-3 block text-xs font-semibold">前往地点时的提示<textarea className="input mt-1 min-h-16" value={selected.briefing ?? ""} placeholder="告诉玩家去哪里、注意什么，不要提前泄露答案。" onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
+              <label className="mt-3 block text-xs font-semibold">玩家任务指令<textarea className="input mt-1 min-h-16" value={selected.hint ?? ""} placeholder="例如：仔细看照片，找出建筑上的十字架。" onChange={(e) => updateScene(selected.id, { hint: e.target.value })} /></label>
+              <p className="mt-3 text-xs font-semibold">本关现场图片</p>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">上传真实地点照片，帮助玩家认出现场；若图片本身是谜题线索，也可以在题目图片区添加。</p>
+              <MediaEditor media={selected.media} onChange={(media) => updateScene(selected.id, { media })} />
+            </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2">
               <label className="text-xs font-semibold">纬度<input className="input mt-1" inputMode="decimal" value={selected.location.lat} onChange={(e) => updateLocation(selected.id, Number(e.target.value), selected.location.lng)} /></label>
@@ -675,8 +783,23 @@ export default function DesignPage() {
             </div>
 
             <div className="mt-4 rounded-xl bg-[var(--surface)] p-3">
-              <p className="text-xs font-semibold">挑战</p>
-              <label className="mt-2 block text-xs">问题<textarea className="input mt-1 min-h-16" value={selected.challenge?.question ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, question: e.target.value } : undefined })} /></label>
+              <p className="text-xs font-semibold">题目与验收</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">题目应和现场照片、实物或故事有关。选择适合玩家的题型，并预先写清正确答案。</p>
+              <label className="mt-2 block text-xs font-semibold">题型
+                <select className="input mt-1" value={selected.challenge?.type ?? "choice"} onChange={(e) => {
+                  const type = e.target.value as "choice" | "text" | "keyword";
+                  const current = selected.challenge;
+                  const challenge = type === "choice"
+                    ? { type, question: current?.question ?? "你发现了什么？", options: ["选项 A", "选项 B", "选项 C"], answer: 0, hint: current?.hint ?? "" }
+                    : { type, question: current?.question ?? "你发现了什么？", answer: "", hint: current?.hint ?? "" };
+                  updateScene(selected.id, { challenge });
+                }}>
+                  <option value="choice">选择题（适合快速上手）</option>
+                  <option value="text">文本答案题</option>
+                  <option value="keyword">关键词题</option>
+                </select>
+              </label>
+              <label className="mt-2 block text-xs">问题<textarea className="input mt-1 min-h-16" value={selected.challenge?.question ?? ""} placeholder="例如：这所神学院的英文简称是什么？" onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, question: e.target.value } : { type: "choice", question: e.target.value, options: ["选项 A", "选项 B"], answer: 0 } })} /></label>
               {selected.challenge?.type === "choice" ? (
                 <>
                   <div className="mt-2 grid gap-2">
@@ -693,11 +816,28 @@ export default function DesignPage() {
                       这是<strong>反思型选择</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
                     </div>
                   ) : (
-                    <label className="mt-2 block text-xs">正确答案<input className="input mt-1" type="number" min={0} max={Math.max(0, (selected.challenge.options?.length ?? 1) - 1)} value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : 0} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })} /></label>
+                    <label className="mt-2 block text-xs">正确答案
+                      <select className="input mt-1" value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : Math.max(0, (selected.challenge.options ?? []).findIndex((option) => option === selected.challenge?.answer))} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })}>
+                        {(selected.challenge.options ?? []).map((option, i) => <option key={i} value={i}>{i + 1}. {option || "（空选项）"}</option>)}
+                      </select>
+                    </label>
                   )}
                 </>
+              ) : selected.challenge?.type === "text" || selected.challenge?.type === "keyword" ? (
+                <label className="mt-2 block text-xs">可接受的答案（每行一个）
+                  <textarea className="input mt-1 min-h-16" value={(Array.isArray(selected.challenge.answer) ? selected.challenge.answer : selected.challenge.answer === undefined ? [] : [String(selected.challenge.answer)]).join("\n")} placeholder={"BSOP\n菲圣"} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: e.target.value.split("\n").map((v) => v.trim()).filter(Boolean) } })} />
+                </label>
               ) : null}
-              <label className="mt-2 block text-xs">答案说明<textarea className="input mt-1 min-h-16" value={selected.challenge?.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
+              <label className="mt-2 block text-xs">卡住时的提示<textarea className="input mt-1 min-h-14" value={selected.challenge?.hint ?? ""} placeholder="给一个帮助思考的提示，不要直接泄露答案。" onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, hint: e.target.value } : undefined })} /></label>
+              <label className="mt-2 block text-xs">答错几次后显示提示
+                <select className="input mt-1" value={selected.challenge?.hintAfterAttempts ?? 1} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, hintAfterAttempts: Number(e.target.value) } : undefined })}>
+                  <option value={1}>答错 1 次后</option>
+                  <option value={2}>答错 2 次后</option>
+                  <option value={3}>答错 3 次后</option>
+                  <option value={0}>不自动显示</option>
+                </select>
+              </label>
+              <label className="mt-2 block text-xs">答对后的故事反馈<textarea className="input mt-1 min-h-14" value={selected.challenge?.explanation ?? ""} placeholder="例如：你找到了藏宝者留下的第一段密码！" onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
               <MediaEditor media={selected.challenge?.media} onChange={(media) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, media } : undefined })} />
             </div>
 
@@ -795,7 +935,10 @@ export default function DesignPage() {
             </div>
           ) : null}
           {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}
-          <button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="btn btn-secondary btn-block" onClick={downloadJson}>下载游戏包 JSON</button>
+            <button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button>
+          </div>
           <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>恢复官方示范内容</button>
         </div>
       </section>
