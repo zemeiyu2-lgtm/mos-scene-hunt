@@ -19,9 +19,6 @@ import process from "node:process";
 const BASE = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3102";
 const ARTIFACTS = path.join(process.cwd(), "tests", "e2e", "artifacts");
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const SAVE_KEY = "mos-scene-hunt:active-save";
-const SETTINGS_KEY = "mos-scene-hunt:settings";
-
 mkdirSync(ARTIFACTS, { recursive: true });
 
 const results = [];
