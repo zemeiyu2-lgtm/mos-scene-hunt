@@ -190,10 +190,6 @@ export async function loadGame(
     }
   }
 
-  if (!options.forceNetwork) {
-    /* fall through to cached-first only if explicitly requested */
-  }
-
   try {
     const res = await fetch(packUrl(gameId), {
       cache: "no-cache",
