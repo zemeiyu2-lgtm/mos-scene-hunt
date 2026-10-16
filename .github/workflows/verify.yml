@@ -1,6 +1,7 @@
 name: Verify
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main, master, "fix/save-recovery-home-v1", "deps/security-combined-candidate"]
   push:
