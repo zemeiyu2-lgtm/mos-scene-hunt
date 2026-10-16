@@ -252,12 +252,6 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
     if (required) err(path, "必须是非空字符串");
     return "";
   };
-  const num = (v: unknown, path: string, required = true): number => {
-    if (typeof v === "number" && Number.isFinite(v)) return v;
-    if (required) err(path, "必须是有限数字");
-    return NaN;
-  };
-
   const id = str(g.id, "$.id");
   str(g.language, "$.language");
   str(g.title, "$.title");
