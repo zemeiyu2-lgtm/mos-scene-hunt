@@ -20,16 +20,26 @@ function fromBase64Url(value: string): Uint8Array {
 
 async function gzipText(text: string): Promise<Uint8Array | null> {
   if (typeof CompressionStream === "undefined") return null;
-  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  try {
+    // Some embedded webviews expose CompressionStream but lack Blob.stream().
+    // Treat partial implementations as unavailable and use the JSON fallback.
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  } catch {
+    return null;
+  }
 }
 
 async function gunzipText(bytes: Uint8Array): Promise<string | null> {
   if (typeof DecompressionStream === "undefined") return null;
-  const safeBytes = new Uint8Array(bytes.length);
-  safeBytes.set(bytes);
-  const stream = new Blob([safeBytes.buffer]).stream().pipeThrough(new DecompressionStream("gzip"));
-  return new Response(stream).text();
+  try {
+    const safeBytes = new Uint8Array(bytes.length);
+    safeBytes.set(bytes);
+    const stream = new Blob([safeBytes.buffer]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return await new Response(stream).text();
+  } catch {
+    return null;
+  }
 }
 
 /** Creates a self-contained share fragment. No account or server storage is required. */
