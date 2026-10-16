@@ -1,7 +1,6 @@
 import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
-import nextPlugin from "@next/eslint-plugin-next";
 import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 
@@ -12,7 +11,7 @@ export default defineConfig([
     languageOptions: {
       globals: { ...globals.browser, ...globals.node, ...globals.es2021 },
     },
-    plugins: { "react-hooks": reactHooks, "@next/next": nextPlugin },
+    plugins: { "react-hooks": reactHooks },
     rules: {
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
