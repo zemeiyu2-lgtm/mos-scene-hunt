@@ -460,7 +460,22 @@ export default function DesignPage() {
 
   const copyJson = async () => {
     await navigator.clipboard.writeText(JSON.stringify(working, null, 2));
-    setSaved(true);
+    setImportMessage("游戏 JSON 已复制到剪贴板。");
+  };
+
+  const downloadJson = () => {
+    const payload = JSON.stringify(working, null, 2);
+    const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const safeName = (working.title || "mos-scene-hunt-game").replace(/[\\/:*?\"<>|]/g, "-").slice(0, 80);
+    anchor.href = url;
+    anchor.download = `${safeName}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    setImportMessage("已导出 JSON 文件。请将它保存在电脑或备份位置；文件仍包含游戏包内嵌的媒体资源。");
   };
 
   return (
@@ -920,7 +935,10 @@ export default function DesignPage() {
             </div>
           ) : null}
           {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}
-          <button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="btn btn-secondary btn-block" onClick={downloadJson}>下载游戏包 JSON</button>
+            <button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button>
+          </div>
           <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>恢复官方示范内容</button>
         </div>
       </section>
