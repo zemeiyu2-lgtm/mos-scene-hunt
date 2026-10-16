@@ -1,0 +1,106 @@
+name: Dependency Major-Version Trials
+
+on:
+  push:
+    branches:
+      - deps/security-next-15-5-28
+    paths:
+      - ".github/workflows/dependency-major-trials.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vitest-v4:
+    name: Trial Vitest 4 without Tailwind changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Apply baseline safe dependency updates
+        run: |
+          npm install --save-exact next@15.5.28
+          npm audit fix || true
+      - name: Upgrade Vitest and coverage provider
+        run: npm install --save-dev --save-exact vitest@4.1.12 @vitest/coverage-v8@4.1.12
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Capture audit summary
+        if: always()
+        run: npm audit --json > audit-vitest.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trial-vitest-v4
+          path: audit-vitest.json
+          retention-days: 7
+
+  tailwind-v4:
+    name: Trial Tailwind 4 migration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Apply baseline safe dependency updates
+        run: |
+          npm install --save-exact next@15.5.28
+          npm audit fix || true
+      - name: Upgrade Tailwind and PostCSS adapter
+        run: npm install --save-dev --save-exact tailwindcss@4.3.3 @tailwindcss/postcss@4.3.3
+      - name: Configure Tailwind v4 PostCSS plugin
+        run: |
+          cat > postcss.config.mjs <<'EOF'
+          const config = { plugins: { "@tailwindcss/postcss": {} } };
+          export default config;
+          EOF
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Capture audit summary
+        if: always()
+        run: npm audit --json > audit-tailwind.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trial-tailwind-v4
+          path: audit-tailwind.json
+          retention-days: 7
+
+  puppeteer-patch:
+    name: Trial current Puppeteer Core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Apply baseline safe dependency updates
+        run: |
+          npm install --save-exact next@15.5.28
+          npm audit fix || true
+      - name: Upgrade Puppeteer Core to current stable
+        run: npm install --save-dev --save-exact puppeteer-core@latest
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Capture audit summary
+        if: always()
+        run: npm audit --json > audit-puppeteer.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trial-puppeteer-current
+          path: audit-puppeteer.json
+          retention-days: 7
