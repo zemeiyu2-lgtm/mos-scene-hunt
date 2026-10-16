@@ -1,0 +1,70 @@
+name: Next.js 16 Security Trial
+
+on:
+  push:
+    branches:
+      - deps/security-next-15-5-28
+    paths:
+      - ".github/workflows/dependency-next16-trial.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  next16-trial:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Upgrade Next.js to patched major version 16
+        run: npm install --save-exact next@16.4.2
+      - name: Apply tested Vitest, Tailwind, and Puppeteer candidates
+        run: npm install --save-dev --save-exact vitest@4.1.12 @vitest/coverage-v8@4.1.12 tailwindcss@4.3.3 @tailwindcss/postcss@4.3.3 puppeteer-core@25.14.0
+      - name: Configure Tailwind v4 while retaining project theme
+        run: |
+          cat > postcss.config.mjs <<'EOF'
+          const config = { plugins: { "@tailwindcss/postcss": {} } };
+          export default config;
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/globals.css")
+          s = p.read_text()
+          old = "@tailwind base;\n@tailwind components;\n@tailwind utilities;"
+          new = '@import "tailwindcss";\n@config "../tailwind.config.ts";'
+          if old not in s:
+              raise SystemExit("Expected Tailwind v3 directives not found; refusing to rewrite CSS blindly.")
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Apply remaining compatible audit fixes
+        run: npm audit fix || true
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Install Chrome for mobile-browser acceptance
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      - name: Full mobile-web acceptance
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: node tests/e2e/run.mjs
+      - name: Record security report
+        if: always()
+        run: npm audit --json > npm-audit-next16.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next16-dependency-candidate
+          path: |
+            package.json
+            package-lock.json
+            npm-audit-next16.json
+            tests/e2e/artifacts/e2e-summary.json
+          retention-days: 14
