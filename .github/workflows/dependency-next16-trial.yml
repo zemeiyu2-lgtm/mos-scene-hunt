@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   next16-trial:
@@ -54,6 +54,8 @@ jobs:
           PY
       - name: Upgrade esbuild to patched version
         run: npm install --save-dev --save-exact esbuild@0.28.2
+      - name: Upgrade esbuild to patched version
+        run: npm install --save-dev --save-exact esbuild@0.28.2
       - name: Apply remaining compatible audit fixes
         run: npm audit fix || true
       - run: npm run typecheck
@@ -68,6 +70,22 @@ jobs:
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: node tests/e2e/run.mjs
+      - name: Publish tested candidate on isolated branch
+        if: success()
+        run: |
+          mkdir -p "$RUNNER_TEMP/mos-candidate"
+          cp package.json package-lock.json next.config.ts postcss.config.mjs "$RUNNER_TEMP/mos-candidate/"
+          cp app/globals.css "$RUNNER_TEMP/mos-candidate/globals.css"
+          git fetch origin fix/save-recovery-home-v1
+          git checkout -B deps/security-combined-candidate origin/fix/save-recovery-home-v1
+          cp "$RUNNER_TEMP/mos-candidate/package.json" package.json
+          cp "$RUNNER_TEMP/mos-candidate/package-lock.json" package-lock.json
+          cp "$RUNNER_TEMP/mos-candidate/next.config.ts" next.config.ts
+          cp "$RUNNER_TEMP/mos-candidate/postcss.config.mjs" postcss.config.mjs
+          cp "$RUNNER_TEMP/mos-candidate/globals.css" app/globals.css
+          git add package.json package-lock.json next.config.ts postcss.config.mjs app/globals.css
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "fix: apply validated dependency security upgrades"
+          git push origin HEAD:refs/heads/deps/security-combined-candidate
       - name: Record security report
         if: always()
         run: npm audit --json > npm-audit-next16.json || true
