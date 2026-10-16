@@ -385,8 +385,29 @@ export default function DesignPage() {
       if (file.size > 60 * 1024 * 1024) {
         throw new Error("文件超过 60 MB。请先压缩游戏包中的图片，再重新导入。");
       }
-      const raw: unknown = JSON.parse(await file.text());
-      const { game: imported, issues } = validateGame(raw);
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("游戏包最外层必须是 JSON 对象。");
+      }
+      // Accept human-authored packs that store a choice answer as its option text.
+      // The engine schema uses the option index. If no option matches, preserve
+      // a reflective prompt without imposing a false single correct answer.
+      const candidate = structuredClone(parsed) as {
+        scenes?: Array<{ challenge?: { type?: string; options?: string[]; answer?: unknown; reflective?: boolean } }>;
+      };
+      candidate.scenes?.forEach((scene) => {
+        const challenge = scene.challenge;
+        if (!challenge || challenge.type !== "choice" || typeof challenge.answer !== "string") return;
+        const answerIndex = challenge.options?.findIndex((option) => option.trim() === (challenge.answer as string).trim()) ?? -1;
+        if (answerIndex >= 0) {
+          challenge.answer = answerIndex;
+          challenge.reflective = false;
+        } else {
+          delete challenge.answer;
+          challenge.reflective = true;
+        }
+      });
+      const { game: imported, issues } = validateGame(candidate);
       const errors = issues.filter((issue) => issue.severity === "error");
       if (errors.length) {
         const details = errors.slice(0, 4).map((issue) => `${issue.path}：${issue.message}`).join("；");
@@ -401,8 +422,12 @@ export default function DesignPage() {
       setPlacingCircle(false);
       setAreaSnapshot(undefined);
       const warnings = issues.filter((issue) => issue.severity === "warning").length;
-      const mediaCount = imported.scenes.reduce((total, scene) => total + (scene.challenge?.media?.length ?? 0), 0);
-      setImportMessage(`已载入“${imported.title}”：${imported.scenes.length} 个场景，${mediaCount} 项题目媒体。${warnings ? `校验提示 ${warnings} 项。` : ""} 请检查后再保存。`);
+      const mediaCount = imported.scenes.reduce((total, scene) => total + (scene.media?.length ?? 0) + (scene.challenge?.media?.length ?? 0), 0);
+      const embeddedImages = imported.scenes.reduce((total, scene) => total + [...(scene.media ?? []), ...(scene.challenge?.media ?? [])].filter((media) => media.url.startsWith("data:")).length, 0);
+      const storageNote = embeddedImages
+        ? ` 含 ${embeddedImages} 个内嵌媒体文件；大包保存到浏览器可能受容量限制，请先使用“复制/导出 JSON”保留副本。`
+        : "";
+      setImportMessage(`已载入“${imported.title}”：${imported.scenes.length} 个场景，${mediaCount} 项媒体。${warnings ? `校验提示 ${warnings} 项。` : ""}${storageNote} 请检查后再保存。`);
     } catch (error) {
       setImportMessage(error instanceof Error ? error.message : "导入失败：请检查 JSON 文件是否完整。");
     } finally {
