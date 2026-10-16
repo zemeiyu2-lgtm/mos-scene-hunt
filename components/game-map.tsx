@@ -197,6 +197,9 @@ export default function GameMap({
       maxZoom: tiles.maxZoom,
     });
     mapRef.current = map;
+    // Capture the collections owned by this map instance for deterministic cleanup.
+    const rings = ringsRef.current;
+    const sceneMarkers = sceneMarkersRef.current;
 
     if (editable) {
       map.on("click", (event) => mapClickCallbackRef.current?.(event.latlng.lat, event.latlng.lng));
@@ -211,8 +214,8 @@ export default function GameMap({
       mapRef.current = null;
       tileRef.current = null;
       scaleRef.current = null;
-      ringsRef.current.clear();
-      sceneMarkersRef.current.clear();
+      rings.clear();
+      sceneMarkers.clear();
       playerMarkerRef.current = null;
       playerHaloRef.current = null;
       directionLineRef.current = null;
