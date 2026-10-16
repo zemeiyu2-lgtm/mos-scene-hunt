@@ -29,7 +29,7 @@ import {
   markCurrentAuthoredGame,
   saveAuthoredGame,
 } from "@/lib/content";
-import type { Game, HuntArea, Scene } from "@/lib/game/types";
+import { validateGame, type Game, type HuntArea, type Scene } from "@/lib/game/types";
 import { BSOP_CLASSIC_TEMPLATE } from "@/lib/game/templates";
 import {
   isPointInPolygon,
@@ -55,6 +55,8 @@ export default function DesignPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
   // ① area-drawing session. While active, map clicks append boundary points.
   const [drawingArea, setDrawingArea] = useState(false);
   // One-shot circle placement: the next map click sets the area centre.
@@ -352,6 +354,10 @@ export default function DesignPage() {
       markCurrentAuthoredGame(working.id);
       setDraft(working);
       setSaved(true);
+      setImportMessage("游戏已保存在这台设备的浏览器中。注意：这不是云端备份，清理浏览器数据可能导致本地副本丢失。");
+    } else {
+      setSaved(false);
+      setImportMessage("保存失败：浏览器本地存储空间可能不足。请不要关闭或刷新此页面，以免未保存的修改丢失。当前导入仅在编辑器内存中，尚未写入设备。");
     }
   };
 
@@ -366,6 +372,37 @@ export default function DesignPage() {
   const play = () => {
     save();
     router.push("/select");
+  };
+
+  const importGamePack = async (file: File | undefined) => {
+    if (!file) return;
+    setImportBusy(true);
+    setImportMessage(null);
+    try {
+      if (!file.name.toLowerCase().endsWith(".json") && file.type !== "application/json") {
+        throw new Error("请选择 .json 格式的游戏包。");
+      }
+      if (file.size > 60 * 1024 * 1024) {
+        throw new Error("文件超过 60 MB。请先压缩游戏包中的图片，再重新导入。");
+      }
+      const raw: unknown = JSON.parse(await file.text());
+      const { game: imported, issues } = validateGame(raw);
+      if (!imported.scenes.length) throw new Error("游戏包中没有场景。");
+      setDraft(imported);
+      setSelectedId(imported.scenes[0]?.id ?? null);
+      setSaved(false);
+      setShareUrl(null);
+      setDrawingArea(false);
+      setPlacingCircle(false);
+      setAreaSnapshot(undefined);
+      const warnings = issues.filter((issue) => issue.severity === "warning").length;
+      const mediaCount = imported.scenes.reduce((total, scene) => total + (scene.challenge?.media?.length ?? 0), 0);
+      setImportMessage(`已载入“${imported.title}”：${imported.scenes.length} 个场景，${mediaCount} 项题目媒体。${warnings ? `校验提示 ${warnings} 项。` : ""} 请检查后再保存。`);
+    } catch (error) {
+      setImportMessage(error instanceof Error ? error.message : "导入失败：请检查 JSON 文件是否完整。");
+    } finally {
+      setImportBusy(false);
+    }
   };
 
   const loadBsopClassicTemplate = () => {
@@ -432,6 +469,25 @@ export default function DesignPage() {
           <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadBsopClassicTemplate}>
             载入 BSOP 经典母版
           </button>
+          <div className="mt-3 rounded-xl border border-white/20 bg-black/10 p-3">
+            <p className="text-[12px] font-semibold">导入你自己的游戏包</p>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-white/65">选择电脑上的 JSON 游戏包。导入只会载入编辑器，不会上传到云端；大图片包可能因浏览器本地存储限制而无法保存。</p>
+            <label className={`mt-2 inline-flex cursor-pointer items-center rounded-xl bg-white/95 px-4 py-2.5 text-[12px] font-bold text-[#15233d] ${importBusy ? "pointer-events-none opacity-60" : ""}`}>
+              {importBusy ? "正在导入…" : "选择 JSON 游戏包"}
+              <input
+                className="sr-only"
+                type="file"
+                accept=".json,application/json"
+                disabled={importBusy}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  void importGamePack(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+            {importMessage ? <p role="status" className="mt-2 break-words text-[11px] leading-relaxed text-white/85">{importMessage}</p> : null}
+          </div>
           <p className="mt-2 text-[10.5px] text-white/55">载入后请把 8 个场景拖到校园真实位置，再绘制游戏区域。</p>
         </div>
       </section>
