@@ -15,14 +15,20 @@
   /* Height of the persistent bottom tab bar, excluding the safe-area inset. */
   --tabbar-h: 56px;
 
-  --surface: #f6f7fb;
-  --card: #ffffff;
-  --line: #e4e7ef;
-  --text: #101527;
-  --muted: #5f6779;
-  --accent: #f5a524;
-  --accent-deep: #c47c0a;
-  --ok: #2ec27e;
+  /* Filipino-inspired tropical palette: Pacific blue, sampaguita cream,
+     island green, and sunset gold. Contrast and mobile readability stay primary. */
+  --surface: #f4f3ec;
+  --card: #fffdf7;
+  --line: #dedfd3;
+  --text: #17324a;
+  --muted: #65766f;
+  --accent: #f4bd45;
+  --accent-deep: #d89425;
+  --ok: #27866f;
+  --island-blue: #173b5e;
+  --island-green: #287767;
+  --island-coral: #e77b5d;
+  --island-cream: #fff8e8;
 }
 
 html,
@@ -351,8 +357,8 @@ body {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 85% 12%, rgba(245, 165, 36, 0.22), transparent 34%),
-    linear-gradient(135deg, #15233d 0%, #243b5d 55%, #3f6a68 100%);
+    radial-gradient(circle at 85% 12%, rgba(244, 189, 69, 0.28), transparent 34%),
+    linear-gradient(135deg, #173b5e 0%, #245a70 52%, #287767 100%);
   color: white;
 }
 .hero-explore::after {
