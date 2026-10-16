@@ -44,17 +44,6 @@ function assert(c, m) {
   if (!c) throw new Error(m);
 }
 
-async function waitFor(fn, { timeout = 8000, interval = 120, message = "条件未满足" } = {}) {
-  const deadline = Date.now() + timeout;
-  let last;
-  while (Date.now() < deadline) {
-    last = await fn();
-    if (last) return last;
-    await new Promise((r) => setTimeout(r, interval));
-  }
-  throw new Error(`${message}（等待 ${timeout}ms 超时）`);
-}
-
 /** 按可见文本点击：先滚进视口（页面是内部滚动容器，长页面按钮常在首屏外），
  *  再用真实坐标点击，顺带验证没有被其它图层遮挡。 */
 async function clickByText(page, selector, text) {
