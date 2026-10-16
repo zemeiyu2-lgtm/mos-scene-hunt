@@ -24,7 +24,9 @@ jobs:
       - name: Upgrade Next.js within major version 15
         run: npm install --save-exact next@15.5.28
       - name: Apply non-breaking npm audit fixes only
-        run: npm audit fix
+        shell: bash
+        run: |
+          npm audit fix || echo 'Some advisories require major-version changes; continue to tests and record remaining findings.'
       - name: Record remaining audit findings
         shell: bash
         run: |
