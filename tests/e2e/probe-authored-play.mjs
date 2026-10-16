@@ -47,6 +47,10 @@ function assert(c, m) {
   if (!c) throw new Error(m);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /** 用户点名的场景：8 个校园地点的自定义游戏。 */
 const SCENES = [
   { id: "chapel", title: "礼拜堂", lat: 14.584481, lng: 120.9794, radius: 15 },
