@@ -24,10 +24,6 @@ mkdirSync(ARTIFACTS, { recursive: true });
 const results = [];
 const errors = [];
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function log(m) {
   process.stdout.write(m + "\n");
 }
