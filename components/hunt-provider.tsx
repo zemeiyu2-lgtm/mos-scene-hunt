@@ -318,9 +318,10 @@ export function HuntProvider({
     [act, state?.currentSceneId],
   );
   const resetHunt = useCallback(() => {
-    clearGameState();
+    // Clear only this hunt. Other games keep their independent saves.
+    if (state?.gameId) clearGameState(state.gameId);
     act({ type: "RESET", now: Date.now() });
-  }, [act]);
+  }, [act, state?.gameId]);
 
   const setStateExternal = useCallback(
     (next: GameState) => {
