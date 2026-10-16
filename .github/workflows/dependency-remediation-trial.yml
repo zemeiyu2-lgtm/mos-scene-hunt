@@ -38,6 +38,15 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+      - name: Install Chrome for mobile-browser acceptance
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      - name: Run full mobile-web acceptance suite
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: node tests/e2e/run.mjs
       - name: Save reviewed dependency proposal
         uses: actions/upload-artifact@v4
         with:
