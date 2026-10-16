@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Leaflet ships an ESM/CJS hybrid; transpiling keeps the bundle predictable.
   transpilePackages: ["leaflet"],
-  eslint: { ignoreDuringBuilds: true },
   // The app does not use next/image; disabling image optimization keeps the
   // optional sharp binary (Apache-2.0 AND LGPL-3.0-or-later) out of the
   // production dependency tree entirely.

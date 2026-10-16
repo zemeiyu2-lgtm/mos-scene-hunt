@@ -285,7 +285,7 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
       sceneId: scene.id,
       // A scene that was mid-arrival when the app closed reopens at the neutral
       // baseline rather than staying stuck at "arrived" with no position context.
-      status: status === "arrived" || status === "challenging" ? "locked" : status,
+      status: status === "arrived" ? "locked" : status,
       arrivedAt: persisted.arrivedAt,
       completedAt: persisted.completedAt,
       attempts: Number.isFinite(persisted.attempts) ? Math.max(0, persisted.attempts) : 0,

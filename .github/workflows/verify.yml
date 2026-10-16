@@ -1,0 +1,66 @@
+name: Verify
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, master, "fix/save-recovery-home-v1", "deps/security-combined-candidate"]
+  push:
+    branches: [main, master, "fix/save-recovery-home-v1", "deps/security-combined-candidate", "fix/next16-eslint-gate"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Dependency security audit
+        shell: bash
+        run: |
+          npm audit --json > /tmp/npm-audit.json || true
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('/tmp/npm-audit.json', 'utf8'));
+          const meta = report.metadata?.vulnerabilities ?? {};
+          console.log('AUDIT_TOTALS', JSON.stringify(meta));
+          for (const [name, item] of Object.entries(report.vulnerabilities ?? {})) {
+            console.log('AUDIT_PACKAGE', JSON.stringify({
+              name,
+              severity: item.severity,
+              isDirect: item.isDirect,
+              range: item.range,
+              fixAvailable: item.fixAvailable,
+              via: (item.via ?? []).map(v => typeof v === 'string' ? v : {
+                name: v.name, title: v.title, range: v.range, url: v.url
+              })
+            }));
+          }
+          NODE
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+
+      - name: Mobile-web acceptance (simulated GPS)
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: npm run test:acceptance

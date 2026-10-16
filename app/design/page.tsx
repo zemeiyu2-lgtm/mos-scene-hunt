@@ -83,8 +83,10 @@ export default function DesignPage() {
 
   const area = working?.huntArea;
   const isPolygon = area?.shape === "polygon";
-  const polygonPoints = isPolygon ? area?.points ?? [] : [];
-  const drawing = drawingArea;
+  const polygonPoints = useMemo(
+    () => (isPolygon ? area?.points ?? [] : []),
+    [isPolygon, area?.points],
+  );
 
   // A polygon still being drawn cannot be saved as a playable pack: the
   // validator requires at least three vertices.

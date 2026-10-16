@@ -48,17 +48,7 @@ function assert(c, m) {
 }
 
 function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-async function waitFor(fn, { timeout = 10_000, interval = 150, message = "条件未满足" } = {}) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    const v = await fn();
-    if (v) return v;
-    await sleep(interval);
-  }
-  throw new Error(`${message}（等待 ${timeout}ms 超时）`);
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** 用户点名的场景：8 个校园地点的自定义游戏。 */

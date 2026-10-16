@@ -20,7 +20,6 @@ import {
   isSceneComplete,
   reconcileState,
   rewardId,
-  resolveSceneStatus,
   sceneStatuses,
   statusOf,
   type GameState,
@@ -346,6 +345,22 @@ describe("reconcileState (save/load integrity)", () => {
     // The arrival flag is dropped; reachability still makes it enterable.
     expect(restored.scenes.a.status).toBe("locked");
     expect(statusOf(game, restored, "a")).toBe("available");
+  });
+
+  it("restores an open challenge while still requiring GPS to re-confirm arrival", () => {
+    const base = fresh();
+    const persisted: Partial<GameState> = {
+      ...base,
+      currentSceneId: "a",
+      scenes: {
+        ...base.scenes,
+        a: { sceneId: "a", status: "challenging", attempts: 1, grantedRewardIds: [], arrivedAt: T },
+      },
+    };
+    const restored = reconcileState(game, persisted, T + 1000);
+    expect(restored.scenes.a.status).toBe("challenging");
+    expect(restored.currentSceneId).toBe("a");
+    expect(statusOf(game, restored, "a")).toBe("challenging");
   });
 
   it("refuses a tampered save that marks an unreachable scene complete", () => {

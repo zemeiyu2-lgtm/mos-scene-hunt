@@ -20,16 +20,26 @@ function fromBase64Url(value: string): Uint8Array {
 
 async function gzipText(text: string): Promise<Uint8Array | null> {
   if (typeof CompressionStream === "undefined") return null;
-  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  try {
+    // Some embedded webviews expose CompressionStream but lack Blob.stream().
+    // Treat partial implementations as unavailable and use the JSON fallback.
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  } catch {
+    return null;
+  }
 }
 
 async function gunzipText(bytes: Uint8Array): Promise<string | null> {
   if (typeof DecompressionStream === "undefined") return null;
-  const safeBytes = new Uint8Array(bytes.length);
-  safeBytes.set(bytes);
-  const stream = new Blob([safeBytes.buffer]).stream().pipeThrough(new DecompressionStream("gzip"));
-  return new Response(stream).text();
+  try {
+    const safeBytes = new Uint8Array(bytes.length);
+    safeBytes.set(bytes);
+    const stream = new Blob([safeBytes.buffer]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return await new Response(stream).text();
+  } catch {
+    return null;
+  }
 }
 
 /** Creates a self-contained share fragment. No account or server storage is required. */
@@ -44,8 +54,10 @@ export async function createGameShareUrl(game: Game): Promise<string> {
 /** Reads a self-contained shared game from the current URL, if present. */
 export async function readSharedGameFromUrl(): Promise<Game | null> {
   if (typeof window === "undefined") return null;
-  const hash = window.location.hash;
-  if (!hash.startsWith(PREFIX)) return null;
+  // Test harnesses, embedded webviews, or restricted browser contexts may expose
+  // a partial window object without a location. That means there is no shared URL.
+  const hash = window.location?.hash;
+  if (typeof hash !== "string" || !hash.startsWith(PREFIX)) return null;
   try {
     const payload = hash.slice(PREFIX.length);
     const [kind, encoded] = payload.split(".");

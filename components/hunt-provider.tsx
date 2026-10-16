@@ -149,7 +149,7 @@ export function HuntProvider({
       setLoading(true);
       setLoadError(null);
       try {
-        const result = await loadGame(gameId);
+        const result = await loadGame(gameId, { forceNetwork: force });
         loadedGameRef.current = result.game;
         setLoaded(result);
 
@@ -169,7 +169,6 @@ export function HuntProvider({
 
   useEffect(() => {
     void load();
-    // `force` is intentionally not part of the initial-load dependency.
   }, [load]);
 
   /* ---------------------------------------------------------------- */
@@ -184,7 +183,7 @@ export function HuntProvider({
    * skip the hunt.
    */
   const insideIds = useMemo(() => {
-    const game = loadedGameRef.current;
+    const game = loaded?.game;
     if (!game || !state || !fix) return [] as string[];
     const allowed = new Set(availableSceneIds(game, state));
     return game.scenes
@@ -318,9 +317,10 @@ export function HuntProvider({
     [act, state?.currentSceneId],
   );
   const resetHunt = useCallback(() => {
-    clearGameState();
+    // Clear only this hunt. Other games keep their independent saves.
+    if (state?.gameId) clearGameState(state.gameId);
     act({ type: "RESET", now: Date.now() });
-  }, [act]);
+  }, [act, state?.gameId]);
 
   const setStateExternal = useCallback(
     (next: GameState) => {

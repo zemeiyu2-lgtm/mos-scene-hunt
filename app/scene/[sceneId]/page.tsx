@@ -119,7 +119,6 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
           <div className="mt-4 flex items-center gap-3 rounded-xl bg-[var(--surface)] px-3 py-2.5">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--line)] text-[16px]">
               {scene.npc.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={scene.npc.avatar}
                   alt=""

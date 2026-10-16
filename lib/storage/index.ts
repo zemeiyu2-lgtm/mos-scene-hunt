@@ -19,6 +19,11 @@ import type { Game } from "../game/types";
 export const SAVE_SCHEMA_VERSION = 1;
 
 const ACTIVE_SAVE_KEY = "mos-scene-hunt:active-save";
+const GAME_SAVE_PREFIX = "mos-scene-hunt:save:";
+
+function gameSaveKey(gameId: string): string {
+  return `${GAME_SAVE_PREFIX}${encodeURIComponent(gameId)}`;
+}
 const SAVE_INDEX_KEY = "mos-scene-hunt:save-index";
 const SETTINGS_KEY = "mos-scene-hunt:settings";
 const CONTENT_CACHE_PREFIX = "mos-scene-hunt:content:";
@@ -148,7 +153,10 @@ export function saveGameState(state: GameState): boolean {
     state,
   };
   try {
-    writeRaw(ACTIVE_SAVE_KEY, JSON.stringify(envelope));
+    const serialized = JSON.stringify(envelope);
+    // Each game owns its save. The legacy active-save key is migration-only:
+    // never overwrite it before its original game has had a chance to migrate.
+    writeRaw(gameSaveKey(state.gameId), serialized);
     return true;
   } catch {
     return false;
@@ -156,24 +164,54 @@ export function saveGameState(state: GameState): boolean {
 }
 
 export function loadGameState(gameId: string): GameState | null {
-  const raw = readRaw(ACTIVE_SAVE_KEY);
-  if (!raw) return null;
-  try {
-    const envelope = JSON.parse(raw) as SaveEnvelope;
-    if (!envelope || envelope.schemaVersion !== SAVE_SCHEMA_VERSION) {
-      // Unknown schema: refuse rather than half-migrate and corrupt the save.
+  const key = gameSaveKey(gameId);
+  const perGameRaw = readRaw(key);
+  if (perGameRaw !== null) {
+    try {
+      const envelope = JSON.parse(perGameRaw) as SaveEnvelope;
+      if (!envelope || envelope.schemaVersion !== SAVE_SCHEMA_VERSION) return null;
+      if (envelope.gameId !== gameId) return null;
+      if (!envelope.state || typeof envelope.state !== "object") return null;
+      return envelope.state;
+    } catch {
       return null;
     }
+  }
+
+  // Backward-compatible migration from the old single active-save key.
+  // Never delete the legacy copy during migration; it remains a recovery source.
+  const legacyRaw = readRaw(ACTIVE_SAVE_KEY);
+  if (!legacyRaw) return null;
+  try {
+    const envelope = JSON.parse(legacyRaw) as SaveEnvelope;
+    if (!envelope || envelope.schemaVersion !== SAVE_SCHEMA_VERSION) return null;
     if (envelope.gameId !== gameId) return null;
     if (!envelope.state || typeof envelope.state !== "object") return null;
+    writeRaw(key, JSON.stringify(envelope));
     return envelope.state;
   } catch {
     return null;
   }
 }
 
-export function clearGameState(): void {
-  removeRaw(ACTIVE_SAVE_KEY);
+export function clearGameState(gameId?: string): void {
+  if (!gameId) {
+    // Legacy no-argument behavior is retained for callers that explicitly ask
+    // to clear the active save.
+    removeRaw(ACTIVE_SAVE_KEY);
+    return;
+  }
+  removeRaw(gameSaveKey(gameId));
+  // Prevent a reset game from being resurrected by legacy migration.
+  const legacyRaw = readRaw(ACTIVE_SAVE_KEY);
+  if (legacyRaw) {
+    try {
+      const envelope = JSON.parse(legacyRaw) as SaveEnvelope;
+      if (envelope?.gameId === gameId) removeRaw(ACTIVE_SAVE_KEY);
+    } catch {
+      // Preserve an unreadable legacy payload rather than deleting it.
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ */

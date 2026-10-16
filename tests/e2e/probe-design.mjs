@@ -19,9 +19,6 @@ import process from "node:process";
 const BASE = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3102";
 const ARTIFACTS = path.join(process.cwd(), "tests", "e2e", "artifacts");
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const SAVE_KEY = "mos-scene-hunt:active-save";
-const SETTINGS_KEY = "mos-scene-hunt:settings";
-
 mkdirSync(ARTIFACTS, { recursive: true });
 
 const results = [];
@@ -45,17 +42,6 @@ async function check(name, fn) {
 
 function assert(c, m) {
   if (!c) throw new Error(m);
-}
-
-async function waitFor(fn, { timeout = 8000, interval = 120, message = "条件未满足" } = {}) {
-  const deadline = Date.now() + timeout;
-  let last;
-  while (Date.now() < deadline) {
-    last = await fn();
-    if (last) return last;
-    await new Promise((r) => setTimeout(r, interval));
-  }
-  throw new Error(`${message}（等待 ${timeout}ms 超时）`);
 }
 
 /** 按可见文本点击：先滚进视口（页面是内部滚动容器，长页面按钮常在首屏外），
