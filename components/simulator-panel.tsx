@@ -36,7 +36,7 @@ import { KV } from "./ui";
 export function SimulatorPanel({ activeSceneId }: { activeSceneId?: string | null }) {
   const available = isSimulatorAvailable();
   const { settings, update } = useSettings();
-  const { fix, injectFix, status } = useGps();
+  const { fix, status } = useGps();
   const { game, distances, statuses } = useHunt();
 
   const [open, setOpen] = useState(false);
