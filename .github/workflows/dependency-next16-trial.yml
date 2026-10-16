@@ -52,6 +52,8 @@ jobs:
               raise SystemExit("Expected Tailwind v3 directives not found; refusing to rewrite CSS blindly.")
           p.write_text(s.replace(old, new, 1))
           PY
+      - name: Upgrade esbuild to patched version
+        run: npm install --save-dev --save-exact esbuild@0.28.2
       - name: Apply remaining compatible audit fixes
         run: npm audit fix || true
       - run: npm run typecheck
