@@ -14,7 +14,7 @@ import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
 import { useOnlineStatus, useSettings, useViewportWidth } from "@/components/providers";
 import { Card, EmptyState, KV, Screen, StatusChip } from "@/components/ui";
-import { SimulatorPanel, SimulatorUnavailableNotice } from "@/components/simulator-panel";
+import { SimulatorUnavailableNotice } from "@/components/simulator-panel";
 import { classifyFix, formatDistance } from "@/lib/location";
 import { isPersistentStorageAvailable, saveSizeBytes } from "@/lib/storage";
 import { TabBar } from "@/components/tab-bar";
