@@ -9,7 +9,16 @@ export default function HomePage() {
   const { game, state, loading, loadError, ratio, complete, contentSource, reloadContent } = useHunt();
   const online = useOnlineStatus();
 
-  const currentSceneId = state?.currentSceneId ?? null;
+  // The reducer's currentSceneId is a navigation pointer, not necessarily
+  // the scene whose challenge is currently open. Prefer active progress facts.
+  const challengingSceneId = game?.scenes.find(
+    (scene) => state?.scenes[scene.id]?.status === "challenging",
+  )?.id ?? null;
+  const arrivedSceneId = game?.scenes.find(
+    (scene) => state?.scenes[scene.id]?.status === "arrived",
+  )?.id ?? null;
+  const currentSceneId =
+    challengingSceneId ?? arrivedSceneId ?? state?.currentSceneId ?? null;
   const currentSceneStatus = currentSceneId ? state?.scenes[currentSceneId]?.status : null;
   const hasProgress = Boolean(
     state &&
