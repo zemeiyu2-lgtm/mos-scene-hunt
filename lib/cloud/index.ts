@@ -56,7 +56,9 @@ export async function loadCloudCatalog(): Promise<CloudCatalog> {
       try {
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) return parseCatalog(JSON.parse(cached));
-      } catch {}
+      } catch {
+        // A broken local cache must not hide the original catalog fetch error.
+      }
     }
     throw error instanceof Error ? error : new Error("无法读取云端游戏目录");
   }
