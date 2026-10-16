@@ -154,10 +154,9 @@ export function saveGameState(state: GameState): boolean {
   };
   try {
     const serialized = JSON.stringify(envelope);
-    // Each game owns its save. Keep the legacy active-save key intact until a
-    // successful read/write cycle proves the new per-game save is durable.
+    // Each game owns its save. The legacy active-save key is migration-only:
+    // never overwrite it before its original game has had a chance to migrate.
     writeRaw(gameSaveKey(state.gameId), serialized);
-    writeRaw(ACTIVE_SAVE_KEY, serialized);
     return true;
   } catch {
     return false;
