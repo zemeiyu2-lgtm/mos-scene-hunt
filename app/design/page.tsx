@@ -387,6 +387,11 @@ export default function DesignPage() {
       }
       const raw: unknown = JSON.parse(await file.text());
       const { game: imported, issues } = validateGame(raw);
+      const errors = issues.filter((issue) => issue.severity === "error");
+      if (errors.length) {
+        const details = errors.slice(0, 4).map((issue) => `${issue.path}：${issue.message}`).join("；");
+        throw new Error(`游戏包校验未通过（${errors.length} 项错误）：${details}${errors.length > 4 ? "；其余错误已省略" : ""}`);
+      }
       if (!imported.scenes.length) throw new Error("游戏包中没有场景。");
       setDraft(imported);
       setSelectedId(imported.scenes[0]?.id ?? null);
