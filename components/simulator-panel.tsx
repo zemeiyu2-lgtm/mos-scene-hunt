@@ -47,6 +47,8 @@ export function SimulatorPanel({ activeSceneId }: { activeSceneId?: string | nul
 
   const walkTimer = useRef<number | null>(null);
   const coord = settings.simulatorCoordinate;
+  const coordLat = coord?.lat;
+  const coordLng = coord?.lng;
 
   // Mirror the current coordinate into the text fields whenever it changes from
   // an external source (map drag, preset, walk tick).
