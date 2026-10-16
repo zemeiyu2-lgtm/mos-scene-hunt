@@ -19,6 +19,7 @@ export default function HomePage() {
   const { game, state, loading, loadError, ratio, complete, contentSource, reloadContent } = useHunt();
   const online = useOnlineStatus();
   const [coverFailed, setCoverFailed] = useState(false);
+  const [demoStep, setDemoStep] = useState(0);
 
   const hasProgress = Boolean(state && state.inventory.length > 0);
 
@@ -51,23 +52,28 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="p-5">
-          <div className="game-route mb-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span><i>→</i><span>带走</span></div>\n\n          <ol className="space-y-2.5">
-            {[
-              "允许浏览器获取你的位置",
-              "在地图上找到下一处目标",
-              "走进目标地点约 50 米的范围内",
-              "到达后开启线索，再由你主动开始任务",
-              "获得关键词，解锁下一个地点",
-            ].map((step, i) => (
-              <li key={step} className="flex items-start gap-3">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-[#3a2400]">
-                  {i + 1}
-                </span>
-                <span className="text-[14px] leading-snug">{step}</span>
-              </li>
-            ))}
-          </ol>
+        <div className="p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div><p className="text-[11px] font-bold tracking-[0.14em] text-[var(--island-green)]">30 秒体验</p><h3 className="mt-1 text-[17px] font-bold">一场寻宝怎样开始？</h3></div>
+            <span className="chip bg-amber-100 text-amber-800">演示模式</span>
+          </div>
+          <div className="mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
+            <div className="relative flex min-h-[154px] items-center justify-center overflow-hidden bg-gradient-to-br from-[#dcebe2] via-[#e9e5cb] to-[#c5ded7] p-4">
+              <div className="absolute inset-0 opacity-30" aria-hidden="true" style={{backgroundImage:"linear-gradient(35deg, transparent 46%, #8bb4a2 47%, #8bb4a2 49%, transparent 50%),linear-gradient(125deg, transparent 42%, #8bb4a2 43%, #8bb4a2 45%, transparent 46%)",backgroundSize:"72px 62px"}} />
+              <div className="relative z-10 grid w-full max-w-[280px] grid-cols-3 items-center gap-2">
+                {["发现地点","找到线索","完成任务"].map((label, index) => (
+                  <button key={label} type="button" onClick={() => setDemoStep(index)} className={`rounded-xl border px-2 py-3 text-center transition ${demoStep === index ? "border-[#173b5e] bg-[#173b5e] text-white shadow-md" : "border-white/80 bg-white/85 text-[#173b5e]"}`}>
+                    <span className="mx-auto mb-1 grid h-7 w-7 place-items-center rounded-full bg-[#f4bd45] text-sm font-bold text-[#17324a]">{index + 1}</span><span className="block text-[11px] font-semibold">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="p-3">
+              <p className="text-[14px] font-semibold">{["① 发现一个地点","② 观察周围，寻找线索","③ 完成任务，获得下一步提示"][demoStep]}</p>
+              <p className="mt-1 min-h-[36px] text-[12px] leading-relaxed text-[var(--muted)]">{["地图会标出探索目标。真正游玩时，定位只用于辅助判断是否到达。","到达地点后，由你主动打开任务；观察、阅读或寻找现场细节。","完成后获得反馈，再决定是否前往下一站。此处为可点击演示，不会请求 GPS。"][demoStep]}</p>
+              <div className="mt-3 flex items-center justify-between gap-2"><span className="text-[10px] text-[var(--muted)]">点击上方步骤查看</span><button type="button" className="btn btn-secondary h-9 min-h-0 px-3 text-[12px]" onClick={() => setDemoStep((demoStep + 1) % 3)}>下一步 →</button></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -137,7 +143,7 @@ export default function HomePage() {
       ) : null}
 
       <section className="mt-4">
-        <h3 className="px-1 text-[13px] font-semibold text-[var(--muted)]">可用寻宝</h3>
+        <h3 className="px-1 text-[13px] font-semibold text-[var(--muted)]">开始探索</h3>
         <div className="mt-2 space-y-3">
           {loading ? (
             <div className="card animate-pulse p-4">
@@ -188,11 +194,10 @@ export default function HomePage() {
       </section>
 
       <section className="card mt-4 p-4">
-        <p className="text-[13px] font-semibold">开始前请确认</p>
+        <p className="text-[13px] font-semibold">安全提示</p>
         <ul className="mt-2 space-y-1.5 text-[12.5px] leading-relaxed text-[var(--muted)]">
-          <li>· 请在有网络的环境下首次打开，游戏数据会被缓存到本地。</li>
-          <li>· 之后即使断网，只要 GPS 可用，游戏仍可继续。</li>
-          <li>· 请在户外开阔处游玩，注意周围交通与安全。</li>
+          <li>· 只在允许进入的户外区域游玩，留意交通与周围环境。</li>
+          <li>· 定位用于辅助判断；定位不准时请按现场提示操作。</li>
         </ul>
         <div className="mt-3">
           <SimulatorUnavailableNotice />
