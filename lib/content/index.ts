@@ -20,15 +20,31 @@ function authoringKey(gameId: string): string {
   return `${AUTHORING_PREFIX}${gameId}`;
 }
 
+/** The last local-save failure, retained so import UI can explain the actual browser error. */
+let lastAuthoredSaveError: string | null = null;
+
 /** Save a locally authored pack. It is intentionally browser-local until a future backend exists. */
 export function saveAuthoredGame(game: Game): boolean {
-  if (typeof window === "undefined") return false;
+  lastAuthoredSaveError = null;
+  if (typeof window === "undefined") {
+    lastAuthoredSaveError = "当前环境没有可用的浏览器窗口";
+    return false;
+  }
   try {
     window.localStorage.setItem(authoringKey(game.id), JSON.stringify(game));
     return true;
-  } catch {
+  } catch (error) {
+    lastAuthoredSaveError =
+      error instanceof Error && error.message
+        ? `${error.name}: ${error.message}`
+        : String(error);
     return false;
   }
+}
+
+/** Explain the most recent local-save failure without hiding the underlying exception. */
+export function getAuthoredSaveFailureReason(): string | null {
+  return lastAuthoredSaveError;
 }
 
 export function clearAuthoredGame(gameId: string): void {
@@ -324,7 +340,14 @@ export function importGamePackage(text: string): ImportedGamePackage {
   if (!report.game) throw new Error("游戏包校验失败：" + (report.issues[0]?.message ?? "无法读取游戏数据"));
   const errors = report.issues.filter((issue) => issue.severity === "error");
   if (errors.length > 0) throw new Error("游戏包校验失败：" + errors[0].message);
-  if (!saveAuthoredGame(report.game)) throw new Error("游戏包无法保存到本机，请检查浏览器存储权限");
+  if (!saveAuthoredGame(report.game)) {
+    const reason = getAuthoredSaveFailureReason();
+    throw new Error(
+      reason
+        ? `游戏包无法保存到本机（${reason}）。请勿清除浏览器数据；可尝试普通浏览模式，或先导出游戏 JSON 备份后再重试。`
+        : "游戏包无法保存到本机。请勿清除浏览器数据；可尝试普通浏览模式，或先导出游戏 JSON 备份后再重试。",
+    );
+  }
   return { game: report.game, issues: report.issues };
 }
 
