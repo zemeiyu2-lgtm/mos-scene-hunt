@@ -100,6 +100,4 @@ export const RIZAL_PARK_TEMPLATE: Game = {
   ]
 };
 
-/** Backward-compatible export name for existing creator imports. */
-export const BSOP_CLASSIC_TEMPLATE = RIZAL_PARK_TEMPLATE;
 export default RIZAL_PARK_TEMPLATE;
