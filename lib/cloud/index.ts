@@ -31,7 +31,7 @@ export interface CloudCatalog {
   games: CloudGameEntry[];
 }
 
-const CATALOG_URL = "/content/cloud/catalog.json";
+const CATALOG_URL = "/api/cloud/catalog";
 const CACHE_KEY = "mos-scene-hunt:cloud-catalog";
 
 function validEntry(value: unknown): value is CloudGameEntry {
