@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readDrafts } from "@/lib/cloud/blob-store";
+import type { RawCatalogEntry } from "@/lib/cloud/catalog-source";
 import { indexToCatalogEntries, readPublishedIndex, readRepoCatalog, repoPackUsable, blobPackUsable } from "@/lib/cloud/publish-store";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export async function GET() {
       .filter((entry) => entry.status === "published")
       .map(async (entry) => ({ entry, usable: await repoPackUsable(entry) })));
     const official = staticGames.filter((item) => item.usable).map((item) => item.entry);
-    const submitted = indexToCatalogEntries(index, drafts.games)
+    const submitted = indexToCatalogEntries(index, drafts.games as unknown as RawCatalogEntry[])
       .filter((entry) => entry.status === "published");
     const cloudGames = await Promise.all(submitted.map(async (entry) => ({
       entry,
