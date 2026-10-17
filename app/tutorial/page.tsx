@@ -83,7 +83,7 @@ export default function TutorialPage() {
         <Link href="/" className="inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-sm font-semibold text-[var(--muted)]">
           <span aria-hidden="true">←</span> 返回首页
         </Link>
-        <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">新手演示</span>
+        <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">玩法演示</span>
       </header>
 
       <section className="mb-4">
@@ -94,7 +94,7 @@ export default function TutorialPage() {
 
       <div role="status" aria-live="polite" className="mb-3 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950">
         <span className="mt-0.5" aria-hidden="true">ⓘ</span>
-        <span><strong>模拟演示，不使用真实 GPS。</strong>地图位置、距离与到达反馈均为预设演示数据，不是 BSOP 实测结果，也不会改动真实游戏进度。</span>
+        <span><strong>模拟演示，不使用真实 GPS。</strong>地图位置、距离与到达反馈均为预设演示数据，不是实测 GPS 结果，也不会改动真实游戏进度。</span>
       </div>
 
       <section className="overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--card)] shadow-sm">
