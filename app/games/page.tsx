@@ -14,43 +14,11 @@ import type { PositionFix } from "@/lib/location";
 export default function GamesPage() {
   const [games, setGames] = useState<CloudGameEntry[]>([]);
   const [localGames, setLocalGames] = useState<Game[]>([]);
-  const [serverGames, setServerGames] = useState<Game[]>([]);
-  const [serverEnabled, setServerEnabled] = useState(false);
-  const [serverTokenInput, setServerTokenInput] = useState("");
-  const [serverConnectMessage, setServerConnectMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const refreshLocal = () => setLocalGames(listAuthoredGames());
-
-  const refreshServer = async () => {
-    try {
-      const token = window.sessionStorage.getItem("mos-local-game-token") ?? "";
-      if (!token) { setServerEnabled(false); setServerGames([]); return; }
-      const response = await fetch("/api/local-games", { cache: "no-store", headers: { "x-mos-local-token": token } });
-      if (response.status === 401) { window.sessionStorage.removeItem("mos-local-game-token"); setServerEnabled(false); setServerGames([]); setServerConnectMessage("访问口令不正确，请重新输入。"); return; }
-      if (!response.ok) return;
-      const result = await response.json() as { enabled?: boolean; games?: Game[] };
-      setServerEnabled(Boolean(result.enabled));
-      setServerGames(result.enabled && Array.isArray(result.games) ? result.games : []);
-      setServerConnectMessage(result.enabled ? "" : "电脑游戏包服务器未启用。请在电脑上启动本地服务器，并打开电脑服务器地址，而不是公共 Vercel 网站。");
-    } catch {
-      setServerEnabled(false);
-      setServerGames([]);
-      setServerConnectMessage("无法连接电脑游戏包服务器，请确认电脑服务正在运行。");
-    }
-  };
-
-  const downloadFromComputer = (game: Game) => {
-    try {
-      const result = importGamePackage(JSON.stringify(game));
-      refreshLocal();
-      setMessage("已将电脑服务器中的「" + result.game.title + "」下载到当前设备。");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "下载电脑游戏包失败。");
-    }
-  };
 
   const refresh = async () => {
     setLoading(true);
@@ -68,7 +36,6 @@ export default function GamesPage() {
   useEffect(() => {
     void refresh();
     refreshLocal();
-    void refreshServer();
     const onFocus = () => refreshLocal();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
@@ -156,33 +123,6 @@ export default function GamesPage() {
           ))}
           {!localGames.length ? <div className="rounded-xl border border-dashed border-[var(--line)] px-4 py-5 text-center text-sm text-[var(--muted)]">本机还没有游戏。请先到创作中心制作或导入游戏包。</div> : null}
         </div>
-      </section>
-
-      <section className="mt-5">
-        <div className="mb-2">
-          <h2 className="text-lg font-bold">电脑服务器游戏</h2>
-          <p className="text-xs text-[var(--muted)]">集中保存在运行本应用的电脑上；可下载到当前设备再游玩。</p>
-        </div>
-        {!serverEnabled ? (
-          <div className="card p-4 text-sm leading-relaxed text-[var(--muted)]">
-            <p>请先连接电脑游戏包服务器。访问口令只保存在当前浏览器会话中。</p>
-            <div className="mt-3 flex gap-2"><input className="min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 text-sm" type="password" value={serverTokenInput} onChange={(e) => setServerTokenInput(e.target.value)} placeholder="电脑服务器访问口令" autoComplete="current-password" /><button className="btn btn-primary" type="button" onClick={() => { const token = serverTokenInput.trim(); if (!token) return; setServerConnectMessage("正在连接……"); window.sessionStorage.setItem("mos-local-game-token", token); setServerTokenInput(""); void refreshServer(); }}>连接</button></div>
-            {serverConnectMessage ? <p role="status" className="mt-2 text-xs">{serverConnectMessage}</p> : <p className="mt-2 text-xs">请在电脑上运行本地服务器，并访问电脑服务器地址。</p> }
-          </div>
-        ) : serverGames.length ? (
-          <div className="grid gap-2">
-            {serverGames.map((game) => (
-              <article key={game.id} className="card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0"><h3 className="font-bold">{game.title}</h3><p className="mt-1 text-xs text-[var(--muted)]">{game.scenes.length} 个地点 · 约 {game.estimatedMinutes ?? "—"} 分钟</p></div>
-                  <span className="chip shrink-0">电脑存档</span>
-                </div>
-                <button type="button" className="btn btn-primary mt-3 w-full" onClick={() => downloadFromComputer(game)}>下载到本机游戏库</button>
-              </article>
-            ))}
-          </div>
-        ) : <div className="card p-4 text-sm text-[var(--muted)]">电脑服务器已连接，但还没有保存的游戏包。可以在创作中心保存游戏。</div>}
-        {serverEnabled ? <button type="button" className="btn btn-ghost mt-2 w-full" onClick={() => { window.sessionStorage.removeItem("mos-local-game-token"); setServerEnabled(false); setServerGames([]); setServerTokenInput(""); }}>断开电脑服务器</button> : null}
       </section>
 
       <section className="mt-5">
