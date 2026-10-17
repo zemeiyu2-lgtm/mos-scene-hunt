@@ -46,7 +46,7 @@ export default function GamesPage() {
   };
 
   return (
-    <Screen title="🎮 游戏中心" subtitle="从官方云端游戏库选择一个游戏">
+    <Screen title="游戏中心" subtitle="选一个游戏，下载后即可出发">
       <section className="card p-5">
         <p className="game-kicker">MOS SCENE HUNT · GAME CENTER</p>
         <h2 className="mt-2 text-2xl font-bold">选择一个游戏</h2>
