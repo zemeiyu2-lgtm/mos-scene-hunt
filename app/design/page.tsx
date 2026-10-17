@@ -62,6 +62,7 @@ export default function DesignPage() {
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importText, setImportText] = useState("");
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [computerSaveMessage, setComputerSaveMessage] = useState<string | null>(null);
   // ① area-drawing session. While active, map clicks append boundary points.
   const [drawingArea, setDrawingArea] = useState(false);
   // One-shot circle placement: the next map click sets the area centre.
@@ -438,6 +439,40 @@ export default function DesignPage() {
     event.target.value = "";
     if (!file) return;
     importPackageText(await file.text());
+  };
+
+  const saveToComputer = async () => {
+    if (!working || areaIncomplete || drawingArea) {
+      setComputerSaveMessage("请先完成游戏区域绘制，再保存。");
+      return;
+    }
+    let token = window.sessionStorage.getItem("mos-local-game-token") ?? "";
+    if (!token) {
+      token = window.prompt("请输入电脑游戏包服务器访问口令（由电脑启动脚本提供）：") ?? "";
+      if (!token.trim()) {
+        setComputerSaveMessage("未输入访问口令，尚未保存到电脑。");
+        return;
+      }
+      token = token.trim();
+      window.sessionStorage.setItem("mos-local-game-token", token);
+    }
+    setComputerSaveMessage("正在保存到电脑……");
+    try {
+      const response = await fetch("/api/local-games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-mos-local-token": token },
+        body: JSON.stringify({ game: working }),
+      });
+      const result = await response.json() as { message?: string; error?: string; game?: Game };
+      if (response.status === 401) {
+        window.sessionStorage.removeItem("mos-local-game-token");
+        throw new Error("访问口令不正确，请重试。");
+      }
+      if (!response.ok) throw new Error(result.message ?? result.error ?? "保存到电脑失败。");
+      setComputerSaveMessage("已保存到电脑硬盘：" + (result.game?.title ?? working.title) + "。");
+    } catch (error) {
+      setComputerSaveMessage(error instanceof Error ? error.message : "保存到电脑失败。请确认当前打开的是电脑服务器地址。");
+    }
   };
 
   const save = (): boolean => {
@@ -934,6 +969,8 @@ export default function DesignPage() {
           >
             {saved ? "✓ 已保存到本机" : "仅保存到本机"}
           </button>
+          <button type="button" className="btn btn-secondary btn-block" onClick={saveToComputer} disabled={areaIncomplete || drawingArea}>保存到电脑游戏包目录</button>
+          {computerSaveMessage ? <p role="status" className="rounded-lg bg-[var(--surface)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--muted)]">{computerSaveMessage}</p> : null}
           <button type="button" className="btn btn-primary btn-block" onClick={share} disabled={areaIncomplete || drawingArea || shareBusy}>
             {shareBusy ? "正在生成分享链接…" : "🔗 发布并分享给朋友"}
           </button>
