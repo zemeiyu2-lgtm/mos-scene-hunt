@@ -51,7 +51,7 @@ export default function GamesPage() {
       refreshLocal();
       const warningCount = result.issues.filter((issue) => issue.severity === "warning").length;
       setMessage(warningCount
-        ? "已下载并保存「" + result.game.title + "」；有 " + warningCount + " 项提醒，请在设计中心检查。"
+        ? "已下载并保存「" + result.game.title + "」；有 " + warningCount + " 项提醒，请在创作中心检查。"
         : "已下载并保存「" + result.game.title + "」，可在上方本机游戏中直接开始。");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "游戏下载失败");
@@ -100,7 +100,7 @@ export default function GamesPage() {
         <div className="mb-2 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold">本机游戏</h2>
-            <p className="text-xs text-[var(--muted)]">已导入或由设计中心保存，可直接游玩。</p>
+            <p className="text-xs text-[var(--muted)]">从创作中心保存或从游戏库下载后，可直接游玩。</p>
           </div>
           <button type="button" className="btn btn-ghost min-h-9 px-2 text-xs" onClick={refreshLocal}>刷新</button>
         </div>
@@ -121,7 +121,7 @@ export default function GamesPage() {
               </div>
             </article>
           ))}
-          {!localGames.length ? <div className="rounded-xl border border-dashed border-[var(--line)] px-4 py-5 text-center text-sm text-[var(--muted)]">本机还没有导入的游戏。设计者可到设计中心导入 AI 游戏包。</div> : null}
+          {!localGames.length ? <div className="rounded-xl border border-dashed border-[var(--line)] px-4 py-5 text-center text-sm text-[var(--muted)]">本机还没有游戏。请先到创作中心制作或导入游戏包。</div> : null}
         </div>
       </section>
 
@@ -157,9 +157,9 @@ export default function GamesPage() {
       </section>
 
       <section className="card mt-5 p-4">
-        <p className="text-sm font-semibold">设计者入口</p>
-        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">导入统一 JSON 游戏包、校验内容、标定真实坐标，再保存到本机游戏库。</p>
-        <Link href="/design#package-import" className="btn btn-secondary mt-3 w-full text-center">进入设计中心</Link>
+        <p className="text-sm font-semibold">想创作自己的游戏？</p>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">请在创作中心导入游戏包、标定地点并试玩；游戏中心专注于选择和游玩。</p>
+        <Link href="/design" className="btn btn-secondary mt-3 w-full text-center">进入创作中心</Link>
       </section>
     </Screen>
   );
