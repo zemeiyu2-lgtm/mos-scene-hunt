@@ -8,7 +8,7 @@
  * radius is entered.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
@@ -40,6 +40,44 @@ export default function MapPage() {
   } = useHunt();
 
   const [recenterToken, setRecenterToken] = useState(0);
+  const [heading, setHeading] = useState<number | null>(null);
+  const [headingEnabled, setHeadingEnabled] = useState(false);
+
+  const enableHeading = async () => {
+    if (typeof window === "undefined" || typeof window.DeviceOrientationEvent === "undefined") return;
+    const Orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+      requestPermission?: () => Promise<string>;
+    };
+    try {
+      if (typeof Orientation.requestPermission === "function") {
+        const permission = await Orientation.requestPermission();
+        if (permission !== "granted") return;
+      }
+      setHeadingEnabled(true);
+    } catch {
+      setHeadingEnabled(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!headingEnabled) return;
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+      const compassEvent = event as DeviceOrientationEvent & { webkitCompassHeading?: number };
+      let next: number | null = null;
+      if (typeof compassEvent.webkitCompassHeading === "number" && Number.isFinite(compassEvent.webkitCompassHeading)) {
+        next = compassEvent.webkitCompassHeading;
+      } else if (event.absolute && event.alpha !== null && Number.isFinite(event.alpha)) {
+        next = (360 - event.alpha + 360) % 360;
+      }
+      if (next !== null) setHeading(next);
+    };
+    window.addEventListener("deviceorientation", handleOrientation as EventListener);
+    window.addEventListener("deviceorientationabsolute", handleOrientation as EventListener);
+    return () => {
+      window.removeEventListener("deviceorientation", handleOrientation as EventListener);
+      window.removeEventListener("deviceorientationabsolute", handleOrientation as EventListener);
+    };
+  }, [headingEnabled]);
 
   const entries = useMemo<MapSceneEntry[]>(() => {
     return statuses.map((row) => {
@@ -78,6 +116,7 @@ export default function MapPage() {
       <div className="relative h-[100dvh] w-full overflow-hidden">
         <MapView
           player={fix}
+          heading={heading}
           entries={entries}
           huntArea={game?.huntArea}
           tileProvider={settings.tileProvider as TileProviderId}
@@ -114,6 +153,16 @@ export default function MapPage() {
                   {statuses.filter((s) => s.status === "completed").length}/{statuses.length}
                 </span>
               </Link>
+
+              <button
+                type="button"
+                onClick={() => void enableHeading()}
+                className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
+                aria-label={heading !== null ? "手机朝向指示已启用" : "启用手机朝向指示"}
+                title="手机朝向指示"
+              >
+                🧭
+              </button>
 
               <button
                 type="button"
