@@ -155,28 +155,28 @@ export default function HomePage() {
 
       <section className="mt-4">
         <div className="mt-2 grid grid-cols-2 gap-3">
-          <Link href="/tutorial" className="card p-4 transition-transform active:scale-[0.99]">
+          <Link href="/tutorial" className="card border-[var(--line)] bg-gradient-to-br from-amber-50 to-white p-4 transition-transform active:scale-[0.99]">
             <span className="text-xl" aria-hidden="true">▷</span>
             <p className="mt-2 text-[14px] font-bold">一分钟演示</p>
             
           </Link>
-          <Link href="/select" className="card p-4 transition-transform active:scale-[0.99]">
+          <Link href="/select" className="card border-[var(--line)] bg-gradient-to-br from-emerald-50 to-white p-4 transition-transform active:scale-[0.99]">
             <span className="text-xl" aria-hidden="true">⌖</span>
             <p className="mt-2 text-[14px] font-bold">选择游戏</p>
             
           </Link>
-          <Link href="/games" className="card p-4 transition-transform active:scale-[0.99]">
+          <Link href="/games" className="card border-[var(--line)] bg-gradient-to-br from-sky-50 to-white p-4 transition-transform active:scale-[0.99]">
             <span className="text-xl" aria-hidden="true">◇</span>
             <p className="mt-2 text-[14px] font-bold">游戏中心</p>
             
           </Link>
-          <Link href="/create" className="card p-4 transition-transform active:scale-[0.99]">
+          <Link href="/create" className="card border-[var(--line)] bg-gradient-to-br from-violet-50 to-white p-4 transition-transform active:scale-[0.99]">
             <span className="text-xl" aria-hidden="true">✦</span>
             <p className="mt-2 text-[14px] font-bold">创作中心</p>
             
           </Link>
         </div>
-
+        <Link href="/how-to-create" className="mt-3 inline-flex items-center gap-1 px-1 py-2 text-xs font-medium text-[var(--muted)]">第一次创作？查看创作说明 <span aria-hidden="true">→</span></Link>
       </section>
 
       {contentSource === "cache" ? (
