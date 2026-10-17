@@ -3,6 +3,7 @@ import {
   MAX_REQUEST_BYTES,
   extractGamePayload,
   classifyDuplicate,
+  directPublishEnabled,
   canonicalizeGame,
   issuePublishToken,
   readLimitedBody,
@@ -253,6 +254,13 @@ describe("发布令牌 - 签发与校验", () => {
       expect(verified.ok).toBe(false);
       if (!verified.ok) expect(verified.status).toBe(400);
     }
+  });
+});
+
+describe("审核闸门 - 直接发布必须始终关闭", () => {
+  it("即使部署环境设置了旧的直接发布开关，也必须进入待审核草稿", () => {
+    expect(directPublishEnabled({ MOS_CLOUD_ALLOW_DIRECT_PUBLISH: "1" })).toBe(false);
+    expect(directPublishEnabled({})).toBe(false);
   });
 });
 
