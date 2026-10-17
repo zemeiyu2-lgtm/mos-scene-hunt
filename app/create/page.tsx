@@ -46,10 +46,10 @@ export default function CreatePage() {
   const activateGame = (game: Game) => { saveAuthoredGame(game); markCurrentAuthoredGame(game.id); setDraft(game); setReport(validateGamePackage(game)); setMessage("已切换到「" + game.title + "」，现在可以试玩或继续设计。"); };
   const renameGame = (game: Game) => { const title = window.prompt("给游戏换一个显示名称：", game.title); if (!title?.trim()) return; const next = renameAuthoredGame(game.id, title); if (next) { setLibrary(listAuthoredGames()); if (working?.id === next.id) setDraft(next); setMessage("已重命名。"); } };
   const removeGame = (game: Game) => { if (!window.confirm("确定删除「" + game.title + "」？删除后需要重新导入游戏包才能恢复。")) return; deleteAuthoredGame(game.id); setLibrary(listAuthoredGames()); if (working?.id === game.id) setDraft(null); setMessage("已删除「" + game.title + "」。"); };
-  if (!working) return <Screen title="创建游戏" subtitle="等待游戏内容加载"><div className="card p-5">正在加载……</div></Screen>;
+  if (!working) return <Screen title="创作中心"><div className="card p-5">正在加载……</div></Screen>;
   const spatial = report?.spatial ?? validateGamePackage(working).spatial;
-  return <Screen title="创建游戏" subtitle="手机优先 · 电脑增强">
-    <section className="card p-5"><p className="game-kicker">MOS SCENE HUNT V0.6</p><h2 className="mt-2 text-2xl font-bold">先设计，再开始游戏</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">地图、点位、故事、任务和奖励属于同一个游戏包。手机可以完成基础设计；电脑只提供更大的编辑空间。</p>
+  return <Screen title="创作中心">
+    <section className="card p-5"><p className="game-kicker">MOS SCENE HUNT V0.6</p><h2 className="mt-2 text-2xl font-bold">创作、试玩、分享</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">地图、点位、故事、任务和奖励属于同一个游戏包。手机可以完成基础设计，电脑适合精细编辑。</p>
       <div className="mt-4 grid grid-cols-2 gap-2"><Link href={working ? `/design?game=${encodeURIComponent(working.id)}` : "/design"} className="btn btn-primary text-center">进入设计器</Link><button className="btn btn-secondary" onClick={() => inputRef.current?.click()}>导入 Word / 游戏包</button></div>
       <input ref={inputRef} className="hidden" type="file" accept=".docx,.json,.md,.markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json,text/markdown" onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} /></section>
     <section className="card mt-4 p-5">
