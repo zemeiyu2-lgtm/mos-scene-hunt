@@ -1,202 +1,105 @@
 import type { Game } from "./types";
 
 /**
- * MOS Scene Hunt · Classic 01
- * 《神学院的八个秘密》— BSOP Campus Edition
- *
- * This is an authoring template, not a locked production pack.
- * The eight locations intentionally start near the published BSOP campus
- * coordinate and must be placed precisely on the actual campus map by the
- * designer before saving/publishing.
+ * Official starter template: Rizal Park mini treasure hunt.
+ * Coordinates are a rough demo layout only. Designers must confirm every point
+ * on the map and in the field before publishing or playing for real.
  */
-const BSOP_CENTER = { lat: 14.691516, lng: 120.98125 };
-
-const spot = (name: string): Game["scenes"][number]["location"] => ({
-  ...BSOP_CENTER,
-  radius: 15,
-  name,
+const PARK_CENTER = { lat: 14.5832, lng: 120.9794 };
+const spot = (name: string, lat: number, lng: number): Game["scenes"][number]["location"] => ({
+  lat, lng, radius: 20, name,
 });
 
-export const BSOP_CLASSIC_TEMPLATE: Game = {
-  id: "bsop-classic-01",
+const LANDSCAPE = "https://images.unsplash.com/photo-1500530855697-b586d89ee3ee?auto=format&fit=crop&w=1000&q=80";
+const GREEN_SPACE = "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1000&q=80";
+const PATH_IMAGE = "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=1000&q=80";
+
+export const RIZAL_PARK_TEMPLATE: Game = {
+  id: "rizal-park-discovery",
   language: "zh-CN",
-  title: "《神学院的八个秘密》",
-  description:
-    "BSOP 实境门训寻踪 · 经典母版。玩家在神学院真实校园中寻找八个“秘密”：每一站不是知识考试，而是一次观察、选择、关系与生命反思。",
-  author: "MOS Scene Hunt · Classic 01",
-  version: "1.0.0",
-  estimatedMinutes: 45,
-  difficulty: "medium",
-  startLocation: { ...BSOP_CENTER, radius: 30, name: "BSOP 校园集合点（待确认）" },
-  huntArea: {
-    center: { ...BSOP_CENTER },
-    radiusMeters: 150,
-    shape: "circle",
-    name: "BSOP 校园探索区（请在地图上重新绘制）",
-  },
-  entrySceneId: "secret-01",
+  title: "黎刹公园：寻找最后的宝藏",
+  description: "官方创作母版。用观察、图片线索、简单解谜、团队任务和最终宝藏，示范如何把地图点位变成一场完整的真实世界探索。请在正式游玩前逐点核对坐标。",
+  author: "MOS Scene Hunt · 官方母版",
+  version: "1.1.0",
+  estimatedMinutes: 25,
+  difficulty: "easy",
+  startLocation: { ...PARK_CENTER, radius: 30, name: "黎刹公园集合点（请现场确认）" },
+  huntArea: { center: { ...PARK_CENTER }, radiusMeters: 350, shape: "circle", name: "黎刹公园探索区（请在地图上确认边界）" },
+  entrySceneId: "park-01",
   aiProfile: {
-    tone: "现代、安静、有探索感；像一位同行的门训导师，而不是考试老师。",
+    tone: "轻快、现代、富有发现感；像一位友善的户外游戏向导。",
     canon: [
-      "BSOP 官方资料显示校园拥有图书馆、教室、学生休息空间、餐厅、宿舍、礼拜堂、户外空间等设施。",
-      "游戏任务必须尊重校园秩序与真实人物隐私，不偷拍陌生人，不进入限制区域。",
-      "八站主线是：呼召、真理、学习、群体、爱人、生命、使命、差派。",
-      "位置必须由游戏设计者根据真实校园地图重新放置后才可作为正式游戏使用。",
+      "这是用于学习创作流程的官方示范母版，不代表官方场地许可或精确坐标。",
+      "地图坐标是示范布局，正式游玩前必须逐点核对并现场测试。",
+      "所有任务必须在开放、安全的公共区域完成，不得进入限制区域或打扰他人。",
+      "最终奖励必须由设计者准备并兑现；本母版的宝藏为设计者现场准备的小礼物或纪念卡。"
     ],
-    allowGeneration: false,
+    allowGeneration: true
   },
   scenes: [
     {
-      id: "secret-01",
-      title: "秘密一 · 你为什么来到这里？",
-      story:
-        "你来到礼拜堂附近。先不要急着回答问题。找一个让自己安静下来的位置，停留三十秒。\n\n这里每天有人讲道、祷告、唱诗，也有人只是匆匆经过。真正的秘密不是“这里有什么”，而是：你为什么来到这里？",
-      briefing: "找到礼拜堂的真实位置。先观察，再回答。不要把这一站当成考试。",
-      location: spot("礼拜堂（请拖动到实际位置）"),
-      nextSceneId: "secret-02",
-      challenge: {
-        type: "choice",
-        question: "如果没有任何人看见你，你还愿意服事吗？",
-        options: ["仍然愿意", "要看事情是否重要", "可能不会", "我还没有想过"],
-        reflective: true,
-        prompt: "选择最接近你真实状态的答案，没有“属灵标准答案”。",
-        explanation: "真正的呼召，不只发生在被人看见的时候。",
-      },
-      reward: { type: "keyword", title: "呼召", value: "呼召", icon: "✦" },
+      id: "park-01",
+      title: "第一站 · 观察者上线",
+      story: "欢迎来到探索现场。先停下来观察周围：颜色、形状、声音和人们使用空间的方式。真正的线索，往往藏在匆忙时不会注意的细节里。",
+      briefing: "到达集合点后，确认队员都已准备好。选择不影响行人通行的位置完成任务。",
+      location: spot("示范点 1 · 集合区（现场微调）", 14.5832, 120.9794),
+      nextSceneId: "park-02",
+      media: [{ id: "park-image-01", kind: "image", title: "观察自然的示例图", url: GREEN_SPACE, description: "示范：图片可用来提示玩家留意自然环境的形状和颜色。" }],
+      challenge: { type: "choice", question: "开始探索前，哪一种做法最适合？", options: ["先观察环境并确认安全", "立刻跑向最远的点", "不看路线直接开始"], answer: 0, hint: "好的探索从留心环境开始。", explanation: "先观察、安全行动，才能更好地享受游戏。" },
+      reward: { type: "keyword", title: "观察徽记", value: "观察", icon: "◎" },
+      mapStyle: { icon: "◎", color: "#2c7a68" }
     },
     {
-      id: "secret-02",
-      title: "秘密二 · 知识为什么没有改变你？",
-      story:
-        "走进图书馆附近。这里有大量书籍、课程资料与研究资源。\n\n但知识本身不会自动改变一个人。你需要找到一本圣经或神学书，在书架前停下来想一想：你学过的真理，最近一次真正改变你是什么时候？",
-      briefing: "前往图书馆。找到一本你愿意拿起来看的书，然后再继续任务。",
-      location: spot("图书馆（请拖动到实际位置）"),
-      nextSceneId: "secret-03",
-      challenge: {
-        type: "choice",
-        question: "你最希望神学学习首先改变你的哪一部分？",
-        options: ["思想", "品格", "关系", "事奉与使命"],
-        reflective: true,
-        prompt: "没有统一答案；选择以后，与同伴说一句为什么。",
-        explanation: "神学教育的目标不只是增加知识，而是让真理进入真实生命。",
-      },
-      reward: { type: "keyword", title: "真理", value: "真理", icon: "◈" },
+      id: "park-02",
+      title: "第二站 · 图片侦探",
+      story: "线索不一定是一段文字，也可以是一张图。看看现场周围，找出与提示最接近的自然或建筑特征。请只观察公共区域，不要攀爬或触碰设施。",
+      briefing: "打开图片线索，比较图中形状与眼前环境；找不到完全相同的对象时，说明最接近的特征即可。",
+      location: spot("示范点 2 · 观察区（现场微调）", 14.58345, 120.97955),
+      nextSceneId: "park-03",
+      media: [{ id: "park-image-02", kind: "image", title: "自然线索图", url: LANDSCAPE, description: "玩家根据图片寻找相似的形状、颜色或环境特征。" }],
+      challenge: { type: "keyword", question: "完成观察后，输入你发现的一个自然特征，例如“树”“绿色”或“影子”。", answer: ["树", "绿色", "影子", "自然", "叶子"], hint: "看看周围的植物、颜色或地面上的影子。" },
+      reward: { type: "keyword", title: "发现线索", value: "发现", icon: "⌕" },
+      mapStyle: { icon: "⌕", color: "#478b78" }
     },
     {
-      id: "secret-03",
-      title: "秘密三 · 你究竟在学习什么？",
-      story:
-        "来到教室。这里通常是神学知识被传递的地方。\n\n但如果三年以后，你记住了很多术语，却没有更会爱人、更会服事、更愿意顺服基督，那么你究竟学到了什么？",
-      briefing: "在教室外或允许进入的公共区域完成讨论，不影响正在上课的人。",
-      location: spot("教室（请拖动到实际位置）"),
-      nextSceneId: "secret-04",
-      challenge: {
-        type: "choice",
-        question: "如果今天学到的一条真理必须在本周变成一个行动，你会选什么？",
-        options: ["改变一个习惯", "主动修复一段关系", "开始一项服事", "向一个人分享所学"],
-        reflective: true,
-        prompt: "先选，再告诉队友一个具体行动。",
-        explanation: "学习进入实践，才开始成为生命的一部分。",
-      },
-      reward: { type: "keyword", title: "学习", value: "学习", icon: "◎" },
+      id: "park-03",
+      title: "第三站 · 路线密码",
+      story: "你已经收集到两个关键词。现在需要团队一起解开路线密码：真正的寻宝不是走得最快，而是让线索彼此连接。",
+      briefing: "到达下一个安全停留点，队员先一起讨论，再提交答案。",
+      location: spot("示范点 3 · 路线点（现场微调）", 14.58305, 120.9798),
+      nextSceneId: "park-04",
+      media: [{ id: "park-image-03", kind: "image", title: "路径与方向示例图", url: PATH_IMAGE, description: "可作为方向、路线或环境观察任务的视觉引导。" }],
+      challenge: { type: "choice", question: "当团队对下一步意见不同，最好的做法是什么？", options: ["停下来对照线索并共同决定", "各走各的", "跳过任务直接领奖"], answer: 0, hint: "团队任务需要共同判断。" , explanation: "讨论、比较线索，再一起行动。" },
+      reward: { type: "item", title: "路线碎片", value: "route-fragment", icon: "◇", description: "最终站需要用到的虚拟线索。" },
+      mapStyle: { icon: "◇", color: "#d29a42" }
     },
     {
-      id: "secret-04",
-      title: "秘密四 · 一个人能成为门徒吗？",
-      story:
-        "来到学生中心或学生休息空间。这里不是讲台，却常常最能看见一个群体真正的样子。\n\n这一站需要团队完成：每个人先安静十秒，再轮流说出自己认为门训最不可缺少的一项：真理、祷告、关系、实践、反馈或使命。",
-      briefing: "找到学生中心/学生休息空间。请先确认这里适合小组交流，不要打扰别人。",
-      location: spot("学生中心 / 学生休息空间（请拖动到实际位置）"),
-      nextSceneId: "secret-05",
-      challenge: {
-        type: "choice",
-        question: "如果只能保留一项，哪一项最能让门训继续发生？",
-        options: ["真理", "关系", "实践", "反馈"],
-        reflective: true,
-        prompt: "每个人先选，再听完队友以后重新思考。",
-        explanation: "门训不是孤立的知识消费；真实关系让真理进入共同生活。",
-      },
-      reward: { type: "keyword", title: "群体", value: "群体", icon: "◉" },
+      id: "park-04",
+      title: "第四站 · 团队挑战",
+      story: "现在轮到你们创造线索。每位队员说出一个在公园里观察到、但刚才可能被忽略的细节。团队选出最有趣的一项，并用一句话描述。",
+      briefing: "请在不阻挡通行的位置完成。不要拍摄陌生人；如果需要照片，只拍环境、物件或团队自愿入镜的成员。",
+      location: spot("示范点 4 · 团队任务点（现场微调）", 14.58285, 120.97945),
+      nextSceneId: "park-05",
+      media: [{ id: "park-team-image", kind: "image", title: "团队观察任务参考图", url: GREEN_SPACE, description: "示范图可用于引出团队观察与分享任务。" }],
+      challenge: { type: "text", question: "请用一个短词或短句，写下团队刚才共同发现的细节。", answer: ["树影", "树", "叶子", "花", "长椅", "小路", "绿色", "光影"], hint: "写下一个你们亲眼观察到的环境细节。" },
+      reward: { type: "keyword", title: "团队徽记", value: "合作", icon: "✦" },
+      mapStyle: { icon: "✦", color: "#b77935" }
     },
     {
-      id: "secret-05",
-      title: "秘密五 · 你真正看见谁？",
-      story:
-        "来到餐厅。这里是一个神学院最真实的地方之一：人一起吃饭、聊天、忙碌，也可能有人被忽略。\n\n这一站没有知识题。你的任务是：注意一个平时不会主动注意的人。不要偷拍，不要打扰，只是真正看见。",
-      briefing: "到餐厅附近。先观察人群，再完成一个不打扰他人的真实行动。",
-      location: spot("餐厅 / Dining Hall（请拖动到实际位置）"),
-      nextSceneId: "secret-06",
-      challenge: {
-        type: "choice",
-        question: "你愿意用哪一个动作回应“看见一个人”？",
-        options: ["主动问候", "主动倾听", "给一句鼓励", "在不打扰的情况下默默为他祷告"],
-        reflective: true,
-        prompt: "真正完成这个动作以后再提交。不要为了游戏表演。",
-        explanation: "爱人首先需要看见人，而不是只看见任务。",
-      },
-      reward: { type: "keyword", title: "爱人", value: "爱人", icon: "♡" },
-    },
-    {
-      id: "secret-06",
-      title: "秘密六 · 没有讲台的时候，你是谁？",
-      story:
-        "来到宿舍或宿舍公共区域附近。这里没有讲台，没有观众，也没有人要求你表现得属灵。\n\n真正的生命形成，往往发生在没有人注意的时候。想一想：你最希望神改变自己哪一个地方？",
-      briefing: "请只在允许进入的公共区域完成这一站。尊重住宿者的隐私。",
-      location: spot("宿舍 / 住宿区公共区域（请拖动到实际位置）"),
-      nextSceneId: "secret-07",
-      challenge: {
-        type: "choice",
-        question: "没有人评分的时候，你最需要面对自己的哪一方面？",
-        options: ["时间与纪律", "情绪与压力", "人际关系", "隐藏的动机"],
-        reflective: true,
-        prompt: "这是私人反思；不要求你把答案告诉别人。",
-        explanation: "生命形成不只发生在讲台上，更发生在无人看见的日常。",
-      },
-      reward: { type: "keyword", title: "生命", value: "生命", icon: "⌁" },
-    },
-    {
-      id: "secret-07",
-      title: "秘密七 · 神学院之外还有什么？",
-      story:
-        "走到校园户外、花园、树荫步道或其他开放空间。停下来，看向校园之外。\n\n神学院不是终点。你现在学到的东西，最终必须进入教会、城市、家庭、职场、校园或跨文化处境。",
-      briefing: "选择安全、开放的户外位置。停下来，看一眼校园以外的世界。",
-      location: spot("校园户外 / 花园 / 步道（请拖动到实际位置）"),
-      nextSceneId: "secret-08",
-      challenge: {
-        type: "choice",
-        question: "如果今天是你离开神学院的最后一天，你最想把什么带出去？",
-        options: ["一项真理", "一种生活方式", "一段关系", "一个使命"],
-        reflective: true,
-        prompt: "选一个你愿意真正带进未来生活的东西。",
-        explanation: "神学教育最终要走出校园，进入真实世界与真实使命。",
-      },
-      reward: { type: "keyword", title: "使命", value: "使命", icon: "↗" },
-    },
-    {
-      id: "secret-08",
-      title: "秘密八 · 你准备带什么出去？",
-      story:
-        "回到礼拜堂或预先约定的集合点。现在把前面七站得到的关键词放在一起：呼召、真理、学习、群体、爱人、生命、使命。\n\n最后的秘密不是一个地点，而是一个决定：你准备从这里带什么出去？",
-      briefing: "回到礼拜堂/集合点。团队一起完成最后回应，然后每个人留下一个自己的下一步。",
-      location: spot("礼拜堂 / 最终集合点（请拖动到实际位置）"),
+      id: "park-05",
+      title: "最终站 · 找到并兑现宝藏",
+      story: "你们已经收集了观察、发现和合作的线索。现在前往设计者现场确认的终点，向游戏主持人出示这些关键词，完成最后挑战后领取真正的宝藏。",
+      briefing: "宝藏由设计者提前准备并保管。正式发布前，请填写实际领取地点、负责人和开放时间；不要把宝藏藏在危险、无人看管或未经许可的地方。",
+      location: spot("示范点 5 · 宝藏终点（必须现场确认）", 14.58325, 120.97915),
       nextSceneId: null,
-      challenge: {
-        type: "choice",
-        question: "今天离开神学院以后，你最愿意带走哪一个下一步？",
-        options: ["忠于一项真理", "开始一个具体习惯", "修复一段关系", "采取一个使命行动"],
-        reflective: true,
-        prompt: "选择一件你愿意在未来七天真正做的事情。",
-        explanation: "游戏的终点不是最后一个地图点，而是离开地图以后仍然发生的行动。",
-      },
-      reward: {
-        type: "badge",
-        title: "走出神学院",
-        value: "bsop-classic-01",
-        description: "八个秘密走到最后，只留下一个问题：你准备带什么出去？",
-        icon: "✦",
-      },
-    },
-  ],
+      media: [{ id: "park-treasure-image", kind: "image", title: "宝藏奖励示例图", url: LANDSCAPE, description: "创作者可替换为真实奖品照片、纪念卡或徽章图片。" }],
+      challenge: { type: "choice", question: "领取宝藏前，团队必须完成哪一步？", options: ["向主持人展示线索并确认领取规则", "直接拿走任何物品", "跳过主持人和最终任务"], answer: 0, hint: "真正的奖励需要有清楚、安全的兑现流程。", explanation: "完成游戏，也要尊重场地和奖励规则。" },
+      reward: { type: "badge", title: "黎刹公园探索者", value: "rizal-park-discovery", icon: "🏆", description: "兑现方式：设计者在终点向完成任务的玩家发放预先准备的小礼物或纪念卡。请在实际游戏中填写领取地点与负责人。" },
+      mapStyle: { icon: "🏆", color: "#c18b3a" }
+    }
+  ]
 };
 
-export default BSOP_CLASSIC_TEMPLATE;
+/** Backward-compatible export name for existing creator imports. */
+export const BSOP_CLASSIC_TEMPLATE = RIZAL_PARK_TEMPLATE;
+export default RIZAL_PARK_TEMPLATE;
