@@ -107,7 +107,7 @@ export default function DesignPage() {
 
   if (loading || !working) {
     return (
-      <Screen title="创建游戏" subtitle="正在加载内容">
+      <Screen title="创作中心">
         <div className="card h-40 animate-pulse" />
         {loadError ? <p className="mt-3 text-sm text-red-700">{loadError}</p> : null}
       </Screen>
@@ -434,7 +434,7 @@ export default function DesignPage() {
     if (save()) router.push("/select");
   };
 
-  const loadBsopClassicTemplate = () => {
+  const loadOfficialTemplate = () => {
     const template = structuredClone(BSOP_CLASSIC_TEMPLATE);
     setDraft(template);
     setSelectedId(template.scenes[0]?.id ?? null);
@@ -473,9 +473,8 @@ export default function DesignPage() {
 
   return (
     <Screen
-      title="创建游戏"
-      subtitle="四步完成：画区域 → 放场景 → 设距离 → 保存"
-      headerRight={<Link href="/" className="btn btn-ghost h-9 min-h-0 px-3">返回</Link>}
+      title="创作中心"
+      headerRight={<div className="flex items-center gap-1"><Link href="/how-to-create" className="btn btn-ghost h-9 min-h-0 px-2 text-xs">创作说明</Link><Link href="/" className="btn btn-ghost h-9 min-h-0 px-2 text-xs">返回</Link></div>}
     >
       {/* ------------------------------------------------ 步骤导航 */}
       <ol className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -501,13 +500,13 @@ export default function DesignPage() {
 
       <section className="card mb-4 overflow-hidden">
         <div className="relative overflow-hidden bg-gradient-to-br from-[#15233d] via-[#243b5d] to-[#3f6a68] px-5 py-5 text-white">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/60">CLASSIC 01 · BSOP CAMPUS</p>
-          <h2 className="mt-1.5 text-[21px] font-bold">《神学院的八个秘密》</h2>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/60">OFFICIAL TEMPLATE · RIZAL PARK</p>
+          <h2 className="mt-1.5 text-[21px] font-bold">黎刹公园：寻找最后的宝藏</h2>
           <p className="mt-1 text-[12.5px] leading-relaxed text-white/75">把真实校园变成一条会留下记忆的路：探索 → 选择 → 行动 → 反思 → 带走。</p>
-          <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadBsopClassicTemplate}>
-            载入 BSOP 经典母版
+          <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadOfficialTemplate}>
+            载入黎刹公园官方母版
           </button>
-          <p className="mt-2 text-[10.5px] text-white/55">载入后请把 8 个场景拖到校园真实位置，再绘制游戏区域。</p>
+          <p className="mt-2 text-[10.5px] text-white/55">这是官方示范母版。请在地图上核对各站坐标、调整区域，并现场试玩后再发布。</p>
         </div>
       </section>
 
