@@ -1,0 +1,233 @@
+{
+  "id": "rizal-park-discovery",
+  "language": "zh-CN",
+  "title": "黎刹公园：寻找最后的宝藏",
+  "description": "官方创作母版：观察、图片线索、简单解谜、团队任务和最终宝藏兑现。地图坐标为示范布局，正式游玩前请逐点核对。",
+  "author": "MOS Scene Hunt · 官方母版",
+  "version": "1.1.0",
+  "estimatedMinutes": 25,
+  "difficulty": "easy",
+  "startLocation": {
+    "lat": 14.5832,
+    "lng": 120.9794,
+    "radius": 30,
+    "name": "黎刹公园集合点（现场确认）"
+  },
+  "huntArea": {
+    "center": {
+      "lat": 14.5832,
+      "lng": 120.9794
+    },
+    "radiusMeters": 350,
+    "shape": "circle",
+    "name": "黎刹公园探索区（现场确认）"
+  },
+  "entrySceneId": "park-01",
+  "scenes": [
+    {
+      "id": "park-01",
+      "title": "第一站 · 观察者上线",
+      "story": "先观察周围的颜色、形状和声音。真正的线索，往往藏在匆忙时不会注意的细节里。",
+      "briefing": "确认队员都已准备好，在不影响通行的位置完成任务。",
+      "location": {
+        "lat": 14.5832,
+        "lng": 120.9794,
+        "radius": 20,
+        "name": "示范点1·集合区（现场微调）"
+      },
+      "nextSceneId": "park-02",
+      "media": [
+        {
+          "id": "park-img-1",
+          "kind": "image",
+          "title": "自然观察示例",
+          "url": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1000&q=80",
+          "description": "示范图片：引导玩家观察自然环境。"
+        }
+      ],
+      "challenge": {
+        "type": "choice",
+        "question": "开始探索前，哪一种做法最适合？",
+        "options": [
+          "先观察环境并确认安全",
+          "立刻跑向最远的点",
+          "不看路线直接开始"
+        ],
+        "answer": 0,
+        "hint": "好的探索从留心环境开始。",
+        "explanation": "先观察、安全行动，才能更好地享受游戏。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "观察徽记",
+        "value": "观察",
+        "icon": "◎"
+      }
+    },
+    {
+      "id": "park-02",
+      "title": "第二站 · 图片侦探",
+      "story": "看看现场周围，找出与图片提示最接近的自然或建筑特征。只观察公共区域，不要攀爬或触碰设施。",
+      "briefing": "比较图片与眼前环境，找出一个相似的形状、颜色或特征。",
+      "location": {
+        "lat": 14.58345,
+        "lng": 120.97955,
+        "radius": 20,
+        "name": "示范点2·观察区（现场微调）"
+      },
+      "nextSceneId": "park-03",
+      "media": [
+        {
+          "id": "park-img-2",
+          "kind": "image",
+          "title": "户外探索线索图",
+          "url": "https://images.unsplash.com/photo-1500530855697-b586d89ee3ee?auto=format&fit=crop&w=1000&q=80",
+          "description": "示范图片：玩家根据图片寻找相似的环境特征。"
+        }
+      ],
+      "challenge": {
+        "type": "keyword",
+        "question": "完成观察后，输入你发现的一个自然特征。",
+        "answer": [
+          "树",
+          "绿色",
+          "影子",
+          "自然",
+          "叶子"
+        ],
+        "hint": "看看植物、颜色或地面上的影子。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "发现线索",
+        "value": "发现",
+        "icon": "⌕"
+      }
+    },
+    {
+      "id": "park-03",
+      "title": "第三站 · 路线密码",
+      "story": "你已经收集到两个关键词。现在团队需要一起解开路线密码：真正的寻宝不是走得最快，而是让线索彼此连接。",
+      "briefing": "在安全停留点先讨论，再提交答案。",
+      "location": {
+        "lat": 14.58305,
+        "lng": 120.9798,
+        "radius": 20,
+        "name": "示范点3·路线点（现场微调）"
+      },
+      "nextSceneId": "park-04",
+      "media": [
+        {
+          "id": "park-img-3",
+          "kind": "image",
+          "title": "路线观察参考图",
+          "url": "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=1000&q=80",
+          "description": "示范图片：可用于路线、方向或环境观察任务。"
+        }
+      ],
+      "challenge": {
+        "type": "choice",
+        "question": "团队对下一步意见不同，最好的做法是什么？",
+        "options": [
+          "停下来对照线索并共同决定",
+          "各走各的",
+          "跳过任务直接领奖"
+        ],
+        "answer": 0,
+        "hint": "团队任务需要共同判断。",
+        "explanation": "讨论、比较线索，再一起行动。"
+      },
+      "reward": {
+        "type": "item",
+        "title": "路线碎片",
+        "value": "route-fragment",
+        "icon": "◇",
+        "description": "最终站需要用到的虚拟线索。"
+      }
+    },
+    {
+      "id": "park-04",
+      "title": "第四站 · 团队挑战",
+      "story": "每位队员说出一个刚才可能被忽略的细节。团队选出最有趣的一项，并用一句话描述。不要拍摄陌生人。",
+      "briefing": "在不阻挡通行的位置完成。只拍环境、物件或自愿入镜的队员。",
+      "location": {
+        "lat": 14.58285,
+        "lng": 120.97945,
+        "radius": 20,
+        "name": "示范点4·团队任务点（现场微调）"
+      },
+      "nextSceneId": "park-05",
+      "media": [
+        {
+          "id": "park-img-4",
+          "kind": "image",
+          "title": "团队观察参考图",
+          "url": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1000&q=80",
+          "description": "引出团队观察与分享任务。"
+        }
+      ],
+      "challenge": {
+        "type": "text",
+        "question": "用一个短词或短句写下团队共同发现的细节。",
+        "answer": [
+          "树影",
+          "树",
+          "叶子",
+          "花",
+          "长椅",
+          "小路",
+          "绿色",
+          "光影"
+        ],
+        "hint": "写下一个你们亲眼观察到的环境细节。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "团队徽记",
+        "value": "合作",
+        "icon": "✦"
+      }
+    },
+    {
+      "id": "park-05",
+      "title": "最终站 · 找到并兑现宝藏",
+      "story": "你们已经收集到观察、发现和合作的线索。前往设计者确认的终点，向主持人出示关键词，完成最终挑战后领取真正的宝藏。",
+      "briefing": "设计者须提前准备并保管宝藏，填写实际领取地点、负责人和时间。不要把宝藏放在危险、无人看管或未经许可的地方。",
+      "location": {
+        "lat": 14.58325,
+        "lng": 120.97915,
+        "radius": 20,
+        "name": "示范点5·宝藏终点（必须现场确认）"
+      },
+      "nextSceneId": null,
+      "media": [
+        {
+          "id": "park-img-5",
+          "kind": "image",
+          "title": "宝藏奖励示例",
+          "url": "https://images.unsplash.com/photo-1500530855697-b586d89ee3ee?auto=format&fit=crop&w=1000&q=80",
+          "description": "创作者可替换为真实奖品、纪念卡或徽章图片。"
+        }
+      ],
+      "challenge": {
+        "type": "choice",
+        "question": "领取宝藏前，团队必须完成哪一步？",
+        "options": [
+          "向主持人展示线索并确认领取规则",
+          "直接拿走任何物品",
+          "跳过主持人和最终任务"
+        ],
+        "answer": 0,
+        "hint": "真正的奖励需要有清楚、安全的兑现流程。",
+        "explanation": "完成游戏，也要尊重场地和奖励规则。"
+      },
+      "reward": {
+        "type": "badge",
+        "title": "黎刹公园探索者",
+        "value": "rizal-park-discovery",
+        "icon": "🏆",
+        "description": "兑现方式：设计者在终点向完成任务的玩家发放预先准备的小礼物或纪念卡。正式游玩前填写领取地点和负责人。"
+      }
+    }
+  ]
+}
