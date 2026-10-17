@@ -1,41 +1,32 @@
 #!/usr/bin/env node
 /**
- * scripts/cloud-publish.mjs - 把发布通道里**已批准**的游戏包落进仓库内容层。
+ * scripts/cloud-publish.mjs - 维护者工具：检查发布通道里的内容。
  *
- * 为什么必须有这一步：线上站点是从 Git 构建的只读部署，任何「在线写入」都不会
- * 变成玩家能看到的内容。所以「发布」的最后一公里只能是一次可审计的提交。
+ * 2026-10-17 起，正式发布数据存在 **Vercel Blob**，不再写进仓库的 content/。
+ * 因此这个脚本原来的「把包落进 content/ 并提交」已经没有意义了——那样做会
+ * 在仓库里再造一份会漂移的副本。现在它做三件只读的事：
  *
- * 用法：
- *   npm run cloud:publish -- <token 或 /api/cloud/games/<token> 或完整 URL> [--publish] [--dry-run]
+ *   npm run cloud:publish -- <token 或 /api/cloud/games/<token> 或完整 URL>
+ *     用发布凭据取回那一版包体，复核摘要与结构（用于排错、留档）。
  *
- *   --publish   目录条目状态写 published（默认 draft：只落库，不上玩家目录）
- *   --dry-run   只打印将要发生的改动，不写文件
+ *   npm run cloud:publish -- --list
+ *     列出 store 里已发布的游戏（id、摘要、站数、发布时间）。
  *
- * 它做的事：
- *   1. 把令牌换成包体（GET /api/cloud/games/<token>）——包体来自服务端存储，
- *      不是命令行里传进来的任意文件，因此「落库内容」与「被批准的摘要」一致。
- *   2. 复核摘要、重新跑一遍游戏包校验（服务端可能被替换，本地再验一次不贵）。
- *   3. 写 content/<packFile>，并合并 content/cloud/catalog.json 条目。
- *   4. 打印下一步：git diff / 提交到功能分支 / 开 PR。
+ *   npm run cloud:publish -- --show <gameId>
+ *     打印某个已发布游戏的当前版本摘要与元数据。
  *
- * 安全：脚本本身不持有任何密钥，只持有一个有时效的发布令牌。
+ * 为什么只读：发布已经通过接口完成，改动内容只能通过「重新发布」这个动作，
+ * 这样每次变更都有摘要、有令牌、有审计记录，而不是某台机器上的一次手工编辑。
+ *
+ * 安全：脚本不持有发布密钥，只用发布凭据（有时效）或本地只读存储凭据。
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import process from "node:process";
-// 静态 import（而不是运行时 await import）：这样 esbuild 在构建期就把
-// lib/game/package.ts 打进单文件产物，CLI 与应用共用同一套校验逻辑。
-import { validateGamePackage } from "../lib/game/package.ts";
 
-const root = process.cwd();
 const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith("--")));
 const positional = args.filter((a) => !a.startsWith("--"));
-
-const dryRun = flags.has("--dry-run");
-const publish = flags.has("--publish");
 
 function die(message, code = 1) {
   console.error("✗ " + message);
@@ -50,122 +41,137 @@ function sha256(text) {
 function resolveUrl(input) {
   const value = input.trim();
   if (value.startsWith("http://") || value.startsWith("https://")) return value;
-  if (value.startsWith("/")) {
-    const base = process.env.MOS_CLOUD_BASE_URL ?? "http://127.0.0.1:3000";
-    return new URL(value, base).toString();
-  }
   const base = process.env.MOS_CLOUD_BASE_URL ?? "http://127.0.0.1:3000";
+  if (value.startsWith("/")) return new URL(value, base).toString();
   return new URL(`/api/cloud/games/${encodeURIComponent(value)}`, base).toString();
 }
 
-if (positional.length === 0) {
-  die(
-    "缺少发布令牌。用法：npm run cloud:publish -- <token 或 /api/cloud/games/<token> 或完整 URL> [--publish] [--dry-run]",
-    2,
-  );
-}
+/* ------------------------------------------------------------------ */
+/* --list / --show：直接读存储（需要本机有只读/读写 token）             */
+/* ------------------------------------------------------------------ */
 
-const url = resolveUrl(positional[0]);
-console.log("→ 取回已批准的游戏包：" + url);
-
-let response;
-try {
-  response = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
-} catch (error) {
-  die(`网络请求失败：${error instanceof Error ? error.message : String(error)}`);
-}
-
-const bodyText = await response.text();
-if (!response.ok) {
-  let detail = bodyText.slice(0, 300);
-  try {
-    const parsed = JSON.parse(bodyText);
-    detail = parsed.message ?? detail;
-  } catch {
-    /* 非 JSON 错误体，直接用原文 */
+async function loadStore() {
+  // 动态 import：只有 --list / --show 才需要 SDK，取回凭据不需要。
+  const store = await import("../lib/cloud/blob-store.ts");
+  const config = store.readBlobConfig();
+  if (!config.configured) {
+    die(config.reason + "\n  本机请设置 BLOB_READ_WRITE_TOKEN 后重试（不要把它提交进仓库）。");
   }
-  die(`服务端拒绝（HTTP ${response.status}）：${detail}`);
+  return store;
 }
 
-let game;
-try {
-  game = JSON.parse(bodyText);
-} catch {
-  die("服务端返回的不是合法 JSON；可能取到了登录页或错误页。");
+async function listPublished() {
+  const store = await loadStore();
+  const index = await store.readIndex();
+  const entries = Object.entries(index.games);
+  if (entries.length === 0) {
+    console.log("存储里还没有已发布的内容。");
+    return;
+  }
+  console.log(`已发布 ${entries.length} 款：`);
+  for (const [id, pointer] of entries.sort((a, b) => a[0].localeCompare(b[0]))) {
+    console.log(
+      `  ${id}\n    ${pointer.title} · ${pointer.sceneCount} 站 · 摘要 ${pointer.digest.slice(0, 12)}… · ` +
+        `发布 ${pointer.publishedAt.slice(0, 10)}`,
+    );
+  }
+
+  const drafts = await store.readDrafts();
+  const draftOnly = drafts.games.filter((item) => !index.games[item.id]);
+  if (draftOnly.length > 0) {
+    console.log(`\n草稿（玩家看不到）${draftOnly.length} 款：`);
+    for (const item of draftOnly) {
+      console.log(`  ${item.id} · ${item.title} · 收到 ${item.receivedAt.slice(0, 10)}`);
+    }
+  }
 }
 
-// 复核：令牌声明的 id 必须与包体一致。
-const headerId = response.headers.get("x-publish-game-id");
-if (headerId && game?.id !== headerId) {
-  die(`包体 id（${game?.id}）与凭据声明的 id（${headerId}）不一致，已中止。`);
-}
-if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(String(game?.id ?? ""))) {
-  die(`游戏 id 不合法：${JSON.stringify(game?.id)}`);
-}
-
-const digest = sha256(bodyText);
-console.log(`  游戏：${game.title}（${game.id}）· ${game.scenes?.length ?? "?"} 站 · 摘要 ${digest.slice(0, 12)}…`);
-
-// 本地再跑一次校验：直接用应用自己的规则（由 scripts/build-cloud-publish.mjs 打包进来）。
-const report = validateGamePackage(game);
-const errors = report.issues.filter((issue) => issue.severity === "error");
-if (!report.game || errors.length > 0) {
-  die("包体未通过本地校验：" + (errors[0]?.message ?? "无法解析"));
-}
-
-const packPath = path.join(root, "content", `${game.id}.json`);
-const catalogPath = path.join(root, "content", "cloud", "catalog.json");
-const desiredStatus = publish ? "published" : "draft";
-
-if (!existsSync(catalogPath)) die(`找不到目录文件：${catalogPath}`);
-let catalog;
-try {
-  catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
-} catch (error) {
-  die(`目录文件不是合法 JSON：${error instanceof Error ? error.message : String(error)}`);
-}
-if (!Array.isArray(catalog.games)) die("目录文件缺少 games 数组。");
-
-const existing = catalog.games.find((entry) => entry.id === game.id);
-if (existing && existing.packFile && existing.packFile !== `${game.id}.json`) {
-  die(`id 冲突：目录中已有「${existing.id}」使用 ${existing.packFile}，拒绝覆盖。`);
+async function showGame(gameId) {
+  const store = await loadStore();
+  const index = await store.readIndex();
+  const pointer = index.games[gameId];
+  if (!pointer) {
+    die(`已发布索引里没有「${gameId}」。用 --list 看现有条目。`);
+  }
+  const text = await store.readPublishedPack(gameId, pointer.digest);
+  if (text === null) {
+    die(`索引指向的包体不存在（${pointer.pathname}），存储可能被清理过。`);
+  }
+  const actual = sha256(text);
+  console.log(`游戏：${pointer.title}（${gameId}）`);
+  console.log(`  当前版本摘要：${pointer.digest}`);
+  console.log(`  实际内容摘要：${actual}  ${actual === pointer.digest ? "✓ 吻合" : "✗ 不吻合（数据被改过）"}`);
+  console.log(`  站数：${pointer.sceneCount} · 发布：${pointer.publishedAt} · 首次收到：${pointer.receivedAt}`);
+  console.log(`  提醒条数：${pointer.warningCount}`);
+  if (actual !== pointer.digest) process.exit(1);
 }
 
-const entry = {
-  id: game.id,
-  title: game.title,
-  author: game.author ?? "MOS Scene Hunt",
-  description: game.description,
-  language: game.language ?? "zh-CN",
-  ...(game.estimatedMinutes ? { estimatedMinutes: game.estimatedMinutes } : {}),
-  ...(game.difficulty ? { difficulty: game.difficulty } : {}),
-  sceneCount: game.scenes.length,
-  status: desiredStatus,
-  packFile: `${game.id}.json`,
-  ...(desiredStatus === "published" ? { publishedAt: new Date().toISOString().slice(0, 10) } : {}),
-};
+/* ------------------------------------------------------------------ */
+/* 取回凭据：复核某一版内容                                            */
+/* ------------------------------------------------------------------ */
 
-const nextCatalog = {
-  ...catalog,
-  updatedAt: new Date().toISOString().slice(0, 10),
-  games: existing
-    ? catalog.games.map((item) => (item.id === game.id ? { ...item, ...entry } : item))
-    : [...catalog.games, entry],
-};
+async function fetchByToken(input) {
+  const url = resolveUrl(input);
+  console.log("→ 取回已批准的游戏包：" + url);
 
-console.log(`\n${dryRun ? "（试运行，不写文件）" : ""}将执行：`);
-console.log(`  写入 ${path.relative(root, packPath)}（${Buffer.byteLength(bodyText)} 字节）`);
-console.log(`  ${existing ? "更新" : "新增"}目录条目：${game.id} → status=${desiredStatus}`);
+  let response;
+  try {
+    response = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+  } catch (error) {
+    die(`网络请求失败：${error instanceof Error ? error.message : String(error)}`);
+  }
 
-if (dryRun) process.exit(0);
+  const bodyText = await response.text();
+  if (!response.ok) {
+    let detail = bodyText.slice(0, 300);
+    try {
+      detail = JSON.parse(bodyText).message ?? detail;
+    } catch {
+      /* 非 JSON 错误体，直接用原文 */
+    }
+    die(`服务端拒绝（HTTP ${response.status}）：${detail}`);
+  }
 
-writeFileSync(packPath, bodyText, "utf8");
-writeFileSync(catalogPath, JSON.stringify(nextCatalog, null, 2) + "\n", "utf8");
+  let game;
+  try {
+    game = JSON.parse(bodyText);
+  } catch {
+    die("服务端返回的不是合法 JSON；可能取到了登录页或错误页。");
+  }
 
-console.log("\n✓ 已落库。下一步（请由维护者确认后执行）：");
-console.log("  git add content/ && git status --short");
-console.log(`  git commit -m "content: ${desiredStatus === "published" ? "publish" : "stage"} ${game.id}"`);
-console.log("  git push origin <功能分支>   # 通过 PR 合并，Vercel 会为新提交生成部署");
-if (!publish) {
-  console.log("\n  注意：本次以 draft 落库，玩家看不到。确认内容无误后加 --publish 重新落库，或直接改目录状态。");
+  const headerId = response.headers.get("x-publish-game-id");
+  if (headerId && game?.id !== headerId) {
+    die(`包体 id（${game?.id}）与凭据声明的 id（${headerId}）不一致，已中止。`);
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(String(game?.id ?? ""))) {
+    die(`游戏 id 不合法：${JSON.stringify(game?.id)}`);
+  }
+
+  const digest = sha256(bodyText);
+  console.log(`  游戏：${game.title}（${game.id}）· ${game.scenes?.length ?? "?"} 站 · 摘要 ${digest.slice(0, 12)}…`);
+
+  const { validateGamePackage } = await import("../lib/game/package.ts");
+  const report = validateGamePackage(game);
+  const errors = report.issues.filter((issue) => issue.severity === "error");
+  if (!report.game || errors.length > 0) {
+    die("包体未通过本地校验：" + (errors[0]?.message ?? "无法解析"));
+  }
+  console.log("✓ 结构校验通过（会话与答案字段随包分发，这不是秘密）。");
+}
+
+/* ------------------------------------------------------------------ */
+
+if (flags.has("--list")) {
+  await listPublished();
+} else if (flags.has("--show")) {
+  if (positional.length === 0) die("用法：npm run cloud:publish -- --show <gameId>", 2);
+  await showGame(positional[0]);
+} else if (positional.length > 0) {
+  await fetchByToken(positional[0]);
+} else {
+  console.log(`用法：
+  npm run cloud:publish -- <token|URL>     复核某一版发布凭据对应的内容
+  npm run cloud:publish -- --list          列出已发布与草稿
+  npm run cloud:publish -- --show <gameId> 查看某个游戏当前版本`);
+  process.exit(2);
 }

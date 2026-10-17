@@ -1,27 +1,23 @@
 /**
- * lib/cloud/publish - 云端发布的**服务端核心**（第一批：云端闭环）。
+ * lib/cloud/publish - 云端发布的**服务端核心**。
  *
- * 事实前提（2026-10-17 基线）：
- *   1. 云端游戏目录是一个仓库内的文件 `content/cloud/catalog.json`，游戏包是
- *      `content/*.json`。Vercel 从 GitHub 构建，因此「云端内容」= 仓库里的提交。
- *   2. 本项目**没有**登录系统，也**没有**数据库 / Blob 存储。
+ * 链路（2026-10-17 起改为持久化存储）：
  *
- * 所以「云端写入」只能落在版本化的内容层，而不是在线数据库。要做到「安全发布且
- * 不暴露服务器密钥」，唯一诚实的做法是：
+ *   电脑创作 → 浏览器提交游戏包
+ *     → POST /api/cloud/games（逐层校验 + 规范化 + 幂等摘要）
+ *     → 包体、元数据、目录写入 **Vercel Blob**（不是函数文件系统）
+ *     → 服务端签发短时 HMAC 发布令牌（令牌只含被批准内容的 sha256，不含密钥）
+ *     → 手机在 /games 里从目录发现 → 下载 → 存入本机 → 开始玩
  *
- *   浏览器提交游戏包
- *     → POST /api/cloud/games（逐层校验 + 规范化 + 幂等指纹）
- *     → 服务端签发**短时 HMAC 发布令牌**（令牌只含被批准内容的 sha256，不含密钥）
- *     → GET /api/cloud/games/<token> 以令牌为凭据返回已批准的游戏包
- *     → 维护者用 `npm run cloud:publish -- <token 或 URL>` 把包落到 content/
- *     → GitHub 提交 / PR → Vercel 构建 → 手机在 /games 里下载
+ * 仓库内容层 `content/` 现在只承载「随构建发布的官方内容」，发布接口不写它。
  *
  * 关键安全性质：
- *   - 环境里**没有**密钥时，POST 一律 503，不会静默降级成「谁都能写」。
+ *   - Blob 未接入 / 密钥缺失时，POST 一律 503，不会静默降级成「谁都能写」，
+ *     也不会退化成「写临时盘然后假装成功」。
  *   - 令牌是 HMAC 签名的，客户端无法伪造成「已审批」的内容；令牌只携带摘要，
- *     真正的包体由服务端按令牌从自己的存储里取，篡改令牌只会导致验签失败。
+ *     真正的包体由服务端按令牌从存储里取，篡改令牌只会导致验签失败。
  *   - 令牌有有效期，且只对「被批准的那一版内容」有效。
- *   - 发布是显式的维护者动作（本地 CLI），不会因为某个 HTTP 请求就改动线上站点。
+ *   - 是否直接进玩家目录由服务端开关决定（见 directPublishEnabled），默认只进草稿。
  *
  * 本文件只做纯函数 + Node 内置 crypto，不碰 React，可在 vitest 里直接单测。
  */
@@ -38,11 +34,13 @@ import { MOS_GAME_PACKAGE_FORMAT, validateGamePackage } from "@/lib/game/package
 export const CATALOG_VERSION = "1.0";
 
 /**
- * 内容层目录。发布接口自身的存储只放「待落库的已批准包」与目录条目草稿，
- * 不参与线上目录读取——线上目录仍然只认 `content/cloud/catalog.json`。
+ * 仓库内容层目录里已废弃的发布存储路径。
+ *
+ * 第一批实现把待落库的包写在函数文件系统的这里；Vercel 的函数文件系统是临时的，
+ * 那条路走不通，已整体改为 Blob。保留这个常量只为让 .gitignore 与旧部署的清理
+ * 脚本有据可依，业务代码不再读写它。
  */
 export const PUBLISH_STORE_DIR = "content/cloud/publish-store";
-export const PUBLISH_STORE_CATALOG = `${PUBLISH_STORE_DIR}/catalog-entries.json`;
 
 /** 单个游戏包的上限。超大的包既不适合放进仓库，也会拖慢手机下载。 */
 export const MAX_PACKAGE_BYTES = 512 * 1024;
@@ -275,6 +273,22 @@ const TOP_LEVEL_KEY_ORDER = [
 /* ------------------------------------------------------------------ */
 /* 发布令牌（HMAC）                                                     */
 /* ------------------------------------------------------------------ */
+
+/**
+ * 是否允许「发布即上线」（跳过草稿审核，直接进玩家目录）。
+ *
+ * 默认关闭。打开需要两个条件同时成立：
+ *   1. 服务端显式设置 `MOS_CLOUD_ALLOW_DIRECT_PUBLISH=1`；
+ *   2. 发布请求本身携带 `?publish=1`（或请求体 `"publish": true`）。
+ *
+ * 为什么默认关闭：发布通道是预共享密钥，不是账号体系，无法区分「谁」提交了什么。
+ * 默认走草稿，玩家目录只会因为一次显式的、可审计的发布动作而变化；想省掉
+ * 人工确认的部署，可以显式打开这个开关，但那时「谁拿得到密钥，谁就能上线内容」
+ * 就是你要接受的风险。
+ */
+export function directPublishEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return (env.MOS_CLOUD_ALLOW_DIRECT_PUBLISH ?? "").trim() === "1";
+}
 
 /**
  * 读取签名密钥。

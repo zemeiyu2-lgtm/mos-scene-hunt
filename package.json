@@ -19,6 +19,7 @@
     "test:acceptance:only": "node tests/e2e/run-e2e.mjs"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.2",
     "idb-keyval": "^6.2.1",
     "leaflet": "^1.9.4",
     "next": "16.4.2",

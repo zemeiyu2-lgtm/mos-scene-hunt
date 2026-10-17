@@ -23,8 +23,9 @@ npm start
 测试：
 
 ```bash
-npm test                    # 单元测试（80 项）
+npm test                    # 单元测试
 node tests/e2e/run.mjs      # 端到端验收（40 项，自动构建并启停服务器）
+node tests/e2e/cloud-loop-http.mjs --base http://127.0.0.1:3210   # 云端发布 HTTP 闭环（30 项）
 ```
 
 > 验收构建会自动注入 `NEXT_PUBLIC_ENABLE_GPS_SIMULATOR=1`（DEV 定位模拟器的显式开关）。生产默认不注入，模拟器按设计惰性。
@@ -76,6 +77,52 @@ scene-hunt/
 ├─ tests/                # 单元测试 + E2E 验收
 └─ docs/                 # 架构/数据模式/许可证/测试报告
 ```
+
+## 云端发布（创作 → 发布 → 手机获取）
+
+正式发布的游戏包、发布元数据与玩家目录都存放在 **Vercel Blob**（对象存储），
+不写服务器文件系统——Vercel 的函数文件系统是临时的，写进去的东西下一个请求可能就没了。
+
+| 目的 | 位置 |
+| --- | --- |
+| 包体（按内容摘要寻址，不可变） | `scene-hunt/games/<id>/<digest>.json` |
+| 该版本元数据 | `scene-hunt/games/<id>/<digest>.meta.json` |
+| 已发布指针（唯一可变，条件写入） | `scene-hunt/indexes/games.json` |
+| 待审核草稿（玩家不可见） | `scene-hunt/drafts/catalog.json` |
+
+玩家侧路径不变：目录 `/content/cloud/catalog.json`，下载 `/content/<id>.json`。
+仓库内容层 `content/*.json` 仍然存在，作为随构建发布的官方/静态内容，
+与云端条目合并后对外呈现（同 id 以云端已发布版本为准）。
+
+服务端环境变量：
+
+| 变量 | 必需 | 说明 |
+| --- | --- | --- |
+| `BLOB_READ_WRITE_TOKEN` | 是 | 在 Vercel 项目里接入 Blob store 后自动注入。缺失时发布接口返回 503 失败关闭，不会退化成本地写盘。也可用 `VERCEL_OIDC_TOKEN` + `BLOB_STORE_ID`。 |
+| `MOS_CLOUD_PUBLISH_KEY` | 是 | 发布者持有的预共享密钥（≥16 位），以 `Authorization: Bearer <key>` 提交。 |
+| `MOS_CLOUD_PUBLISH_SECRET` | 是 | 服务端签发发布凭据的 HMAC 密钥（≥32 位），永不外泄。 |
+| `MOS_CLOUD_ALLOW_DIRECT_PUBLISH` | 否 | 设为 `1` 时，发布请求带 `?publish=1` 才会直接进玩家目录。默认只进草稿。 |
+
+发布与复核：
+
+```bash
+# 发布（默认进草稿，玩家看不到）
+curl -X POST "$BASE/api/cloud/games" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $MOS_CLOUD_PUBLISH_KEY" \
+  --data-binary @game.json
+
+# 直接上线（需服务端开启 MOS_CLOUD_ALLOW_DIRECT_PUBLISH=1）
+curl -X POST "$BASE/api/cloud/games?publish=1" ...
+
+# 用返回的凭据复核某一版；--list 列出已发布内容
+npm run cloud:publish -- --list
+npm run cloud:publish -- --show <gameId>
+```
+
+本机没有 Blob 凭据时，可设 `MOS_CLOUD_BLOB_MEMORY=1` 启动，用进程内存后端跑通接口与链路
+（**不持久化**，仅用于联调；接口自述会如实标注 `storage: memory-ephemeral`）。
+任何 Vercel 部署中该分支都不可达。
 
 ## 文档
 

@@ -1,0 +1,222 @@
+{
+  "base": "http://127.0.0.1:3211",
+  "at": "2026-10-17T11:33:19.500Z",
+  "total": 30,
+  "passed": 30,
+  "failed": 0,
+  "results": [
+    {
+      "name": "GET 接口自述",
+      "expected": 200,
+      "actual": 200,
+      "pass": true,
+      "extra": "enabled=true"
+    },
+    {
+      "name": "自述不泄露密钥",
+      "expected": true,
+      "actual": true,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "未带发布密钥被拒绝",
+      "expected": 401,
+      "actual": 401,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "错误发布密钥被拒绝",
+      "expected": 403,
+      "actual": 403,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "被拒绝后通道状态未变化",
+      "expected": true,
+      "actual": true,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "结构性错误被拒绝",
+      "expected": 422,
+      "actual": 422,
+      "pass": true,
+      "extra": "1 条问题"
+    },
+    {
+      "name": "非 JSON 被拒绝",
+      "expected": 400,
+      "actual": 400,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "0,0 占位坐标被拒绝",
+      "expected": 422,
+      "actual": 422,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "路径穿越型 id 被拒绝",
+      "expected": 422,
+      "actual": 422,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "合法游戏包被接收",
+      "expected": 202,
+      "actual": 202,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "返回内容摘要",
+      "expected": true,
+      "actual": true,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "目录条目为 draft（不会自动上线）",
+      "expected": "draft",
+      "actual": "draft",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "返回获取入口",
+      "expected": true,
+      "actual": true,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "同内容重复提交仍被接受",
+      "expected": 202,
+      "actual": 202,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "摘要与首次一致",
+      "expected": "d8bbe38253ba450f337a7d8c743005f6a790aff0cbccb021c9d2efde2720328f",
+      "actual": "d8bbe38253ba450f337a7d8c743005f6a790aff0cbccb021c9d2efde2720328f",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "明确告知内容未变",
+      "expected": true,
+      "actual": true,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "有效凭据可取回",
+      "expected": 200,
+      "actual": 200,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "取回内容摘要与发布一致",
+      "expected": "d8bbe38253ba450f337a7d8c743005f6a790aff0cbccb021c9d2efde2720328f",
+      "actual": "d8bbe38253ba450f337a7d8c743005f6a790aff0cbccb021c9d2efde2720328f",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "取回的游戏 id 一致",
+      "expected": "acceptance-cloud-loop",
+      "actual": "acceptance-cloud-loop",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "取回的站点逐一一致",
+      "expected": "[\"s1\",\"s2\",\"s3\"]",
+      "actual": "[\"s1\",\"s2\",\"s3\"]",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "取回的坐标逐点一致",
+      "expected": "[{\"lat\":14.58305,\"lng\":120.97936,\"radius\":25,\"name\":\"Rizal Monument\"},{\"lat\":14.58345,\"lng\":120.9798,\"radius\":25,\"name\":\"公园花园\"},{\"lat\":14.58385,\"lng\":120.9802,\"radius\":25,\"name\":\"树荫长椅\"}]",
+      "actual": "[{\"lat\":14.58305,\"lng\":120.97936,\"radius\":25,\"name\":\"Rizal Monument\"},{\"lat\":14.58345,\"lng\":120.9798,\"radius\":25,\"name\":\"公园花园\"},{\"lat\":14.58385,\"lng\":120.9802,\"radius\":25,\"name\":\"树荫长椅\"}]",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "取回的题目与答案一致",
+      "expected": "[{\"type\":\"choice\",\"question\":\"这座纪念碑纪念的是谁？\",\"options\":[\"黎刹\",\"博尼法西奥\"],\"answer\":0},{\"type\":\"keyword\",\"question\":\"写下一个你听到的声音\",\"answer\":[\"风\",\"鸟鸣\",\"脚步\"]},{\"type\":\"text\",\"question\":\"今天你带走了什么？\",\"answer\":[\"平安\"]}]",
+      "actual": "[{\"type\":\"choice\",\"question\":\"这座纪念碑纪念的是谁？\",\"options\":[\"黎刹\",\"博尼法西奥\"],\"answer\":0},{\"type\":\"keyword\",\"question\":\"写下一个你听到的声音\",\"answer\":[\"风\",\"鸟鸣\",\"脚步\"]},{\"type\":\"text\",\"question\":\"今天你带走了什么？\",\"answer\":[\"平安\"]}]",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "响应头带游戏 id",
+      "expected": "acceptance-cloud-loop",
+      "actual": "acceptance-cloud-loop",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "伪造凭据被拒绝",
+      "expected": 401,
+      "actual": 401,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "畸形凭据被拒绝",
+      "expected": 400,
+      "actual": 400,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "空载荷凭据被拒绝",
+      "expected": 400,
+      "actual": 400,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "线上目录仍可读",
+      "expected": 200,
+      "actual": 200,
+      "pass": true,
+      "extra": "1 个条目"
+    },
+    {
+      "name": "验收包没有被自动写进线上目录",
+      "expected": false,
+      "actual": false,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "官方 Rizal Park 包仍可读",
+      "expected": 200,
+      "actual": 200,
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "内容路由仍拒绝路径穿越",
+      "expected": [
+        400,
+        404
+      ],
+      "actual": 404,
+      "pass": true,
+      "extra": ""
+    }
+  ]
+}

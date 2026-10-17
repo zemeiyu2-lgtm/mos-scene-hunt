@@ -1,211 +1,230 @@
 /**
- * lib/cloud/publish-store - 发布通道的服务端存储（只在 Node 环境使用）。
+ * lib/cloud/publish-store - 发布通道的服务端存储门面（持久化版）。
  *
- * 存三类东西：
- *   content/cloud/publish-store/<digest>.json   已通过校验的待落库游戏包（按内容摘要命名，天然去重）
- *   content/cloud/publish-store/<digest>.meta.json  授权记录（谁、何时、哪个 id），便于审计
- *   content/cloud/publish-store/catalog-entries.json 待合并进线上目录的**草稿**条目
+ * 这里**不再**把发布数据写进函数文件系统。Vercel 的函数文件系统是临时的：
+ * 写进去的东西下一个请求可能就没了，重新部署更是必然丢失。正式发布数据
+ * （包体、元数据、目录索引）一律落在 Vercel Blob，见 `lib/cloud/blob-store.ts`。
  *
- * 为什么不用 Blob / 数据库：本机与当前部署都没有对应凭据，而线上只有只读文件系统。
- * 把已批准的包写进 Vercel 的临时文件系统会在下次部署后丢失，所以写盘只用于
- * 「本机/自托管 Node 进程内的过渡存储」，并由 GET 以令牌取回；
- * 真正的持久化是维护者用 `npm run cloud:publish` 落进 `content/` 并提交。
+ * 仓库内容层 `content/` 仍然保留，但角色变了：
+ *   - 它是**随构建发布的官方内容**（静态示范游戏），只读；
+ *   - 发布接口不会去写它（函数里也写不了），所以「发布」不会污染 Git 工作区。
  *
- * 目录条目一律以 `draft` 落库：发布接口无法区分「谁」提交了什么，只有维护者在
- * 落库时显式把 status 改成 published，才可能出现在玩家可见的云端目录里。
+ * 本文件把「读哪个、写哪个、什么情况下算可下载」收在一处，route handler 与
+ * 测试都只依赖这些函数，换存储实现时不需要改业务逻辑。
  */
 
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import {
-  PUBLISH_STORE_CATALOG,
-  PUBLISH_STORE_DIR,
-  type AcceptedPackage,
-  type CatalogDraft,
-  type ExistingCatalogEntry,
-} from "./publish-server";
+  type IndexSnapshot,
+  type PackPointer,
+  type StoreIndex,
+  pointerPathnameFor,
+  readIndex,
+  readPackMeta,
+  readPublishedPack,
+  updateIndexEntry,
+  writePack,
+} from "./blob-store";
+import { type RawCatalogEntry, pointerToCatalogEntry } from "./catalog-source";
 
-function storeDir(root = process.cwd()): string {
-  return path.join(root, PUBLISH_STORE_DIR);
+/** 索引读取结果的类型别名，供 route handler 使用。 */
+export type { IndexSnapshot };
+
+/** 与 `app/content/[file]` 路由使用同一套文件名约束，避免两边规则漂移。 */
+const SAFE_PACK_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.json$/;
+
+export function contentDir(root = process.cwd()): string {
+  return path.join(root, "content");
 }
 
-function packagePath(digest: string, root = process.cwd()): string {
-  return path.join(storeDir(root), `${digest}.json`);
+export function isSafePackFile(file: unknown): file is string {
+  return typeof file === "string" && SAFE_PACK_FILE.test(file) && !file.includes("..");
 }
 
-function metaPath(digest: string, root = process.cwd()): string {
-  return path.join(storeDir(root), `${digest}.meta.json`);
+/* ------------------------------------------------------------------ */
+/* 仓库内容层（只读）                                                   */
+/* ------------------------------------------------------------------ */
+
+/** 读取仓库内容层的目录条目。目录缺失或损坏时返回空数组 + 错误说明。 */
+export async function readRepoCatalog(
+  root = process.cwd(),
+): Promise<{ entries: RawCatalogEntry[]; error?: string }> {
+  const file = path.join(contentDir(root), "cloud", "catalog.json");
+  let raw: string;
+  try {
+    raw = await readFile(file, "utf8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") return { entries: [] };
+    return { entries: [], error: "服务器无法读取仓库内容目录。" };
+  }
+  try {
+    const parsed = JSON.parse(raw) as { games?: unknown };
+    const entries = Array.isArray(parsed.games) ? (parsed.games as RawCatalogEntry[]) : [];
+    return { entries };
+  } catch {
+    return { entries: [], error: "仓库内容目录（content/cloud/catalog.json）不是合法 JSON。" };
+  }
 }
 
-export interface StoredPackageMeta {
-  digest: string;
+/** 读取仓库内容层里的包体。不存在返回 null。 */
+export async function readRepoPack(packFile: string, root = process.cwd()): Promise<string | null> {
+  if (!isSafePackFile(packFile)) return null;
+  try {
+    return await readFile(path.join(contentDir(root), packFile), "utf8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") return null;
+    throw err;
+  }
+}
+
+/**
+ * 仓库里的包体是否可用：文件存在 + 能解析 + 包内 id 与条目一致。
+ *
+ * 第三条不是多余的：目录写错（复制粘贴别人的条目）时，玩家点了下载才会拿到
+ * 一个不是他要的游戏。宁可目录少一条，也不要给一个错链接。
+ */
+export async function repoPackUsable(entry: RawCatalogEntry, root = process.cwd()): Promise<boolean> {
+  if (!isSafePackFile(entry.packFile)) return false;
+  const file = path.join(contentDir(root), entry.packFile);
+  try {
+    const info = await stat(file);
+    if (!info.isFile()) return false;
+    const parsed = JSON.parse(await readFile(file, "utf8")) as { id?: unknown };
+    return parsed?.id === entry.id;
+  } catch {
+    return false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 已发布索引                                                          */
+/* ------------------------------------------------------------------ */
+
+/** 读取「已发布」索引。存储未接入时返回空索引（目录仍然要能用）。 */
+export async function readPublishedIndex(): Promise<StoreIndex> {
+  return readIndex();
+}
+
+/** 把索引转成目录条目。 */
+export function indexToCatalogEntries(index: StoreIndex, drafts: RawCatalogEntry[] = []): RawCatalogEntry[] {
+  const byId = new Map<string, RawCatalogEntry>();
+  for (const draft of drafts) byId.set(draft.id, draft);
+  return Object.entries(index.games).map(([gameId, pointer]) => {
+    const extra = byId.get(gameId);
+    return pointerToCatalogEntry(gameId, pointer, {
+      author: typeof extra?.author === "string" ? extra.author : undefined,
+      description: typeof extra?.description === "string" ? extra.description : undefined,
+      language: typeof extra?.language === "string" ? extra.language : undefined,
+      estimatedMinutes: typeof extra?.estimatedMinutes === "number" ? extra.estimatedMinutes : undefined,
+      difficulty: typeof extra?.difficulty === "string" ? extra.difficulty : undefined,
+    });
+  });
+}
+
+/** Blob 里的包体是否可用：存在 + 摘要吻合 + 包内 id 与条目一致。 */
+export async function blobPackUsable(entry: RawCatalogEntry): Promise<boolean> {
+  const digest = typeof entry.digest === "string" ? entry.digest : "";
+  if (!/^[0-9a-f]{64}$/.test(digest)) return false;
+  try {
+    const text = await readPublishedPack(entry.id, digest);
+    if (text === null) return false;
+    const parsed = JSON.parse(text) as { id?: unknown };
+    return parsed?.id === entry.id;
+  } catch {
+    // 存储瞬时故障时不要把条目当作可下载：给玩家一个会失败的按钮更糟。
+    return false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 发布写入                                                            */
+/* ------------------------------------------------------------------ */
+
+export interface PublishWriteInput {
   gameId: string;
-  packFile: string;
+  digest: string;
+  body: string;
   title: string;
   sceneCount: number;
-  receivedAt: string;
-  /** 提交时的提醒条数，落库时供维护者复核。 */
   warningCount: number;
-  /** 该包在目录里应出现的状态。接口永远写 draft，维护者落库时改成 published。 */
-  status: "draft";
+  /** 草稿目录条目（玩家不可见，供维护者核对）。 */
+  draft: Record<string, unknown> & { id: string; digest: string };
+  /**
+   * 是否同时发布到玩家目录。
+   *
+   * 默认 false（只进草稿）。置为 true 需要服务端显式开启「直接发布」开关，
+   * 语义见 `lib/cloud/publish-server.verifyPublisherAuth`。
+   */
+  publishNow: boolean;
 }
 
-/** 读取已批准的游戏包原文。找不到返回 null（由调用方决定 404 语义）。 */
-export async function readStoredPackage(digest: string, root = process.cwd()): Promise<string | null> {
-  try {
-    return await readFile(packagePath(digest, root), "utf8");
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") return null;
-    throw err;
-  }
-}
-
-export async function readStoredMeta(digest: string, root = process.cwd()): Promise<StoredPackageMeta | null> {
-  try {
-    return JSON.parse(await readFile(metaPath(digest, root), "utf8")) as StoredPackageMeta;
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") return null;
-    throw err;
-  }
-}
-
-export interface StoreResult {
-  /** 本次是否新建了存储条目（false = 同内容已存在，幂等）。 */
+export interface PublishWriteResult {
   created: boolean;
-  meta: StoredPackageMeta;
+  /** 玩家目录里的状态。 */
+  catalogStatus: "draft" | "published";
+  pointer: PackPointer;
+  repeated: boolean;
 }
 
 /**
- * 保存已批准的游戏包。
+ * 写入一次发布。
  *
- * 以摘要为文件名，所以「同内容重复提交」不会产生第二份，也不会互相覆盖。
+ * 顺序刻意如此：
+ *   1. 先写不可变的包体与元数据（按摘要寻址，失败也只是留下垃圾）；
+ *   2. 再写草稿目录（给维护者看）；
+ *   3. 只有 publishNow 时才改已发布索引（这一步才影响玩家）。
+ *
+ * 任何一步抛错，前面的写入都保持有效但不改变「玩家看得见什么」——因为索引
+ * 是最后写的，也是唯一被目录读取的可变状态。
  */
-export async function storeAcceptedPackage(
-  accepted: AcceptedPackage,
-  root = process.cwd(),
-  now: Date = new Date(),
-): Promise<StoreResult> {
-  const digest = accepted.digest;
-  const existing = await readStoredMeta(digest, root);
-  await mkdir(storeDir(root), { recursive: true });
-
-  // 先写包体再写 meta：读的一方只认 meta，避免出现「有 meta、没包体」的窗口。
-  const bodyExists = (await readStoredPackage(digest, root)) !== null;
-  if (!bodyExists) {
-    await writeAtomic(packagePath(digest, root), accepted.canonicalJson);
-  }
-
-  const meta: StoredPackageMeta = {
-    digest,
-    gameId: accepted.game.id,
-    packFile: accepted.packFile,
-    title: accepted.game.title,
-    sceneCount: accepted.game.scenes.length,
-    receivedAt: existing?.receivedAt ?? now.toISOString(),
-    warningCount: accepted.warnings.length,
-    status: "draft",
+export async function writePublishedGame(input: PublishWriteInput, now: Date = new Date()): Promise<PublishWriteResult> {
+  const existingMeta = await readPackMeta(input.gameId, input.digest);
+  const pointer: PackPointer = {
+    digest: input.digest,
+    pathname: pointerPathnameFor(input.gameId, input.digest),
+    // receivedAt 在重复提交时保持不变，publishAt 只在真正发布/更新时刷新。
+    receivedAt: existingMeta?.receivedAt ?? now.toISOString(),
+    publishedAt: existingMeta?.publishedAt ?? now.toISOString(),
+    sceneCount: input.sceneCount,
+    title: input.title,
+    warningCount: input.warningCount,
   };
-  if (!existing) {
-    await writeAtomic(metaPath(digest, root), JSON.stringify(meta, null, 2));
-  }
-  return { created: !existing, meta };
-}
 
-/** 读取发布存储里的目录草稿（不存在时返回空数组）。 */
-export async function readStoredCatalogDrafts(root = process.cwd()): Promise<CatalogDraft[]> {
-  try {
-    const raw = await readFile(path.join(root, PUBLISH_STORE_CATALOG), "utf8");
-    const parsed = JSON.parse(raw) as { games?: unknown };
-    return Array.isArray(parsed.games) ? (parsed.games as CatalogDraft[]) : [];
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") return [];
-    throw err;
+  const { created } = await writePack(input.gameId, input.digest, input.body, pointer);
+
+  const previous = (await readIndex()).games[input.gameId];
+  const repeated = previous?.digest === input.digest;
+
+  if (!input.publishNow) {
+    return { created, catalogStatus: "draft", pointer, repeated };
   }
+
+  const publishedPointer: PackPointer = {
+    ...pointer,
+    publishedAt: repeated ? previous.publishedAt : now.toISOString(),
+  };
+  await updateIndexEntry(input.gameId, () => publishedPointer);
+
+  // 元数据里的 publishedAt 同步成真实发布时间，便于审计。
+  if (publishedPointer.publishedAt !== pointer.publishedAt) {
+    await writePack(input.gameId, input.digest, input.body, publishedPointer);
+  }
+
+  return { created, catalogStatus: "published", pointer: publishedPointer, repeated };
 }
 
 /**
- * 把草稿条目合并进发布存储的目录草稿文件。
+ * 读取「当前已发布版本」的包体（按 id）。
  *
- * 同 id 覆盖旧草稿是刻意的：一个 id 在线上目录里只能有一条记录，否则玩家会看到
- * 两个同名游戏。覆盖前由 classifyDuplicate 在接口层挡住「顶掉别人 id」的情况。
+ * 下载链路用它兜底：玩家请求 `/content/<id>.json` 时，如果仓库里没有这个文件，
+ * 就按索引找当前已发布的那一版。
  */
-export async function upsertCatalogDraft(
-  draft: CatalogDraft,
-  root = process.cwd(),
-): Promise<{ entries: CatalogDraft[]; updated: boolean }> {
-  const drafts = await readStoredCatalogDrafts(root);
-  const index = drafts.findIndex((item) => item.id === draft.id);
-  const updated = index >= 0;
-  const next = updated ? drafts.map((item, i) => (i === index ? draft : item)) : [...drafts, draft];
-  await mkdir(storeDir(root), { recursive: true });
-  await writeAtomic(
-    path.join(root, PUBLISH_STORE_CATALOG),
-    JSON.stringify({ version: "1.0", updatedAt: new Date().toISOString().slice(0, 10), games: next }, null, 2) + "\n",
-  );
-  return { entries: next, updated };
-}
-
-/** 读取线上目录（只读），供重复发布判定使用。损坏时按空目录处理并报告。 */
-export async function readLiveCatalog(
-  root = process.cwd(),
-): Promise<{ entries: ExistingCatalogEntry[]; error?: string }> {
-  const file = path.join(root, "content", "cloud", "catalog.json");
-  try {
-    const raw = await readFile(file, "utf8");
-    const parsed = JSON.parse(raw) as { games?: unknown };
-    const entries = Array.isArray(parsed.games) ? (parsed.games as ExistingCatalogEntry[]) : [];
-    return { entries };
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
-      return { entries: [], error: "线上目录不存在（content/cloud/catalog.json）。" };
-    }
-    return { entries: [], error: "线上目录不是合法 JSON：" + (err instanceof Error ? err.message : String(err)) };
-  }
-}
-
-/** 同 id 的已存内容摘要（用于「完全相同的包重复提交」判定）。 */
-export async function findStoredDigestForGame(
-  gameId: string,
-  root = process.cwd(),
-): Promise<string | null> {
-  const metas = await listStoredMetas(root);
-  const mine = metas.filter((meta) => meta.gameId === gameId);
-  if (mine.length === 0) return null;
-  mine.sort((a, b) => (a.receivedAt < b.receivedAt ? 1 : a.receivedAt > b.receivedAt ? -1 : 0));
-  return mine[0].digest;
-}
-
-/**
- * 列出发布存储里的全部授权记录。
- *
- * 直接扫描目录而不是维护一份索引：索引会与目录文件不同步，而这里的条目数量
- * 取决于维护者手工发布的次数，规模很小。
- */
-export async function listStoredMetas(root = process.cwd()): Promise<StoredPackageMeta[]> {
-  let names: string[] = [];
-  try {
-    names = await readdir(storeDir(root));
-  } catch {
-    return [];
-  }
-  const metas: StoredPackageMeta[] = [];
-  for (const name of names) {
-    if (!name.endsWith(".meta.json")) continue;
-    const digest = name.slice(0, -".meta.json".length);
-    if (!/^[0-9a-f]{64}$/.test(digest)) continue;
-    const meta = await readStoredMeta(digest, root);
-    if (meta) metas.push(meta);
-  }
-  return metas;
-}
-
-/**
- * 原子写：先写 .tmp 再 rename。
- *
- * 并发提交时，rename 在 POSIX / Windows 上都是原子的，读者不会看到半个文件。
- */
-async function writeAtomic(file: string, content: string): Promise<void> {
-  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tmp, content, "utf8");
-  await rename(tmp, file);
+export async function readPublishedPackById(gameId: string): Promise<{ text: string; pointer: PackPointer } | null> {
+  const index = await readIndex();
+  const pointer = index.games[gameId];
+  if (!pointer) return null;
+  const text = await readPublishedPack(gameId, pointer.digest);
+  if (text === null) return null;
+  return { text, pointer };
 }

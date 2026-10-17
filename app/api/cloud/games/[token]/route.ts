@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { readPublishSecret, sha256Hex, verifyPublishToken } from "@/lib/cloud/publish-server";
-import { readStoredPackage } from "@/lib/cloud/publish-store";
+import { readPublishedPack } from "@/lib/cloud/blob-store";
 
 /**
  * GET /api/cloud/games/[token] - 以发布令牌取回**已被批准的那一版**游戏包。
+ *
+ * 包体来自 Vercel Blob（按摘要寻址），与玩家目录读的是同一个 store。
  *
  * 为什么用令牌而不是 `?id=xxx`：
  *   - 令牌是 HMAC 签名的，客户端无法伪造/篡改；
@@ -12,7 +14,7 @@ import { readStoredPackage } from "@/lib/cloud/publish-store";
  *   - 令牌有过期时间，泄露的影响面是有界的。
  *
  * 失败语义刻意区分清楚（客户端要据此提示用户，而不是笼统说「失败」）：
- *   400 令牌格式不对 · 401 签名无效 · 410 令牌过期 · 404 包体不存在（已清理） · 500 通道未配置
+ *   400 令牌格式不对 · 401 签名无效 · 410 令牌过期 · 404 包体不存在 · 500 通道未配置
  */
 
 export const dynamic = "force-dynamic";
@@ -43,7 +45,7 @@ export async function GET(
 
   let text: string | null;
   try {
-    text = await readStoredPackage(verified.payload.digest);
+    text = await readPublishedPack(verified.payload.gameId, verified.payload.digest);
   } catch (err) {
     return errorResponse(500, "store_unreadable", "服务端无法读取发布存储：" + (err instanceof Error ? err.message : String(err)));
   }
@@ -51,7 +53,7 @@ export async function GET(
     return errorResponse(
       404,
       "package_not_found",
-      "找不到这个发布凭据对应的游戏包。它可能已被落库（此时请改用 /content/<packFile>）或已被清理。",
+      "找不到这个发布凭据对应的游戏包。它可能从未成功写入存储，或已被清理。",
     );
   }
 

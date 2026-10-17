@@ -171,18 +171,23 @@ describe("云端目录：状态区分", () => {
 });
 
 describe("云端目录：错误处理", () => {
-  it("目录文件不存在返回 404", async () => {
+  it("仓库目录缺失时返回空目录而不是报错（云端存储才是新游戏的来源）", async () => {
     const route = await loadRoute();
     const res = await route.GET();
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { games: unknown[] };
+    expect(body.games).toEqual([]);
+    expect(res.headers.get("x-cloud-catalog-backend")).toBe("repo-only");
   });
 
-  it("目录不是合法 JSON 返回 422", async () => {
+  it("仓库目录不是合法 JSON 返回 500 catalog_unreadable（部署本身有问题）", async () => {
     mkdirSync(path.join(sandbox, "content", "cloud"), { recursive: true });
     writeFileSync(path.join(sandbox, "content", "cloud", "catalog.json"), "{ oops");
     const route = await loadRoute();
     const res = await route.GET();
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("catalog_unreadable");
   });
 
   it("games 不是数组时返回空目录而不是崩溃", async () => {
