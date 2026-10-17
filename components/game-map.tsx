@@ -610,14 +610,11 @@ export default function GameMap({
   }, [fitToHunt, recenterToken, player?.lat, player?.lng, activeEntry?.scene.id, entries, player]);
 
   /* ------------------------------------------------ 渲染 */
-  const headingLabel = useMemo(() => {
+  const headingDegrees = useMemo(() => {
     if (!player || !activeEntry) return null;
-    const deg = bearing(player, {
-      lat: activeEntry.scene.location.lat,
-      lng: activeEntry.scene.location.lng,
-    });
-    return bearingToCompass(deg);
+    return bearing(player, { lat: activeEntry.scene.location.lat, lng: activeEntry.scene.location.lng });
   }, [player, activeEntry]);
+  const headingLabel = headingDegrees === null ? null : bearingToCompass(headingDegrees);
 
   return (
     <div className={`map-root ${drawingMode ? "map-root--drawing" : ""}`}>
@@ -634,12 +631,18 @@ export default function GameMap({
       ) : null}
 
       {/* Direction hint overlay, kept in the DOM so it is readable by assistive tech. */}
-      {headingLabel && activeEntry && !drawingMode ? (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex justify-center p-2">
-          <div className="rounded-full bg-[var(--card)]/95 px-3 py-1 text-[12px] font-medium shadow-card backdrop-blur">
-            目标：{activeEntry.scene.location.name ?? activeEntry.scene.title}
-            {activeEntry.distance !== null ? ` · ${formatDistance(activeEntry.distance)}` : ""} ·{" "}
-            {headingLabel}
+      {headingLabel && activeEntry && !drawingMode && headingDegrees !== null ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-center justify-center gap-2 p-2">
+          <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-emerald-700/50 bg-[#fffaf0]/95 shadow-lg">
+            <span className="absolute top-[1px] text-[7px] font-black text-emerald-900">N</span>
+            <span className="absolute h-7 w-7 rounded-full border border-emerald-800/20" />
+            <span className="absolute h-4 w-4 rounded-full border border-emerald-800/20" />
+            <span className="absolute h-0 w-0 border-x-[6px] border-x-transparent border-b-[19px] border-b-amber-500 drop-shadow" style={{ transform: `rotate(${headingDegrees}deg) translateY(-4px)`, transformOrigin: "50% 70%" }} />
+            <span className="absolute h-2 w-2 rounded-full border border-white bg-emerald-800" />
+          </div>
+          <div className="rounded-xl border border-white/70 bg-[#173f3b]/95 px-3 py-2 text-[11px] font-semibold text-white shadow-lg">
+            <p>目标方向 · {headingLabel}</p>
+            <p className="mt-0.5 max-w-[220px] truncate text-[10px] font-normal text-white/75">{activeEntry.scene.location.name ?? activeEntry.scene.title}{activeEntry.distance !== null ? ` · ${formatDistance(activeEntry.distance)}` : ""}</p>
           </div>
         </div>
       ) : null}
