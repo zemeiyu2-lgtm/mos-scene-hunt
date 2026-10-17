@@ -110,8 +110,8 @@ function playerIcon(simulated: boolean, heading: number | null): L.DivIcon {
     className: "",
     html: `<div class="player-marker ${simulated ? "player-marker--sim" : ""}" data-role="player-marker" style="position:relative;width:48px;height:48px;overflow:visible;">
              ${pointer}
-             <div class="player-marker__pulse" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;"></div>
-             <div class="player-marker__dot" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;"></div>
+             <div class="player-marker__pulse" style="position:absolute;left:50%;top:50%;right:auto;bottom:auto;width:38px;height:38px;transform:translate(-50%,-50%);z-index:2;"></div>
+             <div class="player-marker__dot" style="position:absolute;left:50%;top:50%;right:auto;bottom:auto;width:22px;height:22px;transform:translate(-50%,-50%);z-index:3;"></div>
            </div>`,
     iconSize: [48, 48],
     iconAnchor: [24, 24],
