@@ -19,13 +19,13 @@
  *   - the current target scene
  *   - completed scenes
  *   - still-locked scenes
- *   - the direction to the current target
+ *   - the phone heading relative to the fixed north-up map
  */
 
 import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
-import { bearing, formatDistance, resolveRadius } from "@/lib/location";
+import { formatDistance, resolveRadius } from "@/lib/location";
 import type { SceneStatus } from "@/lib/game/state";
 import type { HuntArea, Scene } from "@/lib/game/types";
 import type { PositionFix } from "@/lib/location";
@@ -56,6 +56,8 @@ interface GameMapProps {
   fitToHunt?: boolean;
   /** Re-centre on the player when this value changes. */
   recenterToken?: number;
+  /** Device compass heading in degrees clockwise from north; null until available. */
+  heading?: number | null;
   /** Optional authoring interactions. Gameplay never supplies these. */
   editable?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
@@ -99,9 +101,9 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
   });
 }
 
-function playerIcon(simulated: boolean, targetBearing: number | null): L.DivIcon {
-  const pointer = targetBearing === null ? "" : `
-    <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:22px;height:38px;transform:translate(-50%,-88%) rotate(${targetBearing}deg);transform-origin:50% 88%;pointer-events:none;z-index:1;filter:drop-shadow(0 0 5px rgba(255,177,45,.95));">
+function playerIcon(simulated: boolean, heading: number | null): L.DivIcon {
+  const pointer = heading === null ? "" : `
+    <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:22px;height:38px;transform:translate(-50%,-88%) rotate(${heading}deg);transform-origin:50% 88%;pointer-events:none;z-index:1;filter:drop-shadow(0 0 5px rgba(255,177,45,.95));">
       <div style="width:100%;height:100%;clip-path:polygon(50% 0%,100% 100%,50% 79%,0% 100%);background:linear-gradient(to bottom,rgba(255,246,190,.98) 0%,rgba(255,184,48,.82) 55%,rgba(255,158,25,.06) 100%);"></div>
     </div>`;
   return L.divIcon({
@@ -129,6 +131,7 @@ export default function GameMap({
   draggablePlayer = false,
   fitToHunt = false,
   recenterToken,
+  heading = null,
   editable = false,
   onMapClick,
   onSceneDrag,
@@ -143,7 +146,6 @@ export default function GameMap({
   const sceneMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const playerMarkerRef = useRef<L.Marker | null>(null);
   const playerHaloRef = useRef<L.Circle | null>(null);
-  const directionLineRef = useRef<L.Polyline | null>(null);
   const huntAreaRef = useRef<L.Circle | null>(null);
   const huntAreaPolygonRef = useRef<L.Polygon | null>(null);
   const huntAreaLineRef = useRef<L.Polyline | null>(null);
@@ -221,7 +223,6 @@ export default function GameMap({
       sceneMarkers.clear();
       playerMarkerRef.current = null;
       playerHaloRef.current = null;
-      directionLineRef.current = null;
       huntAreaRef.current = null;
       huntAreaPolygonRef.current = null;
       huntAreaLineRef.current = null;
@@ -486,7 +487,7 @@ export default function GameMap({
 
       if (!playerMarkerRef.current) {
         const marker = L.marker(latlng, {
-          icon: playerIcon(simulated, activeEntry ? bearing(player, activeEntry.scene.location) : null),
+          icon: playerIcon(simulated, heading),
           draggable: draggablePlayer,
           zIndexOffset: 1000,
         });
@@ -501,7 +502,7 @@ export default function GameMap({
       } else {
         const marker = playerMarkerRef.current;
         marker.setLatLng(latlng);
-        marker.setIcon(playerIcon(simulated, activeEntry ? bearing(player, activeEntry.scene.location) : null));
+        marker.setIcon(playerIcon(simulated, heading));
         if (draggablePlayer !== marker.dragging?.enabled()) {
           if (draggablePlayer) marker.dragging?.enable();
           else marker.dragging?.disable();
@@ -535,35 +536,7 @@ export default function GameMap({
         playerHaloRef.current = null;
       }
     }
-  }, [player, draggablePlayer, activeEntry]);
-
-  /* ------------------------------------------------ 目标方向线 */
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    if (player && activeEntry) {
-      const points: L.LatLngExpression[] = [
-        [player.lat, player.lng],
-        [activeEntry.scene.location.lat, activeEntry.scene.location.lng],
-      ];
-      if (!directionLineRef.current) {
-        const line = L.polyline(points, {
-          color: "#f5a524",
-          weight: 2,
-          opacity: 0.5,
-          dashArray: "3 10",
-        });
-        line.addTo(map);
-        directionLineRef.current = line;
-      } else {
-        directionLineRef.current.setLatLngs(points);
-      }
-    } else if (directionLineRef.current) {
-      map.removeLayer(directionLineRef.current);
-      directionLineRef.current = null;
-    }
-  }, [player, activeEntry]);
+  }, [player, draggablePlayer, heading]);
 
   /* ------------------------------------------------ 视角：整场取景或跟随玩家 */
   const fitDoneRef = useRef(false);
