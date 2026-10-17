@@ -418,16 +418,23 @@ export default function DesignPage() {
       const result = importGamePackage(text);
       setDraft(result.game);
       setSelectedId(result.game.scenes[0]?.id ?? null);
-      setSaved(true);
+      // Importing into the editor is not the same as persisting to the local
+      // library. Save explicitly and only show the saved state if storage confirms it.
+      const persisted = saveAuthoredGame(result.game);
+      if (persisted) markCurrentAuthoredGame(result.game.id);
+      setSaved(persisted);
       setDrawingArea(false);
       setPlacingCircle(false);
       setAreaSnapshot(undefined);
       setShareUrl(null);
       setShareMessage(null);
       const warningCount = result.issues.filter((issue) => issue.severity === "warning").length;
+      const persistenceMessage = persisted
+        ? "已保存到本机游戏库。"
+        : "但未能保存到本机游戏库，请检查浏览器存储空间后手动保存。";
       setImportMessage(warningCount
-        ? `已导入「${result.game.title}」，发现 ${warningCount} 项提醒。请在地图上核对真实坐标与安全路线。`
-        : `已导入「${result.game.title}」，已保存到本机游戏库。`);
+        ? `已导入「${result.game.title}」，发现 ${warningCount} 项提醒。${persistenceMessage}请核对真实坐标与安全路线。`
+        : `已导入「${result.game.title}」，${persistenceMessage}`);
     } catch (error) {
       setImportMessage(error instanceof Error ? error.message : "导入失败，请检查 JSON 格式。");
     }
@@ -811,7 +818,9 @@ export default function DesignPage() {
               </p>
             ) : null}
 
-                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">路线顺序</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>\n\n<label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
+                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">路线顺序</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>
+
+<label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">现场名称<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达后故事<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达提示<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>

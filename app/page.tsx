@@ -141,7 +141,7 @@ export default function HomePage() {
       <section className="mt-4">
         <div className="grid grid-cols-2 gap-3">
           <Link href="/games" className="card border-[var(--line)] bg-gradient-to-br from-sky-50 to-white p-4 transition-transform active:scale-[0.99]"><span className="text-xl" aria-hidden="true">◇</span><p className="mt-2 text-[14px] font-bold">游戏中心</p></Link>
-          <Link href="/design" className="card border-[var(--line)] bg-gradient-to-br from-violet-50 to-white p-4 transition-transform active:scale-[0.99]"><span className="text-xl" aria-hidden="true">✦</span><p className="mt-2 text-[14px] font-bold">设计中心</p></Link>
+          <Link href="/design" className="card border-[var(--line)] bg-gradient-to-br from-violet-50 to-white p-4 transition-transform active:scale-[0.99]"><span className="text-xl" aria-hidden="true">✦</span><p className="mt-2 text-[14px] font-bold">创作中心</p></Link>
         </div>
         <Link href="/how-to-create" className="mt-3 inline-flex items-center gap-1 px-1 py-2 text-xs font-medium text-[var(--muted)]">创作说明 <span aria-hidden="true">→</span></Link>
       </section>
