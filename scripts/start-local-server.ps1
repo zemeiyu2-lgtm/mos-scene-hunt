@@ -20,8 +20,9 @@ if (Test-Path $tokenFile) {
   $token = (Get-Content $tokenFile -Raw).Trim()
 } else {
   $bytes = New-Object byte[] 32
-  [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-  $token = ([Convert]::ToHexString($bytes)).ToLowerInvariant()
+  $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+  $token = ([System.BitConverter]::ToString($bytes)).Replace("-", "").ToLowerInvariant()
   Set-Content -Path $tokenFile -Value $token -NoNewline -Encoding ascii
 }
 if ([string]::IsNullOrWhiteSpace($token)) { throw "访问口令为空，无法安全启动。" }
