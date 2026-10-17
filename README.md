@@ -109,8 +109,3 @@ scene-hunt/
 MIT（见 LICENSE）。运行时依赖全部为 OSI 认可许可证（MIT / Apache-2.0 / BSD-2-Clause），详见 [docs/OPEN_SOURCE_NOTICES.md](docs/OPEN_SOURCE_NOTICES.md)。
 
 地图数据 © OpenStreetMap contributors（ODbL）；瓦片署名通过 Leaflet attribution 控件实时展示。
-
-
-## 电脑游戏包服务器（Windows）
-
-创作者可选择在自己的 Windows 电脑运行持久存储模式。启动方式与安全限制见 [电脑游戏包服务器说明](docs/LOCAL-GAME-SERVER-WINDOWS.md)。需要用 iPhone 测试真实 GPS 时，另见 [手机 HTTPS 测试入口说明](docs/LOCAL-GAME-SERVER-IOS-HTTPS.md)。启动脚本为 `scripts/start-local-server.bat`；游戏包存放在 `data/game-packages/`，不会随服务重启删除。
