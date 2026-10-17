@@ -14,11 +14,36 @@ import type { PositionFix } from "@/lib/location";
 export default function GamesPage() {
   const [games, setGames] = useState<CloudGameEntry[]>([]);
   const [localGames, setLocalGames] = useState<Game[]>([]);
+  const [serverGames, setServerGames] = useState<Game[]>([]);
+  const [serverEnabled, setServerEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const refreshLocal = () => setLocalGames(listAuthoredGames());
+
+  const refreshServer = async () => {
+    try {
+      const response = await fetch("/api/local-games", { cache: "no-store" });
+      if (!response.ok) return;
+      const result = await response.json() as { enabled?: boolean; games?: Game[] };
+      setServerEnabled(Boolean(result.enabled));
+      setServerGames(result.enabled && Array.isArray(result.games) ? result.games : []);
+    } catch {
+      setServerEnabled(false);
+      setServerGames([]);
+    }
+  };
+
+  const downloadFromComputer = (game: Game) => {
+    try {
+      const result = importGamePackage(JSON.stringify(game));
+      refreshLocal();
+      setMessage("已将电脑服务器中的「" + result.game.title + "」下载到当前设备。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "下载电脑游戏包失败。");
+    }
+  };
 
   const refresh = async () => {
     setLoading(true);
@@ -36,6 +61,7 @@ export default function GamesPage() {
   useEffect(() => {
     void refresh();
     refreshLocal();
+    void refreshServer();
     const onFocus = () => refreshLocal();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
@@ -123,6 +149,28 @@ export default function GamesPage() {
           ))}
           {!localGames.length ? <div className="rounded-xl border border-dashed border-[var(--line)] px-4 py-5 text-center text-sm text-[var(--muted)]">本机还没有游戏。请先到创作中心制作或导入游戏包。</div> : null}
         </div>
+      </section>
+
+      <section className="mt-5">
+        <div className="mb-2">
+          <h2 className="text-lg font-bold">电脑服务器游戏</h2>
+          <p className="text-xs text-[var(--muted)]">集中保存在运行本应用的电脑上；可下载到当前设备再游玩。</p>
+        </div>
+        {!serverEnabled ? (
+          <div className="card p-4 text-sm leading-relaxed text-[var(--muted)]">电脑游戏包服务器尚未启用。当前网页的本机游戏仍保存在浏览器中，不会自动同步到电脑共享目录。</div>
+        ) : serverGames.length ? (
+          <div className="grid gap-2">
+            {serverGames.map((game) => (
+              <article key={game.id} className="card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0"><h3 className="font-bold">{game.title}</h3><p className="mt-1 text-xs text-[var(--muted)]">{game.scenes.length} 个地点 · 约 {game.estimatedMinutes ?? "—"} 分钟</p></div>
+                  <span className="chip shrink-0">电脑存档</span>
+                </div>
+                <button type="button" className="btn btn-primary mt-3 w-full" onClick={() => downloadFromComputer(game)}>下载到本机游戏库</button>
+              </article>
+            ))}
+          </div>
+        ) : <div className="card p-4 text-sm text-[var(--muted)]">电脑服务器已启用，但还没有保存的游戏包。</div>}
       </section>
 
       <section className="mt-5">
