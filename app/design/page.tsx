@@ -489,7 +489,7 @@ export default function DesignPage() {
   };
 
   const copyJson = async () => {
-    await navigator.clipboard.writeText(JSON.stringify(working, null, 2));
+    await navigator.clipboard.writeText(exportGameJson(working));
     setSaved(true);
   };
 
