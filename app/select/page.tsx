@@ -9,11 +9,10 @@
  * why.
  */
 
-import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
-import { findManifestEntry, importGamePackage } from "@/lib/content";
+import { findManifestEntry } from "@/lib/content";
 import { ErrorState, Screen } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 
@@ -21,10 +20,6 @@ export default function SelectPage() {
   const router = useRouter();
   const { game, loadError, reloadContent, state, statuses, startHunt, contentSource } = useHunt();
   const { start, status, permission } = useGps();
-  const importInputRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [importMessage, setImportMessage] = useState<string | null>(null);
-
   const begin = () => {
     // Kick off GPS and the hunt together: the permission prompt appears while
     // the map is already loading, so the player is not staring at a blank screen.
@@ -35,22 +30,6 @@ export default function SelectPage() {
 
   const completedCount = statuses.filter((s) => s.status === "completed").length;
 
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    setImporting(true);
-    setImportMessage(null);
-    try {
-      const text = await file.text();
-      const result = importGamePackage(text);
-      const warningCount = result.issues.filter((issue) => issue.severity === "warning").length;
-      setImportMessage(warningCount ? "已安装「" + result.game.title + "」，有 " + warningCount + " 个提示，正在打开。" : "已安装「" + result.game.title + "」，正在打开。");
-      window.setTimeout(() => window.location.reload(), 250);
-    } catch (error) {
-      setImportMessage(error instanceof Error ? error.message : "导入失败");
-    } finally { setImporting(false); }
-  };
   const hasProgress = Boolean(state && state.inventory.length > 0);
 
   if (loadError) {
@@ -86,17 +65,6 @@ export default function SelectPage() {
   return (
     <>
     <Screen title="选择寻宝" subtitle="确认信息后开始">
-      <section className="card mb-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-bold">📦 导入游戏包</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">设计者可以把游戏导出为 JSON 游戏包。导入后保存在本机，不需要登录，也不需要打开设计器。</p>
-          </div>
-          <button type="button" className="btn btn-secondary shrink-0" onClick={() => importInputRef.current?.click()} disabled={importing}>{importing ? "正在导入…" : "选择游戏包"}</button>
-          <input ref={importInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleImport} />
-        </div>
-        {importMessage ? <p className="mt-2 rounded-xl bg-[var(--surface)] px-3 py-2 text-[11.5px] leading-relaxed">{importMessage}</p> : null}
-      </section>
       <section className="card story-card overflow-hidden">
         <div className="hero-explore px-5 py-6">
           <p className="game-kicker">
