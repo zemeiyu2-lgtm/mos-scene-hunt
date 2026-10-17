@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readPublishSecret, sha256Hex, verifyPublishToken } from "@/lib/cloud/publish-server";
 import { readPublishedPack } from "@/lib/cloud/blob-store";
+import { readPublishedIndex } from "@/lib/cloud/publish-store";
 
 /**
  * GET /api/cloud/games/[token] - 以发布令牌取回**已被批准的那一版**游戏包。
@@ -45,6 +46,12 @@ export async function GET(
 
   let text: string | null;
   try {
+    // A valid submission token is not itself approval. Only the exact digest
+    // currently present in the published index can be downloaded through this route.
+    const index = await readPublishedIndex();
+    if (index.games[verified.payload.gameId]?.digest !== verified.payload.digest) {
+      return errorResponse(404, "not_published", "这一版尚未通过审核发布，或已被新版本替代。");
+    }
     text = await readPublishedPack(verified.payload.gameId, verified.payload.digest);
   } catch (err) {
     return errorResponse(500, "store_unreadable", "服务端无法读取发布存储：" + (err instanceof Error ? err.message : String(err)));
