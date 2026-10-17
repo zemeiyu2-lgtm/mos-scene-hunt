@@ -50,8 +50,20 @@ function json(body: unknown, status: number, headers: Record<string, string> = {
   });
 }
 
-/** 请求是否要求把这一版直接放进玩家目录。 */
-function wantsPublishNow(request: Request, rawBody: unknown): boolean {
+/**
+ * 错误是不是「索引损坏」。
+ *
+ * 结构化判定（name + kind），不用 `instanceof`：错误类在打包后可能有多个副本。
+ * 损坏与瞬时不可用必须给出不同的信号——前者重试永远不会成功，而且重试本身
+ * 就是在冒险覆盖数据。
+ */
+function isCorruptIndexError(error: unknown): boolean {
+  const name = (error as { name?: string } | null)?.name ?? "";
+  const kind = (error as { kind?: unknown } | null)?.kind;
+  return (name === "BlobStoreError" || name === "BlobBackendError") && kind === "corrupt";
+}
+
+/** 请求是否要求把这一版直接放进玩家目录。 */function wantsPublishNow(request: Request, rawBody: unknown): boolean {
   const url = new URL(request.url);
   const flag = url.searchParams.get("publish");
   if (flag === "1" || flag === "true") return true;
@@ -119,6 +131,19 @@ export async function POST(request: Request) {
   try {
     index = await readPublishedIndex();
   } catch (error) {
+    // 索引损坏不是「暂时读不到」：它是数据坏了，任何写入都会把其它已发布游戏
+    // 从目录里抹掉。这里明确区分，并给出可执行的处置说明（不改、不删、不重试）。
+    if (isCorruptIndexError(error)) {
+      return json(
+        {
+          error: "index_corrupt",
+          message:
+            "云端已发布索引损坏，为避免覆盖其它已发布游戏，本次发布已停止。" +
+            "包体与既有 Blob 数据均未被修改；需要维护者人工修复 scene-hunt/indexes/games.json 后重试。",
+        },
+        500,
+      );
+    }
     return json(
       { error: "storage_unavailable", message: "无法读取发布索引：" + (error instanceof Error ? error.message : String(error)) },
       503,
@@ -186,6 +211,19 @@ export async function POST(request: Request) {
     await upsertDraft(draft).catch(() => undefined);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (isCorruptIndexError(error)) {
+      // 包体/元数据可能已经写进去了，但索引（玩家唯一可见的状态）没动，
+      // 所以既有游戏仍然可下载，只是「本次发布未生效」。
+      return json(
+        {
+          error: "index_corrupt",
+          message:
+            "云端已发布索引损坏，为避免覆盖其它已发布游戏，本次未更新目录（既有游戏不受影响）。" +
+            "需要维护者人工修复 scene-hunt/indexes/games.json 后重试。" + message,
+        },
+        500,
+      );
+    }
     // 失败的写入不会改变已发布索引（索引是最后一步），所以既有游戏仍然可下载。
     return json(
       { error: "storage_write_failed", message: "写入云端存储失败，本次发布未生效：" + message },

@@ -124,6 +124,22 @@ npm run cloud:publish -- --show <gameId>
 （**不持久化**，仅用于联调；接口自述会如实标注 `storage: memory-ephemeral`）。
 任何 Vercel 部署中该分支都不可达。
 
+### 并发与失败安全约定
+
+索引 `scene-hunt/indexes/games.json` 是**唯一可变**的对象，因此它的写入规则被刻意收紧：
+
+- **索引不存在** → 用 `allowOverwrite: false` 做**原子创建**。两个游戏同时首次发布时，
+  存储侧只有一个能创建成功，另一个收到「已存在」后重读、带 ETag 条件写入合并，
+  两条条目都会保留。
+- **索引已存在** → 必须带 `ifMatch`（当前 ETag）条件覆盖。别人先改了会 412，重读重试（最多 3 次）。
+- **索引损坏**（存在但 JSON 不可解析 / 缺少 `games` 对象）→ **失败关闭**。发布接口返回
+  `500 index_corrupt`，`/content/<id>.json` 返回 `500 index_corrupt`，目录响应头
+  `X-Cloud-Catalog-Backend: corrupt` + `X-Cloud-Catalog-Warning: published-index-corrupt`。
+  此时**不会**用空索引覆盖原对象，既有包体与既有 Blob 数据都不受影响；需要人工修复后重试。
+
+包体与元数据不受上述限制：包体按摘要寻址（同名必然同内容，撞「已存在」视为别人已写好同一份），
+元数据允许覆盖以便刷新 `publishedAt`。
+
 ## 文档
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) —— 系统结构、数据流、核心设计决策、扩展点

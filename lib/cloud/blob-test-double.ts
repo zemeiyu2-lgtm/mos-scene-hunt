@@ -67,7 +67,9 @@ export class FakeBlobStore implements BlobBackend {
         throw new BlobBackendError("conflict", "对象已被其他写入修改（条件写入失败）。");
       }
       if (options.allowOverwrite === false) {
-        throw new BlobBackendError("unknown", `blob already exists: ${pathname}`);
+        // 对齐真实 Blob：`allowOverwrite: false` + 对象已存在 = 原子创建失败。
+        // 归到 conflict（可重试）而不是 unknown，是「并发首次发布」能自愈的前提。
+        throw new BlobBackendError("conflict", `对象已存在，且本次写入不允许覆盖：${pathname}`);
       }
     } else if (options.ifMatch !== undefined) {
       // 对不存在的对象做条件写入：真实 API 也是前置条件失败。

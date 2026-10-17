@@ -422,6 +422,94 @@ describe("云端闭环 - 发布 → 持久化 → 取回", () => {
     const index = await readIndex();
     expect(Object.keys(index.games).sort()).toEqual(["alpha", "beta"]);
   });
+
+  /**
+   * Issue #61 P1 的**精确复现**。
+   *
+   * 上面那个用例虽然叫「并发」，但两次请求落到 `read → write` 的时序其实是串行的，
+   * 所以它并不能证明「首次创建的竞争」被防住了。这里强制让两个请求**都**读到
+   * 「索引不存在」，再到存储里抢创建——旧实现（不带 ifMatch + 无条件覆盖）在这个
+   * 时序下必然丢掉先写的那条。
+   */
+  it("两个游戏同时首次发布（都先读到空索引）：两条都必须保留", async () => {
+    vi.stubEnv("MOS_CLOUD_ALLOW_DIRECT_PUBLISH", "1");
+    const { post } = await loadRoutes();
+
+    const originalRead = store.read.bind(store);
+    let indexReads = 0;
+    store.read = async (pathname) => {
+      if (pathname === INDEX_PATHNAME && indexReads < 2) {
+        indexReads += 1;
+        return null; // 两个请求各自读一次，都看到「索引还不存在」
+      }
+      return originalRead(pathname);
+    };
+
+    const [a, b] = await Promise.all([
+      post.POST(postRequest({ game: makeGame({ id: "first-game" }) }, PUBLISH_KEY, "?publish=1")),
+      post.POST(postRequest({ game: makeGame({ id: "second-game" }) }, PUBLISH_KEY, "?publish=1")),
+    ]);
+    expect(a.status).toBe(202);
+    expect(b.status).toBe(202);
+
+    const index = await readIndex();
+    expect(Object.keys(index.games).sort()).toEqual(["first-game", "second-game"]);
+    // 两条指针各自完整，不是「只剩一条空壳」。
+    for (const id of ["first-game", "second-game"]) {
+      expect(index.games[id].digest).toMatch(/^[0-9a-f]{64}$/);
+      expect(index.games[id].pathname).toContain(id);
+    }
+  });
+
+  it("索引损坏时发布失败关闭：返回 500 index_corrupt，且坏索引一字节未被覆盖", async () => {
+    vi.stubEnv("MOS_CLOUD_ALLOW_DIRECT_PUBLISH", "1");
+    const { post } = await loadRoutes();
+
+    // 先有一个正常发布的游戏，然后索引被写坏。
+    const ok = await post.POST(postRequest({ game: makeGame({ id: "healthy" }) }, PUBLISH_KEY, "?publish=1"));
+    expect(ok.status).toBe(202);
+
+    const broken = '{ "version": 1, "games": { "healthy": { "digest": ';
+    await store.write(INDEX_PATHNAME, broken, { allowOverwrite: true });
+
+    const res = await post.POST(postRequest({ game: makeGame({ id: "newcomer" }) }, PUBLISH_KEY, "?publish=1"));
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("index_corrupt");
+    expect(body.message).toContain("避免覆盖");
+
+    // 核心断言：损坏的索引原文保留，没有被「只含 newcomer 的空索引」覆盖。
+    expect(store.text(INDEX_PATHNAME)).toBe(broken);
+  });
+
+  it("索引损坏时也不会去写包体和草稿，避免留下无人引用的半成品", async () => {
+    vi.stubEnv("MOS_CLOUD_ALLOW_DIRECT_PUBLISH", "1");
+    const { post } = await loadRoutes();
+    await store.write(INDEX_PATHNAME, "not json at all", { allowOverwrite: true });
+
+    const res = await post.POST(postRequest({ game: makeGame({ id: "would-be-orphan" }) }, PUBLISH_KEY, "?publish=1"));
+    expect(res.status).toBe(500);
+
+    // 读索引在写包体之前，所以这里应该完全没有新对象。
+    const gameBlobs = store.puts.filter((p) => p.includes("would-be-orphan"));
+    expect(gameBlobs).toEqual([]);
+    expect(store.text(DRAFT_PATHNAME)).toBeNull();
+  });
+
+  it("索引损坏时既有游戏的包体仍然原样可取回（数据没被删）", async () => {
+    vi.stubEnv("MOS_CLOUD_ALLOW_DIRECT_PUBLISH", "1");
+    const { post } = await loadRoutes();
+    const ok = await post.POST(postRequest({ game: makeGame({ id: "survivor" }) }, PUBLISH_KEY, "?publish=1"));
+    const okBody = (await ok.json()) as { digest: string };
+    const before = await readPublishedPack("survivor", okBody.digest);
+    expect(before).not.toBeNull();
+
+    await store.write(INDEX_PATHNAME, "{{{", { allowOverwrite: true });
+    const res = await post.POST(postRequest({ game: makeGame({ id: "x" }) }, PUBLISH_KEY, "?publish=1"));
+    expect(res.status).toBe(500);
+
+    expect(await readPublishedPack("survivor", okBody.digest)).toBe(before);
+  });
 });
 
 describe("GET /api/cloud/games - 接口自述", () => {

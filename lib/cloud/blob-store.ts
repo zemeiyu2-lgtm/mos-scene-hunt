@@ -128,7 +128,16 @@ export function readBlobConfig(env: Record<string, string | undefined> = process
 
 /** 存储层错误：带上「是可重试的并发冲突，还是真故障」，由路由层决定状态码。 */
 export class BlobStoreError extends Error {
-  readonly kind: "not-found" | "conflict" | "unavailable" | "unknown";
+  /**
+   * - `not-found`：对象不存在
+   * - `conflict`：并发条件写入失败，重试可能成功
+   * - `corrupt`：**对象存在但内容不可解析**。这不是「没有数据」，而是「数据坏了」，
+   *   绝不能当成空索引继续写——那样会用一个只含新游戏的指针覆盖掉整份索引。
+   *   只能上报，必须人工处理。
+   * - `unavailable`：凭据/网络/服务不可用
+   * - `unknown`：其它
+   */
+  readonly kind: "not-found" | "conflict" | "corrupt" | "unavailable" | "unknown";
   constructor(kind: BlobStoreError["kind"], message: string, cause?: unknown) {
     super(message);
     this.name = "BlobStoreError";
@@ -156,7 +165,11 @@ function classify(error: unknown): BlobStoreError {
 
   if (
     name === "BlobBackendError" &&
-    (kind === "not-found" || kind === "conflict" || kind === "unavailable" || kind === "unknown")
+    (kind === "not-found" ||
+      kind === "conflict" ||
+      kind === "corrupt" ||
+      kind === "unavailable" ||
+      kind === "unknown")
   ) {
     return new BlobStoreError(kind, message, error);
   }
@@ -231,16 +244,30 @@ async function readTextWithEtag(pathname: string): Promise<{ text: string; etag:
   }
 }
 
-async function writeText(pathname: string, text: string, ifMatch?: string): Promise<void> {
+/**
+ * 写一个对象的文本内容。
+ *
+ * 覆盖语义必须由调用方**显式**声明，没有默认值可依赖：
+ *   - `mode: "create"`：原子创建。对象已存在时写入失败（后端归类为 conflict），
+ *     调用方重读后再决定。这是「两个请求同时首次创建索引」唯一可信的机制——
+ *     单纯「先读发现没有、再写」必然有窗口期。
+ *   - `mode: "overwrite"`：允许覆盖（包体、元数据这类内容确定的对象）。
+ *   - `mode: "if-match"`：条件覆盖，ETag 必须是 `etag`，否则失败。
+ *
+ * 为什么要分开：以前这里固定 `allowOverwrite: true`，于是「首次创建索引」实际
+ * 变成了「无条件覆盖」——两个并发首次发布会互相把对方那条抹掉。
+ */
+type WriteMode = { mode: "create" } | { mode: "overwrite" } | { mode: "if-match"; etag: string };
+
+async function writeText(pathname: string, text: string, writeMode: WriteMode): Promise<void> {
   try {
     const options: { contentType: string; allowOverwrite: boolean; ifMatch?: string } = {
       contentType: "application/json; charset=utf-8",
-      // 指针文件会被反复改写；包体按摘要寻址，理论上只会写一次。
-      allowOverwrite: true,
+      allowOverwrite: writeMode.mode !== "create",
     };
     // 只在真的拿到 ETag 时才带上 ifMatch。`ifMatch: undefined` 在部分 SDK/序列化
     // 路径上会被当成「带了这个字段」，从而变成莫名其妙的 412。
-    if (ifMatch) options.ifMatch = ifMatch;
+    if (writeMode.mode === "if-match" && writeMode.etag) options.ifMatch = writeMode.etag;
     await backend().write(pathname, text, options);
   } catch (error) {
     throw classify(error);
@@ -287,11 +314,24 @@ export async function writePack(
 ): Promise<{ created: boolean }> {
   const existing = await readPublishedPack(gameId, digest);
   if (existing === null) {
-    await writeText(packPathname(gameId, digest), body);
+    // 原子创建：并发发布同一个游戏时，后到的那个会撞上「已存在」。按摘要寻址意味着
+    // 同名对象内容必然相同，所以冲突等于「别人已经写好了同一份内容」，不是错误，
+    // 只需要重新读一次确认它确实存在。
+    try {
+      await writeText(packPathname(gameId, digest), body, { mode: "create" });
+    } catch (error) {
+      const classified = error instanceof BlobStoreError ? error : classify(error);
+      if (classified.kind !== "conflict") throw classified;
+      const raced = await readPublishedPack(gameId, digest);
+      if (raced === null) throw classified;
+      return { created: false };
+    }
   }
   // 元数据总是重写：即使包体已存在，也要保证「receivedAt」在多次重复提交后
   // 保持第一次的时间（pointer 由调用方传入已有的 receivedAt）。
-  await writeText(metaPathname(gameId, digest), JSON.stringify({ version: 1, pointer }, null, 2));
+  await writeText(metaPathname(gameId, digest), JSON.stringify({ version: 1, pointer }, null, 2), {
+    mode: "overwrite",
+  });
   return { created: existing === null };
 }
 
@@ -299,21 +339,64 @@ export async function writePack(
 /* 已发布索引（唯一可变的指针文件）                                     */
 /* ------------------------------------------------------------------ */
 
+/** 索引不存在时的初始值。只有「对象确实不存在」时才可以用它。 */
+function emptyIndex(): StoreIndex {
+  return { version: 1, games: {}, updatedAt: "" };
+}
+
+/**
+ * 解析索引文本。
+ *
+ * 关键区别（Issue #61 P1）：
+ *   - **不存在** → 空索引，可以安全地创建；
+ *   - **存在但解析不出来** → `corrupt`，**必须失败关闭**。
+ *
+ * 以前这里把「损坏」也当成空索引返回，后果是：下一次发布会读到空索引、
+ * 合并进它自己这一条、然后覆盖写回 `indexes/games.json`——其它所有已发布游戏
+ * 都从目录里消失（包体还在，但没有人指向它们）。这是静默的数据丢失，
+ * 比直接报错严重得多。
+ */
+function parseIndexText(text: string): StoreIndex {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    throw new BlobStoreError(
+      "corrupt",
+      "已发布索引不是合法 JSON，为避免覆盖既有数据已停止写入。需要人工修复 scene-hunt/indexes/games.json。",
+      error,
+    );
+  }
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    typeof (parsed as StoreIndex).games !== "object" ||
+    (parsed as StoreIndex).games === null ||
+    Array.isArray((parsed as StoreIndex).games)
+  ) {
+    throw new BlobStoreError(
+      "corrupt",
+      "已发布索引结构不合法（缺少 games 对象），为避免覆盖既有数据已停止写入。需要人工修复 scene-hunt/indexes/games.json。",
+    );
+  }
+  const index = parsed as StoreIndex;
+  return {
+    version: 1,
+    games: index.games,
+    updatedAt: typeof index.updatedAt === "string" ? index.updatedAt : "",
+  };
+}
+
+/**
+ * 读已发布索引。
+ *
+ * @throws BlobStoreError(`corrupt`) 索引存在但内容不可解析 —— 调用方必须失败关闭，
+ *         不得退化成空索引继续写。
+ */
 export async function readIndex(): Promise<StoreIndex> {
   const found = await readTextWithEtag(INDEX_PATHNAME);
-  if (!found) return { version: 1, games: {}, updatedAt: "" };
-  try {
-    const parsed = JSON.parse(found.text) as StoreIndex;
-    if (!parsed || typeof parsed !== "object" || typeof parsed.games !== "object" || parsed.games === null) {
-      return { version: 1, games: {}, updatedAt: "" };
-    }
-    return parsed;
-  } catch {
-    // 索引损坏：当作空索引处理，而不是抛错让整个目录 500。
-    // 包体本身按摘要寻址仍然可读，只是「哪个 id 当前指向哪版」暂时丢失，
-    // 下一次发布会把这一条重新写回去。
-    return { version: 1, games: {}, updatedAt: "" };
-  }
+  if (!found) return emptyIndex();
+  return parseIndexText(found.text);
 }
 
 export interface IndexWriteResult {
@@ -326,8 +409,15 @@ export interface IndexWriteResult {
  * 更新索引里的一个 id（乐观并发 + 条件写入）。
  *
  * `mutate` 是纯函数：拿到当前索引，返回「新的这一条指针」或 null（表示不更新）。
- * 用「读 → 改 → 带 ETag 条件写」三段式，冲突时重读重试，最多 3 次，
- * 避免两个并发发布互相覆盖对方的条目。
+ *
+ * 两种写入路径，分别对应「索引已存在」和「索引还不存在」：
+ *   - **已存在**：读 → 改 → 带 ETag 条件覆盖。别人先改了就会 412，重读重试。
+ *   - **不存在**：原子创建（不允许覆盖）。两个请求同时首次发布时，只有一个能
+ *     创建成功，另一个拿到 conflict，重读后走上面的条件覆盖路径，把它那条也
+ *     合并进去。因为「对象已存在」和「写入成功」在存储侧是一个原子判定，
+ *     所以不存在「都以为自己创建成功、最后互相覆盖」的窗口期。
+ *
+ * 索引一旦损坏（解析失败）立刻抛 `corrupt`，绝不会用空索引覆盖它。
  */
 export async function updateIndexEntry(
   gameId: string,
@@ -337,18 +427,8 @@ export async function updateIndexEntry(
   let retried = false;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const found = await readTextWithEtag(INDEX_PATHNAME);
-    const current: StoreIndex = found
-      ? (() => {
-          try {
-            return JSON.parse(found.text) as StoreIndex;
-          } catch {
-            return { version: 1 as const, games: {}, updatedAt: "" };
-          }
-        })()
-      : { version: 1 as const, games: {}, updatedAt: "" };
-    if (!current.games || typeof current.games !== "object") {
-      current.games = {};
-    }
+    // 损坏 → 抛 corrupt（parseIndexText 内），不会走到写入分支。
+    const current: StoreIndex = found ? parseIndexText(found.text) : emptyIndex();
 
     const next = mutate(current.games[gameId]);
     if (next === null) return { index: current, retried };
@@ -360,11 +440,16 @@ export async function updateIndexEntry(
     };
 
     try {
-      // 首次写入（found === null）不能带 ifMatch；之后必须带上，才能发现并发改写。
-      await writeText(INDEX_PATHNAME, JSON.stringify(merged, null, 2), found?.etag || undefined);
+      if (found) {
+        await writeText(INDEX_PATHNAME, JSON.stringify(merged, null, 2), { mode: "if-match", etag: found.etag });
+      } else {
+        // 原子创建：如果这期间别人先建好了索引，这里会 conflict，重读后重试。
+        await writeText(INDEX_PATHNAME, JSON.stringify(merged, null, 2), { mode: "create" });
+      }
       return { index: merged, retried };
     } catch (error) {
       const classified = error instanceof BlobStoreError ? error : classify(error);
+      // corrupt 永远不会重试：重试也只是重复读一份坏数据。
       if (classified.kind === "conflict" && attempt < maxAttempts - 1) {
         retried = true;
         continue;
@@ -399,6 +484,8 @@ export async function upsertDraft(entry: DraftEntry): Promise<{ entries: DraftEn
   let updated = false;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const found = await readTextWithEtag(DRAFT_PATHNAME);
+    // 草稿目录损坏不阻断发布主流程（它只影响「申请中」列表，不影响已发布目录），
+    // 因此这里仍然按空目录处理；这与已发布索引的失败关闭是刻意区分的。
     const current: DraftCatalog = found
       ? (() => {
           try {
@@ -415,7 +502,8 @@ export async function upsertDraft(entry: DraftEntry): Promise<{ entries: DraftEn
     const games = index >= 0 ? current.games.map((item, i) => (i === index ? entry : item)) : [...current.games, entry];
     const merged: DraftCatalog = { version: 1, updatedAt: new Date().toISOString(), games };
     try {
-      await writeText(DRAFT_PATHNAME, JSON.stringify(merged, null, 2), found?.etag || undefined);
+      const writeMode: WriteMode = found ? { mode: "if-match", etag: found.etag } : { mode: "create" };
+      await writeText(DRAFT_PATHNAME, JSON.stringify(merged, null, 2), writeMode);
       return { entries: games, updated };
     } catch (error) {
       const classified = error instanceof BlobStoreError ? error : classify(error);

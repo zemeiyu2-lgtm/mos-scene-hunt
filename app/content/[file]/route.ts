@@ -132,6 +132,18 @@ async function serveFromStore(name: string): Promise<NextResponse> {
       publishedAt: found.pointer.publishedAt,
     });
   } catch (err) {
+    const errorName = (err as { name?: string } | null)?.name ?? "";
+    const errorKind = (err as { kind?: unknown } | null)?.kind;
+    // 索引损坏时无法判断「当前已发布的是哪一版」，宁可明确报错也不猜一个版本发出去。
+    if ((errorName === "BlobStoreError" || errorName === "BlobBackendError") && errorKind === "corrupt") {
+      return NextResponse.json(
+        {
+          error: "index_corrupt",
+          message: "云端已发布索引损坏，暂时无法确定该游戏当前发布的版本，请联系维护者。",
+        },
+        { status: 500 },
+      );
+    }
     return NextResponse.json(
       {
         error: "content_unreadable",

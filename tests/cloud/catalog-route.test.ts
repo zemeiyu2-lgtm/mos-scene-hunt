@@ -69,6 +69,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   process.chdir(originalCwd);
   vi.resetModules();
   rmSync(sandbox, { recursive: true, force: true });
@@ -197,5 +198,31 @@ describe("云端目录：错误处理", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { games: unknown[] };
     expect(body.games).toEqual([]);
+  });
+});
+
+describe("云端目录：已发布索引损坏时的信号", () => {
+  it("索引损坏时明确标记 corrupt，而不是伪装成一个「恰好很短」的正常目录", async () => {
+    writeJson("content/cloud/catalog.json", { version: "1.0", games: [] });
+    // 目录路由只在「存储已接入」时才去读索引，所以这里要显式声明已接入。
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "vercel_blob_rw_fake_store_for_tests");
+
+    // 注意顺序：loadRoute 内部的 resetModules 会让 blob-store 变成新实例，
+    // 注入必须在它之后，否则路由会拿到一个「没有注入」的模块，真的去连远端 store。
+    const route = await loadRoute();
+    const { setBlobBackend, INDEX_PATHNAME } = await import("../../lib/cloud/blob-store");
+    const { FakeBlobStore } = await import("../../lib/cloud/blob-test-double");
+    const store = new FakeBlobStore();
+    await store.write(INDEX_PATHNAME, "{ corrupted", { allowOverwrite: true });
+    setBlobBackend(store);
+
+    const res = await route.GET();
+    // 仓库里的官方游戏仍然要给出来（不能让新存储的故障藏起静态内容）。
+    expect(res.status).toBe(200);
+    // 但必须能让调用方看出「云端这一部分是坏的，不是空的」。
+    expect(res.headers.get("x-cloud-catalog-backend")).toBe("corrupt");
+    expect(res.headers.get("x-cloud-catalog-warning")).toBe("published-index-corrupt");
+
+    setBlobBackend(null);
   });
 });

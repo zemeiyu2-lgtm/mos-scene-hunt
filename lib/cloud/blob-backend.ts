@@ -12,7 +12,14 @@
  */
 
 export class BlobBackendError extends Error {
-  readonly kind: "not-found" | "conflict" | "unavailable" | "unknown";
+  /**
+   * - `not-found`：对象不存在
+   * - `conflict`：条件写入失败，或「不允许覆盖但对象已存在」——重读后可重试
+   * - `corrupt`：对象存在但内容不可解析。**不可覆盖**，必须人工处理
+   * - `unavailable`：凭据/网络/服务不可用
+   * - `unknown`：其它
+   */
+  readonly kind: "not-found" | "conflict" | "corrupt" | "unavailable" | "unknown";
   constructor(kind: BlobBackendError["kind"], message: string, cause?: unknown) {
     super(message);
     this.name = "BlobBackendError";
@@ -22,7 +29,12 @@ export class BlobBackendError extends Error {
 }
 
 export interface PutOptions {
-  /** 允许覆盖同名对象。 */
+  /**
+   * 允许覆盖同名对象。
+   *
+   * `false` 是**原子创建**语义：对象已存在时写入失败（而不是覆盖），
+   * 这正是「两个请求同时首次创建索引」时必须依赖的机制。
+   */
   allowOverwrite?: boolean;
   /** 条件写入：当前 ETag 必须等于它，否则抛 conflict。 */
   ifMatch?: string;
@@ -89,8 +101,10 @@ function memoryBackend(): BlobBackend {
       if (options.ifMatch !== undefined && (!existing || existing.etag !== options.ifMatch)) {
         throw new BlobBackendError("conflict", "对象已被其他写入修改（条件写入失败）。");
       }
+      // 对齐真实 Blob：`allowOverwrite: false` 且对象已存在 → 写入失败。
+      // 这必须是 conflict（而不是 unknown），否则「并发首次创建」不会被重试。
       if (existing && options.allowOverwrite === false) {
-        throw new BlobBackendError("unknown", `blob already exists: ${pathname}`);
+        throw new BlobBackendError("conflict", `对象已存在，且本次写入不允许覆盖：${pathname}`);
       }
       blobs.set(pathname, { body: text, etag: nextEtag(), uploadedAt: new Date() });
     },
@@ -137,7 +151,9 @@ export function vercelBlobBackend(): BlobBackend {
           // 路径由业务决定（摘要/固定索引位），随机后缀会破坏幂等。
           addRandomSuffix: false,
           contentType: options.contentType ?? "application/json; charset=utf-8",
-          allowOverwrite: options.allowOverwrite ?? true,
+          // 默认**不覆盖**（SDK 原生语义）：同名对象已存在时写入失败。这是原子创建，
+          // 要覆盖必须由调用方显式声明（包体按摘要寻址、元数据重写）。
+          allowOverwrite: options.allowOverwrite ?? false,
           ...(options.ifMatch ? { ifMatch: options.ifMatch } : {}),
         });
       } catch (error) {
@@ -181,9 +197,17 @@ function toBackendError(error: unknown): BlobBackendError {
     name === "BlobAccessError" ||
     name === "BlobStoreNotFoundError" ||
     name === "BlobStoreSuspendedError" ||
+    name === "BlobServiceNotAvailable" ||
     /No blob credentials found/i.test(message)
   ) {
     return new BlobBackendError("unavailable", "Blob 存储不可用或凭据无效：" + message, error);
+  }
+  // `allowOverwrite: false` 撞上已存在的对象时，SDK 只会抛一个通用 `BlobError`
+  // （服务端返回的 code 不在它的映射表里，落到 default 分支），message 形如
+  // "This blob already exists..."。这类必须归到 conflict —— 它是可重试的并发
+  // 创建失败，不是未知故障。用 message 判定是因为 SDK 没有给这类错误单独的类。
+  if (/already exists/i.test(message)) {
+    return new BlobBackendError("conflict", "对象已存在，且本次写入不允许覆盖：" + message, error);
   }
   return new BlobBackendError("unknown", "Blob 存储操作失败：" + message, error);
 }

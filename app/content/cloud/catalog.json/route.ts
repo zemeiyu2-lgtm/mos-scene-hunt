@@ -63,12 +63,18 @@ export async function GET() {
   const blobConfigured = readBlobConfig().configured;
   let blobEntries: RawCatalogEntry[] = [];
   let blobDegraded = false;
+  let blobCorrupt = false;
   if (blobConfigured) {
     try {
       const [index, drafts] = await Promise.all([readPublishedIndex(), readDrafts()]);
       blobEntries = indexToCatalogEntries(index, drafts.games as unknown as RawCatalogEntry[]);
-    } catch {
+    } catch (error) {
+      // 降级不等于「正常」：索引损坏时目录会少掉所有经云端发布的游戏，
+      // 必须让调用方从响应头看得出来，而不是显示成一个「恰好很短」的目录。
       blobDegraded = true;
+      const name = (error as { name?: string } | null)?.name ?? "";
+      const kind = (error as { kind?: unknown } | null)?.kind;
+      blobCorrupt = (name === "BlobStoreError" || name === "BlobBackendError") && kind === "corrupt";
     }
   }
 
@@ -82,9 +88,14 @@ export async function GET() {
     "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
     // 自检用：本次因「未发布 / 文件缺失 / id 不一致」被隐藏的条目数量。
     "X-Cloud-Catalog-Hidden": String(hidden),
-    // 自检用：本次目录由谁提供（repo-only = 未接入存储；degraded = 存储读取失败已降级）。
-    "X-Cloud-Catalog-Backend": !blobConfigured ? "repo-only" : blobDegraded ? "degraded" : "blob",
+    // 自检用：本次目录由谁提供（repo-only = 未接入存储；degraded = 存储读取失败已降级；
+    // corrupt = 已发布索引损坏，云端发布的游戏本次全部缺失）。
+    "X-Cloud-Catalog-Backend": !blobConfigured ? "repo-only" : blobCorrupt ? "corrupt" : blobDegraded ? "degraded" : "blob",
   };
+  if (blobCorrupt) {
+    // 明确告诉客户端「这份目录不完整」，避免把数据损坏当成「云端还没有游戏」。
+    headers["X-Cloud-Catalog-Warning"] = "published-index-corrupt";
+  }
 
   return NextResponse.json(
     {
