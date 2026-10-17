@@ -1,30 +1,18 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-10-07",
+  "updatedAt": "2026-10-17",
   "games": [
     {
-      "id": "bsop-eight-secrets",
-      "title": "神学院的八个秘密",
-      "author": "MOS Scene Hunt · BSOP Reference 01",
-      "description": "在真实校园中体验呼召、真理、实践、敬拜、群体、生命、忠心与使命。",
+      "id": "rizal-park-discovery",
+      "title": "黎刹公园：寻找最后的宝藏",
+      "author": "MOS Scene Hunt · 官方母版",
+      "description": "观察、图片线索、团队挑战与最终宝藏兑现的轻量户外寻宝示范。坐标需由设计者现场确认。",
       "language": "zh-CN",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 25,
       "difficulty": "easy",
-      "sceneCount": 8,
+      "sceneCount": 5,
       "status": "published",
-      "packFile": "bsop-eight-secrets.json"
-    },
-    {
-      "id": "igsl-eight-transformations",
-      "title": "IGSL的八个转化现场",
-      "author": "MOS Scene Hunt · IGSL Backup 01",
-      "description": "从呼召、真理与行动，走向群体、服事、生命与城市使命。",
-      "language": "zh-CN",
-      "estimatedMinutes": 50,
-      "difficulty": "medium",
-      "sceneCount": 8,
-      "status": "published",
-      "packFile": "igsl-eight-transformations.json"
+      "packFile": "rizal-park-discovery.json"
     }
   ]
 }
