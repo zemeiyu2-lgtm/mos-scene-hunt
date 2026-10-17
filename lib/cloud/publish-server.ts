@@ -286,8 +286,11 @@ const TOP_LEVEL_KEY_ORDER = [
  * 人工确认的部署，可以显式打开这个开关，但那时「谁拿得到密钥，谁就能上线内容」
  * 就是你要接受的风险。
  */
-export function directPublishEnabled(env: Record<string, string | undefined> = process.env): boolean {
-  return (env.MOS_CLOUD_ALLOW_DIRECT_PUBLISH ?? "").trim() === "1";
+export function directPublishEnabled(_env: Record<string, string | undefined> = process.env): boolean {
+  // MOS Scene Hunt requires human review before any game becomes player-visible.
+  // Keep the legacy env argument for API compatibility, but never let a deploy-time
+  // flag bypass the review gate. Approval must be a separate, audited operation.
+  return false;
 }
 
 /**
