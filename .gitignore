@@ -35,6 +35,3 @@ yarn-error.log*
 .vscode
 vitest.config.*.timestamp-*
 
-# Local persistent game packages and secret
-/data/game-packages/
-.local-game-store-token
