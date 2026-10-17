@@ -166,7 +166,7 @@ export default function GamesPage() {
         {!serverEnabled ? (
           <div className="card p-4 text-sm leading-relaxed text-[var(--muted)]">
             <p>请先连接电脑游戏包服务器。访问口令只保存在当前浏览器会话中。</p>
-            <div className="mt-3 flex gap-2"><input className="min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 text-sm" type="password" value={serverTokenInput} onChange={(e) => setServerTokenInput(e.target.value)} placeholder="电脑服务器访问口令" autoComplete="current-password" /><button className="btn btn-primary" type="button" onClick={() => { const token = serverTokenInput.trim(); if (!token) return; setServerConnectMessage("正在连接……"); window.sessionStorage.setItem("mos-local-game-token", token); void refreshServer(); }}>连接</button></div>
+            <div className="mt-3 flex gap-2"><input className="min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 text-sm" type="password" value={serverTokenInput} onChange={(e) => setServerTokenInput(e.target.value)} placeholder="电脑服务器访问口令" autoComplete="current-password" /><button className="btn btn-primary" type="button" onClick={() => { const token = serverTokenInput.trim(); if (!token) return; setServerConnectMessage("正在连接……"); window.sessionStorage.setItem("mos-local-game-token", token); setServerTokenInput(""); void refreshServer(); }}>连接</button></div>
             {serverConnectMessage ? <p role="status" className="mt-2 text-xs">{serverConnectMessage}</p> : <p className="mt-2 text-xs">请在电脑上运行本地服务器，并访问电脑服务器地址。</p> }
           </div>
         ) : serverGames.length ? (
