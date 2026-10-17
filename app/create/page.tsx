@@ -35,7 +35,7 @@ export default function CreatePage() {
         setDraft(next.game);
         setReport(next);
         refreshLibrary();
-        setMessage(next.canPlaytest ? "导入成功，已载入设计器" : "已导入，但需要修正问题");
+        setMessage(next.canPlaytest ? "导入成功，已载入设计器" : "已导入，但需要修正");
       }
     } catch (error) {
       setReport(null);
@@ -50,7 +50,7 @@ export default function CreatePage() {
   const spatial = report?.spatial ?? validateGamePackage(working).spatial;
   return <Screen title="创建游戏" subtitle="手机优先 · 电脑增强">
     <section className="card p-5"><p className="game-kicker">MOS SCENE HUNT V0.6</p><h2 className="mt-2 text-2xl font-bold">先设计，再开始游戏</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">地图、点位、故事、任务和奖励属于同一个游戏包。手机可以完成基础设计；电脑只提供更大的编辑空间。</p>
-      <div className="mt-4 grid grid-cols-2 gap-2"><Link href={working ? `/design?game=${encodeURIComponent(working.id)}` : "/design"} className="btn btn-primary text-center">进入设计器</Link><button className="btn btn-secondary" onClick={() => inputRef.current?.click()}>导入 Word / 游戏包</button></div>
+      <div className="mt-4"><Link href={working ? `/design?game=${encodeURIComponent(working.id)}` : "/design"} className="btn btn-primary block text-center">进入设计器</Link></div>
       <input ref={inputRef} className="hidden" type="file" accept=".docx,.json,.md,.markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json,text/markdown" onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} /></section>
     <section className="card mt-4 p-5">
       <div className="flex items-start justify-between gap-3">
@@ -85,7 +85,7 @@ export default function CreatePage() {
       <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">AI 给出的是初稿。请检查地点是否开放、安全、可到达，再在地图上校准每个点位；不要直接相信 AI 生成的 GPS 坐标。</p>
     </section>
     <section className="card mt-4 p-5"><p className="text-sm font-bold">空间概览</p><div className="mt-3 grid grid-cols-3 gap-2"><Stat label="体验点" value={String(working.scenes.length)} /><Stat label="总距离" value={`${Math.round(spatial.totalMeters)}m`} /><Stat label="步行" value={`约 ${spatial.walkingMinutes} 分`} /></div><div className="mt-4 space-y-2">{spatial.distances.map((d,i)=><div key={`${d.from}-${d.to}`} className="rounded-xl bg-[var(--surface)] px-3 py-2 text-xs"><b>{i+1} → {i+2}</b><span className="float-right">{Math.round(d.meters)} m</span></div>)}</div></section>
-    <section className="card mt-4 p-5"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold">自动验证</p><p className="mt-1 text-xs text-[var(--muted)]">数据、空间、逻辑和媒体的基础检查</p></div><button className="btn btn-primary" onClick={() => setReport(validateGamePackage(working))}>验证</button></div>{report ? <div className="mt-4"><div className={`rounded-xl px-3 py-3 text-sm font-semibold ${report.canPlaytest ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>{report.canPlaytest ? "✓ 可以试玩" : "需要修正问题"}</div><div className="mt-3 space-y-2">{report.issues.length ? report.issues.map((i,n)=><div key={n} className="rounded-xl bg-[var(--surface)] px-3 py-2 text-xs"><b>{i.severity === "error" ? "错误" : "提醒"}</b> · {i.path}<br />{i.message}</div>) : <p className="text-xs text-[var(--muted)]">没有发现问题。</p>}</div></div> : null}</section>
+    <section className="card mt-4 p-5"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold">自动验证</p><p className="mt-1 text-xs text-[var(--muted)]">数据、空间、逻辑和媒体的基础检查</p></div><button className="btn btn-primary" onClick={() => setReport(validateGamePackage(working))}>验证</button></div>{report ? <div className="mt-4"><div className={`rounded-xl px-3 py-3 text-sm font-semibold ${report.canPlaytest ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>{report.canPlaytest ? "✓ 可以运行" : "需要修正问题"}</div><div className="mt-3 space-y-2">{report.issues.length ? report.issues.map((i,n)=><div key={n} className="rounded-xl bg-[var(--surface)] px-3 py-2 text-xs"><b>{i.severity === "error" ? "错误" : "提醒"}</b> · {i.path}<br />{i.message}</div>) : <p className="text-xs text-[var(--muted)]">没有发现问题。</p>}</div></div> : null}</section>
     <section className="card mt-4 p-4"><button className="btn btn-primary btn-block" onClick={saveLibrary}>保存到本机游戏库</button>{message ? <p className="mt-3 text-center text-xs text-[var(--muted)]">{message}</p> : null}</section>
   </Screen>;
 }
