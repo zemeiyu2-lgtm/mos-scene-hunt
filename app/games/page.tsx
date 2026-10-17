@@ -5,7 +5,13 @@ import Link from "next/link";
 import { Screen, LoadingState } from "@/components/ui";
 import { importGamePackage, listAuthoredGames, markCurrentAuthoredGame } from "@/lib/content";
 import type { Game } from "@/lib/game/types";
-import { loadCloudCatalog, packUrl, publishedGames, type CloudGameEntry } from "@/lib/cloud";
+import {
+  cloudAvailability,
+  loadCloudCatalog,
+  packUrl,
+  publishedGames,
+  type CloudGameEntry,
+} from "@/lib/cloud";
 import { MapView } from "@/components/map-view";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
 import type { MapSceneEntry } from "@/components/game-map";
@@ -17,16 +23,28 @@ export default function GamesPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  // 目录来自网络时，服务端已确认包文件存在；来自离线缓存则可能过期。
+  const [catalogVerified, setCatalogVerified] = useState(false);
 
   const refreshLocal = () => setLocalGames(listAuthoredGames());
 
+  /**
+   * 只刷新云端目录，**不动 message**。
+   *
+   * 这里曾经无条件 setMessage("")，导致一个很难发现的真实缺陷：玩家点「下载到本机」，
+   * download() 先设置「已下载并保存…」，紧接着目录刷新（focus / 重挂载触发）把这条
+   * 提示清掉——提示只存在约 30 毫秒，玩家完全看不到下载是否成功。
+   * 目录刷新的职责是更新列表，不是替用户清空反馈；清空只发生在新的操作开始时。
+   */
   const refresh = async () => {
     setLoading(true);
     try {
       const catalog = await loadCloudCatalog();
       setGames(publishedGames(catalog));
-      setMessage("");
+      // 服务端目录已过滤掉不可取的条目；这里记录来源，供离线副本再做一次判定。
+      setCatalogVerified(true);
     } catch (error) {
+      setCatalogVerified(false);
       setMessage(error instanceof Error ? "云端游戏库暂时无法读取；本机游戏仍可使用。" : "云端游戏库暂时无法读取。");
     } finally {
       setLoading(false);
@@ -41,22 +59,56 @@ export default function GamesPage() {
     return () => window.removeEventListener("focus", onFocus);
   }, []);
 
+  /**
+   * 下载并保存到本机游戏库。
+   *
+   * 失败必须分类，因为处置方式完全不同：
+   *   - 网络失败（fetch 抛错）→ 提示检查网络，可重试；
+   *   - 404             → 目录过期/游戏已下架，提示刷新目录；
+   *   - 其他 HTTP        → 服务器问题，提示稍后重试；
+   *   - 校验失败（importGamePackage 抛错）→ 包内容坏了，**不写入**本机库。
+   * 最后一种最关键：坏包绝不能半途进入本机库，否则玩家会玩到残缺游戏。
+   */
   const download = async (entry: CloudGameEntry) => {
     setBusyId(entry.id);
     setMessage("");
+    let text: string;
     try {
       const response = await fetch(packUrl(entry), { cache: "no-cache" });
-      if (!response.ok) throw new Error("游戏包下载失败（HTTP " + response.status + "）");
-      const result = importGamePackage(await response.text());
+      if (response.status === 404) {
+        setMessage("这个游戏目前取不到游戏包（可能已下架或正在更新）。请下拉刷新目录后再试。");
+        return;
+      }
+      if (!response.ok) {
+        setMessage("游戏包下载失败（HTTP " + response.status + "）。请稍后重试；如果持续失败，请把这条信息告诉维护者。");
+        return;
+      }
+      text = await response.text();
+    } catch (error) {
+      setMessage(
+        "网络连接失败，没能下载到游戏包" +
+          (error instanceof Error ? "（" + error.message + "）" : "") +
+          "。请确认手机联网后重试；已下载过的游戏仍可在「本机游戏」里直接游玩。",
+      );
+      return;
+    } finally {
+      setBusyId(null);
+    }
+
+    try {
+      const result = importGamePackage(text);
       refreshLocal();
       const warningCount = result.issues.filter((issue) => issue.severity === "warning").length;
       setMessage(warningCount
         ? "已下载并保存「" + result.game.title + "」；有 " + warningCount + " 项提醒，请在设计中心检查。"
         : "已下载并保存「" + result.game.title + "」，可在上方本机游戏中直接开始。");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "游戏下载失败");
-    } finally {
-      setBusyId(null);
+      // 校验失败即拒绝入库：这是下载链路的最后一道闸门。
+      setMessage(
+        "下载到的游戏包未通过校验，已拒绝保存：" +
+          (error instanceof Error ? error.message : String(error)) +
+          "。本机原有游戏不受影响。",
+      );
     }
   };
 
@@ -94,8 +146,6 @@ export default function GamesPage() {
         </div>
       </section>
 
-      {message ? <div role="status" className="card mt-3 p-3 text-sm leading-relaxed">{message}</div> : null}
-
       <section className="mt-4">
         <div className="mb-2 flex items-center justify-between gap-3">
           <div>
@@ -104,6 +154,11 @@ export default function GamesPage() {
           </div>
           <button type="button" className="btn btn-ghost min-h-9 px-2 text-xs" onClick={refreshLocal}>刷新</button>
         </div>
+        {/* 反馈放在「本机游戏」标题正下方：下载成功后新卡片就出现在这里，
+            手机上不会因为提示被顶到页面顶部而完全看不见。 */}
+        {message ? (
+          <div role="status" aria-live="polite" className="card mb-2 p-3 text-sm leading-relaxed">{message}</div>
+        ) : null}
         <div className="grid gap-2">
           {localGames.map((game) => (
             <article key={game.id} className="card p-4">
@@ -146,9 +201,21 @@ export default function GamesPage() {
                   <span className="chip bg-[var(--surface)]">约 {game.estimatedMinutes ?? "—"} 分钟</span>
                   <span className="chip bg-[var(--surface)]">{game.difficulty === "easy" ? "入门" : game.difficulty === "hard" ? "进阶" : "标准"}</span>
                 </div>
-                <button type="button" className="btn btn-primary mt-3 w-full" onClick={() => void download(game)} disabled={busyId === game.id}>
-                  {busyId === game.id ? "正在下载…" : "下载到本机"}
-                </button>
+                {(() => {
+                  const availability = cloudAvailability(game, catalogVerified);
+                  if (availability === "unavailable") {
+                    return (
+                      <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-center text-[11.5px] leading-relaxed text-amber-900">
+                        这个游戏暂时不可获取（游戏包缺失）。请稍后刷新目录再试。
+                      </p>
+                    );
+                  }
+                  return (
+                    <button type="button" className="btn btn-primary mt-3 w-full" onClick={() => void download(game)} disabled={busyId === game.id}>
+                      {busyId === game.id ? "正在下载…" : "下载到本机"}
+                    </button>
+                  );
+                })()}
               </article>
             ))}
             {!games.length ? <div className="card p-4 text-center text-sm text-[var(--muted)]">目前没有公开的云端游戏。你仍可玩本机游戏或体验玩法示范。</div> : null}

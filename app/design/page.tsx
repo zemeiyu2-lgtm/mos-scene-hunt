@@ -17,7 +17,7 @@
  * No GPS is required or requested: the designer works entirely from the map.
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,6 +42,13 @@ import type { MapSceneEntry } from "@/components/game-map";
 import type { TileProviderId } from "@/lib/map/tiles";
 import { useHunt } from "@/components/hunt-provider";
 import { createGameShareUrl } from "@/lib/content/share";
+import {
+  PUBLISH_STATUS_EXPLAINER,
+  readPublishKey,
+  savePublishKey,
+  submitGameForPublish,
+  type PublishResult,
+} from "@/lib/cloud/publish-client";
 import { MediaEditor } from "@/components/media-gallery";
 import { exportGameJson, summarizeSpatial, validateGamePackage } from "@/lib/game/package";
 
@@ -58,6 +65,18 @@ export default function DesignPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+  // 云端发布：与「本机分享链接」是两条不同的通道，状态必须分开显示，
+  // 否则设计者会把「链接能打开」误当成「游戏已经发布到云端」。
+  const [publishKey, setPublishKey] = useState("");
+  const [publishResult, setPublishResult] = useState<PublishResult | null>(null);
+  const [publishBusy, setPublishBusy] = useState(false);
+  const [rememberKey, setRememberKey] = useState(true);
+  const [publishUrl, setPublishUrl] = useState("");
+  const publishQrRef = useRef<HTMLDivElement>(null);
+  // 读取本机保存的发布密钥（只在本机，不上传、不打包进 JS）。
+  useEffect(() => {
+    setPublishKey(readPublishKey());
+  }, []);
   const qrContainerRef = useRef<HTMLDivElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importText, setImportText] = useState("");
@@ -337,30 +356,42 @@ export default function DesignPage() {
 
   /* ---------------------------------------------------------------- ④ 保存 */
 
+  /**
+   * 发布前的「真实坐标」检查。
+   *
+   * 本机分享与云端发布共用同一份判定：只要有一条通道允许 0,0 占位坐标流出去，
+   * 现场就会有人走到 (0,0) 的赤道海面上去。返回 null 表示可以发布。
+   */
+  const prePublishBlocker = (target: Game): string | null => {
+    if (!packageReport?.canPlaytest) {
+      const firstError = packageReport?.issues.find((issue) => issue.severity === "error");
+      return firstError ? `请先修复游戏问题：${firstError.message}` : "请先完成游戏校验";
+    }
+    const configured = (point: { lat: number; lng: number } | undefined) =>
+      Boolean(point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && !(point.lat === 0 && point.lng === 0));
+    const missing: string[] = [];
+    if (!configured(target.startLocation)) missing.push("真实起点");
+    if (!target.huntArea) {
+      missing.push("游戏区域");
+    } else if (target.huntArea.shape === "polygon") {
+      if ((target.huntArea.points?.length ?? 0) < MIN_POLYGON_POINTS) missing.push("完整的游戏区域边界");
+      else if (target.huntArea.points?.some((point) => !configured(point))) missing.push("游戏区域边界上的真实坐标");
+    } else if (!configured(target.huntArea.center)) {
+      missing.push("游戏区域中心");
+    }
+    if (target.scenes.some((scene) => !configured(scene.location))) missing.push("所有站点的真实 GPS 坐标");
+    if (missing.length) return "暂不能发布，请先设置：" + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。";
+    return null;
+  };
+
   const share = async () => {
     if (!working || areaIncomplete || drawingArea) return;
     setShareBusy(true);
     setShareMessage(null);
     setShareUrl(null);
     try {
-      if (!packageReport?.canPlaytest) {
-        const firstError = packageReport?.issues.find((issue) => issue.severity === "error");
-        throw new Error(firstError ? `请先修复游戏问题：${firstError.message}` : "请先完成游戏校验");
-      }
-      const configured = (point: { lat: number; lng: number } | undefined) =>
-        Boolean(point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && !(point.lat === 0 && point.lng === 0));
-      const missing: string[] = [];
-      if (!configured(working.startLocation)) missing.push("真实起点");
-      if (!working.huntArea) {
-        missing.push("游戏区域");
-      } else if (working.huntArea.shape === "polygon") {
-        if ((working.huntArea.points?.length ?? 0) < MIN_POLYGON_POINTS) missing.push("完整的游戏区域边界");
-        else if (working.huntArea.points?.some((point) => !configured(point))) missing.push("游戏区域边界上的真实坐标");
-      } else if (!configured(working.huntArea.center)) {
-        missing.push("游戏区域中心");
-      }
-      if (working.scenes.some((scene) => !configured(scene.location))) missing.push("所有站点的真实 GPS 坐标");
-      if (missing.length) throw new Error("暂不能发布，请先设置：" + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。");
+      const blocker = prePublishBlocker(working);
+      if (blocker) throw new Error(blocker);
       if (!save()) throw new Error("游戏未能保存到本机，请检查浏览器存储空间后重试。");
       const url = await createGameShareUrl(working);
       setShareUrl(url);
@@ -383,6 +414,66 @@ export default function DesignPage() {
       setShareMessage(error instanceof Error ? error.message : "生成分享链接失败");
     } finally {
       setShareBusy(false);
+    }
+  };
+
+  /** 提交到云端发布通道。成功只代表「已被服务端接收」，不代表玩家已能看到。 */
+  const publishToCloud = async () => {
+    if (!working || areaIncomplete || drawingArea || publishBusy) return;
+    setPublishResult(null);
+    setPublishUrl("");
+    const blocker = prePublishBlocker(working);
+    if (blocker) {
+      setPublishResult({ phase: "rejected", status: 0, message: blocker, issues: [] });
+      return;
+    }
+    if (!publishKey.trim()) {
+      setPublishResult({
+        phase: "unauthorized",
+        status: 0,
+        message: "请先填写发布密钥。密钥由维护者发放，只保存在这台设备的浏览器里，不会进入代码或公开页面。",
+        issues: [],
+      });
+      return;
+    }
+    setPublishBusy(true);
+    // 先保存到本机：提交的内容必须与设计者此刻看到的一致。
+    save();
+    try {
+      const result = await submitGameForPublish(working, { key: publishKey.trim() });
+      setPublishResult(result);
+      if (result.phase === "accepted") {
+        setPublishUrl(result.retrievalUrl);
+        // 只有服务端真正接受了这个密钥，才把它记到本机（错误密钥不该被保存）。
+        if (rememberKey) savePublishKey(publishKey.trim());
+      }
+      // 密钥错误时保留输入框内容：让设计者能一眼看出自己粘了什么并改正，
+      // 而不是清空后反复重粘贴。认证失败本来就不会被记住（只有校验通过的
+      // 密钥才会在「记住」被勾选时写入本机）。
+    } finally {
+      setPublishBusy(false);
+    }
+  };
+
+  const copyText = async (text: string, done: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareMessage(done);
+    } catch {
+      setShareMessage("复制失败；请长按或手动选择下方文本复制。");
+    }
+  };
+
+  const downloadPublishQr = () => {
+    const canvas = publishQrRef.current?.querySelector("canvas");
+    if (!canvas || !publishUrl) return;
+    try {
+      const link = document.createElement("a");
+      link.download = `${(working?.id || "game")}-发布凭据.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch {
+      setShareMessage("无法保存二维码图片，请尝试截图保存。");
     }
   };
 
@@ -416,6 +507,9 @@ export default function DesignPage() {
   const importPackageText = (text: string) => {
     try {
       const result = importGamePackage(text);
+      // 导入后要立刻编辑这份游戏，所以显式把它设为「当前游戏」。
+      // importGamePackage 本身不再做切换（那会让下载场景丢失反馈）。
+      markCurrentAuthoredGame(result.game.id);
       setDraft(result.game);
       setSelectedId(result.game.scenes[0]?.id ?? null);
       setSaved(true);
@@ -961,6 +1055,140 @@ export default function DesignPage() {
             </div>
           ) : null}
           {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}
+
+          {/* ------------------------------------------- 云端发布 */}
+          <div id="cloud-publish" className="mt-2 rounded-xl border border-[var(--line)] p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[12.5px] font-semibold">发布到云端游戏中心</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">
+                  与本机分享链接不同：发布到云端后，玩家可以在手机「游戏中心」里找到并下载这款游戏。
+                </p>
+              </div>
+              {publishResult?.phase === "accepted" ? (
+                <span className="chip shrink-0 bg-emerald-50 text-[10.5px] text-emerald-800">已提交</span>
+              ) : null}
+            </div>
+
+            <details className="mt-2">
+              <summary className="cursor-pointer text-[11px] text-[var(--muted)]">发布是怎么回事？（四步）</summary>
+              <ol className="mt-1.5 space-y-1 text-[11px] leading-relaxed text-[var(--muted)]">
+                {PUBLISH_STATUS_EXPLAINER.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ol>
+            </details>
+
+            <label className="mt-3 block text-[11px] font-semibold text-[var(--muted)]" htmlFor="publish-key">
+              发布密钥（由维护者提供）
+            </label>
+            <input
+              id="publish-key"
+              type="password"
+              autoComplete="off"
+              className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-[12.5px]"
+              placeholder="粘贴发布密钥"
+              value={publishKey}
+              onChange={(event) => setPublishKey(event.target.value)}
+            />
+            <label className="mt-2 flex items-center gap-2 text-[11px] text-[var(--muted)]">
+              <input
+                type="checkbox"
+                checked={rememberKey}
+                onChange={(event) => {
+                  setRememberKey(event.target.checked);
+                  if (!event.target.checked) savePublishKey("");
+                }}
+              />
+              在这台设备上记住（只存本机浏览器，不进入代码或页面）
+            </label>
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-block mt-3"
+              onClick={() => void publishToCloud()}
+              disabled={areaIncomplete || drawingArea || publishBusy}
+            >
+              {publishBusy ? "正在提交到云端…" : "☁ 提交到云端发布队列"}
+            </button>
+
+            {publishResult && publishResult.phase !== "accepted" ? (
+              <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
+                <p className="font-semibold">
+                  {publishResult.phase === "unauthorized"
+                    ? "没有发布权限"
+                    : publishResult.phase === "disabled"
+                      ? "云端发布通道未开通"
+                      : publishResult.phase === "offline"
+                        ? "无法连接云端"
+                        : "提交被拒绝"}
+                </p>
+                <p className="mt-1">{publishResult.message}</p>
+                {publishResult.issues.length ? (
+                  <ul className="mt-2 space-y-1">
+                    {publishResult.issues.slice(0, 5).map((issue, index) => (
+                      <li key={`${issue.path}-${index}`}>
+                        · {issue.path}：{issue.message}
+                      </li>
+                    ))}
+                    {publishResult.issues.length > 5 ? (
+                      <li>……共 {publishResult.issues.length} 条</li>
+                    ) : null}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+
+            {publishResult?.phase === "accepted" ? (
+              <div className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-[11.5px] leading-relaxed text-emerald-900">
+                <p className="font-semibold">
+                  「{publishResult.game.title}」已通过服务端校验，进入待落库队列
+                </p>
+                <p className="mt-1">{publishResult.message}</p>
+                <p className="mt-1">
+                  {publishResult.unchanged
+                    ? "注意：这一版内容与上一次提交完全一致，没有产生新的版本。"
+                    : publishResult.duplicate === "republish"
+                      ? "这是对同一款游戏的更新，落库时会替换旧包。"
+                      : "这是一款新游戏，落库时会新增目录条目。"}
+                  {publishResult.warningCount > 0 ? `（${publishResult.warningCount} 项提醒，建议核对）` : ""}
+                </p>
+                <p className="mt-1 break-all text-[10.5px]">
+                  内容摘要：{publishResult.digest.slice(0, 16)}… · 包文件：{publishResult.game.packFile}
+                </p>
+                <p className="mt-1">
+                  注意：玩家现在<b>还看不到</b>这款游戏，下一步需要维护者把包落库并部署（见上方四步）。
+                </p>
+                {publishResult.nextStep ? (
+                  <p className="mt-1 text-[10.5px]">{publishResult.nextStep}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {publishUrl ? (
+              <div className="mt-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3">
+                <p className="text-[11.5px] font-semibold">发布凭据链接（给维护者落库用）</p>
+                <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{publishUrl}</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button type="button" className="btn btn-ghost" onClick={() => void copyText(publishUrl, "发布凭据链接已复制，请交给维护者。")}>
+                    复制链接
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={downloadPublishQr}>
+                    下载二维码
+                  </button>
+                </div>
+                {publishUrl.length <= 1200 ? (
+                  <div ref={publishQrRef} className="mx-auto mt-2 flex w-full max-w-[220px] justify-center rounded-xl bg-white p-2">
+                    <QRCodeCanvas value={publishUrl} size={200} level="M" marginSize={2} />
+                  </div>
+                ) : null}
+                <p className="mt-2 text-[10.5px] leading-relaxed text-[var(--muted)]">
+                  在仓库根目录执行：npm run cloud:publish -- &quot;{publishUrl}&quot;（默认以 draft 落库；确认无误后加 --publish）。
+                </p>
+              </div>
+            ) : null}
+          </div>
+
           <div className="grid grid-cols-2 gap-2"><button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button><button type="button" className="btn btn-ghost btn-block" onClick={exportPackage}>导出游戏包</button></div>
           <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>恢复官方示范内容</button>
         </div>

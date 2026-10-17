@@ -304,7 +304,19 @@ export interface ImportedGamePackage {
   issues: ValidationIssue[];
 }
 
-/** Install a designer-exported game package after validation. */
+/**
+ * Install a designer-exported game package after validation.
+ *
+ * 只做「校验 + 存入本机库」，**不切换当前游戏**。
+ *
+ * 这一点很要紧：切换当前游戏会改写 `mos-scene-hunt:current-authored-game`，
+ * 而根布局用 `key={gameId}` 挂在 HuntProvider 上（见 components/root-providers.tsx）。
+ * 一旦切换，整棵子树会被卸载重建，调用方刚设置的成功提示会连同组件 state 一起丢失——
+ * 玩家点「下载到本机」后就会看到「什么都没发生」。
+ *
+ * 需要「导入即切换」的场景（在设计中心导入后马上编辑），由调用方显式调用
+ * markCurrentAuthoredGame()。下载入库不属于那种场景：入库 ≠ 开始玩。
+ */
 export function importGamePackage(text: string): ImportedGamePackage {
   let raw: unknown;
   try { raw = JSON.parse(text); } catch { throw new Error("游戏包不是有效的 JSON 文件"); }
@@ -313,7 +325,6 @@ export function importGamePackage(text: string): ImportedGamePackage {
   const errors = report.issues.filter((issue) => issue.severity === "error");
   if (errors.length > 0) throw new Error("游戏包校验失败：" + errors[0].message);
   if (!saveAuthoredGame(report.game)) throw new Error("游戏包无法保存到本机，请检查浏览器存储权限");
-  markCurrentAuthoredGame(report.game.id);
   return { game: report.game, issues: report.issues };
 }
 

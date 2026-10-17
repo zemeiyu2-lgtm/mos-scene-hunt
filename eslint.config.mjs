@@ -29,5 +29,7 @@ export default defineConfig([
     "coverage/**",
     "node_modules/**",
     "next-env.d.ts",
+    // 生成物：维护者 CLI 由 scripts/build-cloud-publish.mjs 用 esbuild 打包而来。
+    "scripts/.build/**",
   ]),
 ]);

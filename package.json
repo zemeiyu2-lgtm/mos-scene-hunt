@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "cloud:publish": "node scripts/build-cloud-publish.mjs && node scripts/.build/cloud-publish.mjs",
     "test:acceptance": "node tests/e2e/run.mjs",
     "test:acceptance:rebuild": "node tests/e2e/run.mjs --rebuild",
     "test:acceptance:only": "node tests/e2e/run-e2e.mjs"

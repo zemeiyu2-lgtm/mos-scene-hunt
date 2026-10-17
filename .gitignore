@@ -34,3 +34,5 @@ yarn-error.log*
 .idea
 .vscode
 vitest.config.*.timestamp-*
+scripts/.build/
+content/cloud/publish-store/
