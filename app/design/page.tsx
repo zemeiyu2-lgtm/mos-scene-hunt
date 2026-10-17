@@ -107,7 +107,7 @@ export default function DesignPage() {
 
   if (loading || !working) {
     return (
-      <Screen title="创建游戏" subtitle="正在加载内容">
+      <Screen title="创作中心">
         <div className="card h-40 animate-pulse" />
         {loadError ? <p className="mt-3 text-sm text-red-700">{loadError}</p> : null}
       </Screen>
