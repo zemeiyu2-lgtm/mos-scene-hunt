@@ -8,7 +8,7 @@
  * radius is entered.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
@@ -40,6 +40,44 @@ export default function MapPage() {
   } = useHunt();
 
   const [recenterToken, setRecenterToken] = useState(0);
+  const [heading, setHeading] = useState<number | null>(null);
+  const [headingEnabled, setHeadingEnabled] = useState(false);
+
+  const enableHeading = async () => {
+    if (typeof window === "undefined" || typeof window.DeviceOrientationEvent === "undefined") return;
+    const Orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+      requestPermission?: () => Promise<string>;
+    };
+    try {
+      if (typeof Orientation.requestPermission === "function") {
+        const permission = await Orientation.requestPermission();
+        if (permission !== "granted") return;
+      }
+      setHeadingEnabled(true);
+    } catch {
+      setHeadingEnabled(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!headingEnabled) return;
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+      const compassEvent = event as DeviceOrientationEvent & { webkitCompassHeading?: number };
+      let next: number | null = null;
+      if (typeof compassEvent.webkitCompassHeading === "number" && Number.isFinite(compassEvent.webkitCompassHeading)) {
+        next = compassEvent.webkitCompassHeading;
+      } else if (event.absolute && event.alpha !== null && Number.isFinite(event.alpha)) {
+        next = (360 - event.alpha + 360) % 360;
+      }
+      if (next !== null) setHeading(next);
+    };
+    window.addEventListener("deviceorientation", handleOrientation as EventListener);
+    window.addEventListener("deviceorientationabsolute", handleOrientation as EventListener);
+    return () => {
+      window.removeEventListener("deviceorientation", handleOrientation as EventListener);
+      window.removeEventListener("deviceorientationabsolute", handleOrientation as EventListener);
+    };
+  }, [headingEnabled]);
 
   const entries = useMemo<MapSceneEntry[]>(() => {
     return statuses.map((row) => {
@@ -56,8 +94,6 @@ export default function MapPage() {
 
   const currentDistance = current ? distances[current.id] ?? null : null;
   const currentRadius = current ? resolveRadius(current.location) : 50;
-  const targetBearing = fix && current ? bearingDegrees(fix, current.location) : null;
-  const targetDirection = targetBearing === null ? null : bearingLabel(targetBearing);
   const fixQuality = fix ? classifyFix(fix) : null;
   const huntAreaDistance = fix && game?.huntArea
     ? calculateDistance(fix, game.huntArea.center)
@@ -80,6 +116,7 @@ export default function MapPage() {
       <div className="relative h-[100dvh] w-full overflow-hidden">
         <MapView
           player={fix}
+          heading={heading}
           entries={entries}
           huntArea={game?.huntArea}
           tileProvider={settings.tileProvider as TileProviderId}
@@ -116,6 +153,16 @@ export default function MapPage() {
                   {statuses.filter((s) => s.status === "completed").length}/{statuses.length}
                 </span>
               </Link>
+
+              <button
+                type="button"
+                onClick={() => void enableHeading()}
+                className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
+                aria-label={heading !== null ? "手机朝向指示已启用" : "启用手机朝向指示"}
+                title="手机朝向指示"
+              >
+                🧭
+              </button>
 
               <button
                 type="button"
@@ -250,22 +297,6 @@ export default function MapPage() {
                   </div>
 
 
-                  {targetBearing !== null ? (
-                    <div className="mt-3 flex items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
-                      <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-full border border-emerald-700/30 bg-emerald-50">
-                        <span className="absolute text-[8px] font-bold text-emerald-900" style={{ top: 2 }}>N</span>
-                        <span className="absolute h-8 w-8 rounded-full border border-emerald-700/20" />
-                        <span className="absolute h-4 w-4 rounded-full border border-emerald-700/25" />
-                        <span className="absolute text-[8px] text-emerald-900" style={{ bottom: 2 }}>S</span>
-                        <span className="absolute h-0 w-0 border-x-[6px] border-x-transparent border-b-[18px] border-b-amber-500" style={{ transform: "rotate(" + targetBearing + "deg) translateY(-5px)", transformOrigin: "50% 70%" }} />
-                        <span className="absolute h-2 w-2 rounded-full bg-emerald-800" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[12px] font-bold">目标方向 · {targetDirection}</p>
-                        <p className="mt-0.5 text-[10px] leading-snug text-[var(--muted)]">雷达以地图北向为基准，箭头指向当前目标；请结合地图和现场环境判断。</p>
-                      </div>
-                    </div>
-                  ) : null}
 
                   {fixQuality?.message && !currentDistance?.inRange ? (
                     <p className="mt-1.5 text-[11.5px] leading-snug text-amber-700">
@@ -309,15 +340,3 @@ export default function MapPage() {
   );
 }
 
-function bearingDegrees(from: { lat: number; lng: number }, to: { lat: number; lng: number }): number {
-  const toRad = (value: number) => value * Math.PI / 180;
-  const toDeg = (value: number) => value * 180 / Math.PI;
-  const lat1 = toRad(from.lat), lat2 = toRad(to.lat);
-  const dLng = toRad(to.lng - from.lng);
-  const y = Math.sin(dLng) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-  return (toDeg(Math.atan2(y, x)) + 360) % 360;
-}
-function bearingLabel(degrees: number): string {
-  return ["北", "东北", "东", "东南", "南", "西南", "西", "西北"][Math.round(degrees / 45) % 8];
-}

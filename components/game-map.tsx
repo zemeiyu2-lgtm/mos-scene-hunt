@@ -19,13 +19,13 @@
  *   - the current target scene
  *   - completed scenes
  *   - still-locked scenes
- *   - the direction to the current target
+ *   - the phone heading relative to the fixed north-up map
  */
 
 import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
-import { bearing, bearingToCompass, formatDistance, resolveRadius } from "@/lib/location";
+import { formatDistance, resolveRadius } from "@/lib/location";
 import type { SceneStatus } from "@/lib/game/state";
 import type { HuntArea, Scene } from "@/lib/game/types";
 import type { PositionFix } from "@/lib/location";
@@ -56,6 +56,8 @@ interface GameMapProps {
   fitToHunt?: boolean;
   /** Re-centre on the player when this value changes. */
   recenterToken?: number;
+  /** Device compass heading in degrees clockwise from north; null until available. */
+  heading?: number | null;
   /** Optional authoring interactions. Gameplay never supplies these. */
   editable?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
@@ -99,17 +101,20 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
   });
 }
 
-function playerIcon(simulated: boolean): L.DivIcon {
+function playerIcon(simulated: boolean, heading: number | null): L.DivIcon {
+  const pointer = heading === null ? "" : `
+    <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:22px;height:38px;transform:translate(-50%,-88%) rotate(${heading}deg);transform-origin:50% 88%;pointer-events:none;z-index:1;filter:drop-shadow(0 0 5px rgba(255,177,45,.95));">
+      <div style="width:100%;height:100%;clip-path:polygon(50% 0%,100% 100%,50% 79%,0% 100%);background:linear-gradient(to bottom,rgba(255,246,190,.98) 0%,rgba(255,184,48,.82) 55%,rgba(255,158,25,.06) 100%);"></div>
+    </div>`;
   return L.divIcon({
     className: "",
-    // `data-role` is a stable hook for acceptance tests; the CSS class names are
-    // free to change with the visual design, the role is not.
-    html: `<div class="player-marker ${simulated ? "player-marker--sim" : ""}" data-role="player-marker">
-             <div class="player-marker__pulse"></div>
-             <div class="player-marker__dot"></div>
+    html: `<div class="player-marker ${simulated ? "player-marker--sim" : ""}" data-role="player-marker" style="position:relative;width:48px;height:48px;overflow:visible;">
+             ${pointer}
+             <div class="player-marker__pulse" style="position:absolute;left:50%;top:50%;right:auto;bottom:auto;width:38px;height:38px;transform:translate(-50%,-50%);z-index:2;"></div>
+             <div class="player-marker__dot" style="position:absolute;left:50%;top:50%;right:auto;bottom:auto;width:22px;height:22px;transform:translate(-50%,-50%);z-index:3;"></div>
            </div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
   });
 }
 
@@ -126,6 +131,7 @@ export default function GameMap({
   draggablePlayer = false,
   fitToHunt = false,
   recenterToken,
+  heading = null,
   editable = false,
   onMapClick,
   onSceneDrag,
@@ -140,7 +146,6 @@ export default function GameMap({
   const sceneMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const playerMarkerRef = useRef<L.Marker | null>(null);
   const playerHaloRef = useRef<L.Circle | null>(null);
-  const directionLineRef = useRef<L.Polyline | null>(null);
   const huntAreaRef = useRef<L.Circle | null>(null);
   const huntAreaPolygonRef = useRef<L.Polygon | null>(null);
   const huntAreaLineRef = useRef<L.Polyline | null>(null);
@@ -218,7 +223,6 @@ export default function GameMap({
       sceneMarkers.clear();
       playerMarkerRef.current = null;
       playerHaloRef.current = null;
-      directionLineRef.current = null;
       huntAreaRef.current = null;
       huntAreaPolygonRef.current = null;
       huntAreaLineRef.current = null;
@@ -483,7 +487,7 @@ export default function GameMap({
 
       if (!playerMarkerRef.current) {
         const marker = L.marker(latlng, {
-          icon: playerIcon(simulated),
+          icon: playerIcon(simulated, heading),
           draggable: draggablePlayer,
           zIndexOffset: 1000,
         });
@@ -498,7 +502,7 @@ export default function GameMap({
       } else {
         const marker = playerMarkerRef.current;
         marker.setLatLng(latlng);
-        marker.setIcon(playerIcon(simulated));
+        marker.setIcon(playerIcon(simulated, heading));
         if (draggablePlayer !== marker.dragging?.enabled()) {
           if (draggablePlayer) marker.dragging?.enable();
           else marker.dragging?.disable();
@@ -532,35 +536,7 @@ export default function GameMap({
         playerHaloRef.current = null;
       }
     }
-  }, [player, draggablePlayer]);
-
-  /* ------------------------------------------------ 目标方向线 */
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    if (player && activeEntry) {
-      const points: L.LatLngExpression[] = [
-        [player.lat, player.lng],
-        [activeEntry.scene.location.lat, activeEntry.scene.location.lng],
-      ];
-      if (!directionLineRef.current) {
-        const line = L.polyline(points, {
-          color: "#f5a524",
-          weight: 2,
-          opacity: 0.5,
-          dashArray: "3 10",
-        });
-        line.addTo(map);
-        directionLineRef.current = line;
-      } else {
-        directionLineRef.current.setLatLngs(points);
-      }
-    } else if (directionLineRef.current) {
-      map.removeLayer(directionLineRef.current);
-      directionLineRef.current = null;
-    }
-  }, [player, activeEntry]);
+  }, [player, draggablePlayer, heading]);
 
   /* ------------------------------------------------ 视角：整场取景或跟随玩家 */
   const fitDoneRef = useRef(false);
@@ -610,12 +586,6 @@ export default function GameMap({
   }, [fitToHunt, recenterToken, player?.lat, player?.lng, activeEntry?.scene.id, entries, player]);
 
   /* ------------------------------------------------ 渲染 */
-  const headingDegrees = useMemo(() => {
-    if (!player || !activeEntry) return null;
-    return bearing(player, { lat: activeEntry.scene.location.lat, lng: activeEntry.scene.location.lng });
-  }, [player, activeEntry]);
-  const headingLabel = headingDegrees === null ? null : bearingToCompass(headingDegrees);
-
   return (
     <div className={`map-root ${drawingMode ? "map-root--drawing" : ""}`}>
       <div ref={containerRef} className="h-full w-full" />
@@ -630,22 +600,6 @@ export default function GameMap({
         </div>
       ) : null}
 
-      {/* Direction hint overlay, kept in the DOM so it is readable by assistive tech. */}
-      {headingLabel && activeEntry && !drawingMode && headingDegrees !== null ? (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-center justify-center gap-2 p-2">
-          <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-emerald-700/50 bg-[#fffaf0]/95 shadow-lg">
-            <span className="absolute top-[1px] text-[7px] font-black text-emerald-900">N</span>
-            <span className="absolute h-7 w-7 rounded-full border border-emerald-800/20" />
-            <span className="absolute h-4 w-4 rounded-full border border-emerald-800/20" />
-            <span className="absolute h-0 w-0 border-x-[6px] border-x-transparent border-b-[19px] border-b-amber-500 drop-shadow" style={{ transform: `rotate(${headingDegrees}deg) translateY(-4px)`, transformOrigin: "50% 70%" }} />
-            <span className="absolute h-2 w-2 rounded-full border border-white bg-emerald-800" />
-          </div>
-          <div className="rounded-xl border border-white/70 bg-[#173f3b]/95 px-3 py-2 text-[11px] font-semibold text-white shadow-lg">
-            <p>目标方向 · {headingLabel}</p>
-            <p className="mt-0.5 max-w-[220px] truncate text-[10px] font-normal text-white/75">{activeEntry.scene.location.name ?? activeEntry.scene.title}{activeEntry.distance !== null ? ` · ${formatDistance(activeEntry.distance)}` : ""}</p>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

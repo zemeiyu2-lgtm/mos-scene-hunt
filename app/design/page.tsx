@@ -29,6 +29,7 @@ import {
   clearAuthoredGame,
   markCurrentAuthoredGame,
   saveAuthoredGame,
+  importGamePackage,
 } from "@/lib/content";
 import type { Game, HuntArea, Scene } from "@/lib/game/types";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
@@ -42,7 +43,7 @@ import type { TileProviderId } from "@/lib/map/tiles";
 import { useHunt } from "@/components/hunt-provider";
 import { createGameShareUrl } from "@/lib/content/share";
 import { MediaEditor } from "@/components/media-gallery";
-import { summarizeSpatial, validateGamePackage } from "@/lib/game/package";
+import { exportGameJson, summarizeSpatial, validateGamePackage } from "@/lib/game/package";
 
 const MICRO_PRESETS = [30, 50, 75, 100, 150, 250];
 const MIN_POLYGON_POINTS = 3;
@@ -58,6 +59,9 @@ export default function DesignPage() {
   const [shareBusy, setShareBusy] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const qrContainerRef = useRef<HTMLDivElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importText, setImportText] = useState("");
+  const [importMessage, setImportMessage] = useState<string | null>(null);
   // ① area-drawing session. While active, map clicks append boundary points.
   const [drawingArea, setDrawingArea] = useState(false);
   // One-shot circle placement: the next map click sets the area centre.
@@ -409,6 +413,33 @@ export default function DesignPage() {
     }
   };
 
+  const importPackageText = (text: string) => {
+    try {
+      const result = importGamePackage(text);
+      setDraft(result.game);
+      setSelectedId(result.game.scenes[0]?.id ?? null);
+      setSaved(true);
+      setDrawingArea(false);
+      setPlacingCircle(false);
+      setAreaSnapshot(undefined);
+      setShareUrl(null);
+      setShareMessage(null);
+      const warningCount = result.issues.filter((issue) => issue.severity === "warning").length;
+      setImportMessage(warningCount
+        ? `已导入「${result.game.title}」，发现 ${warningCount} 项提醒。请在地图上核对真实坐标与安全路线。`
+        : `已导入「${result.game.title}」，已保存到本机游戏库。`);
+    } catch (error) {
+      setImportMessage(error instanceof Error ? error.message : "导入失败，请检查 JSON 格式。");
+    }
+  };
+
+  const importPackageFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    importPackageText(await file.text());
+  };
+
   const save = (): boolean => {
     if (!working || areaIncomplete || drawingArea) return false;
     if (saveAuthoredGame(working)) {
@@ -458,14 +489,14 @@ export default function DesignPage() {
   };
 
   const copyJson = async () => {
-    await navigator.clipboard.writeText(JSON.stringify(working, null, 2));
+    await navigator.clipboard.writeText(exportGameJson(working));
     setSaved(true);
   };
 
   const exportPackage = () => {
     const report = validateGamePackage(working);
     if (!report.game || report.issues.some((issue) => issue.severity === "error")) return;
-    const blob = new Blob([JSON.stringify(report.game, null, 2)], { type: "application/json" });
+    const blob = new Blob([exportGameJson(report.game)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = `${working.id}.json`; a.click(); URL.revokeObjectURL(url);
@@ -476,6 +507,31 @@ export default function DesignPage() {
       title="创作中心"
       headerRight={<div className="flex items-center gap-1"><Link href="/how-to-create" className="btn btn-ghost h-9 min-h-0 px-2 text-xs">创作说明</Link><Link href="/" className="btn btn-ghost h-9 min-h-0 px-2 text-xs">返回</Link></div>}
     >
+      <section id="package-import" className="card mb-4 p-4 scroll-mt-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="font-bold">导入 AI 游戏包</h2>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">统一使用 MOS Scene Hunt JSON 游戏包。可直接粘贴 AI 生成的完整 JSON，也可选择 .json 文件；导入后先检查，再在地图上标定真实地点。</p>
+          </div>
+          <Link href="/how-to-create" className="btn btn-ghost min-h-9 shrink-0 px-2 text-xs">格式与注意事项</Link>
+        </div>
+        <input ref={importInputRef} type="file" accept=".json,application/json" className="sr-only" onChange={(event) => void importPackageFile(event)} />
+        <button type="button" className="btn btn-secondary mt-3 w-full" onClick={() => importInputRef.current?.click()}>选择 JSON 游戏包</button>
+        <textarea
+          value={importText}
+          onChange={(event) => setImportText(event.target.value)}
+          placeholder={'把 AI 输出的完整 JSON 粘贴到这里……\n标准格式包含 format、formatVersion 和 game。'}
+          className="mt-3 min-h-[140px] w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-xs leading-relaxed outline-none focus:border-[var(--accent)]"
+          spellCheck={false}
+          aria-label="粘贴 AI 生成的 JSON 游戏包"
+        />
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button type="button" className="btn btn-primary" onClick={() => importPackageText(importText)} disabled={!importText.trim()}>校验并导入</button>
+          <button type="button" className="btn btn-ghost" onClick={() => setImportText("")}>清空文本</button>
+        </div>
+        {importMessage ? <p role="status" className="mt-3 rounded-xl bg-[var(--surface)] px-3 py-2 text-xs leading-relaxed">{importMessage}</p> : null}
+      </section>
+
       {/* ------------------------------------------------ 步骤导航 */}
       <ol className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
