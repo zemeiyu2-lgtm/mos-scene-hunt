@@ -113,4 +113,4 @@ MIT（见 LICENSE）。运行时依赖全部为 OSI 认可许可证（MIT / Apac
 
 ## 电脑游戏包服务器（Windows）
 
-创作者可选择在自己的 Windows 电脑运行持久存储模式。启动方式、安全限制和 iPhone HTTPS/GPS 注意事项见 [docs/LOCAL-GAME-SERVER-WINDOWS.md](docs/LOCAL-GAME-SERVER-WINDOWS.md)。启动脚本为 `scripts/start-local-server.bat`；游戏包存放在 `data/game-packages/`，不会随服务重启删除。
+创作者可选择在自己的 Windows 电脑运行持久存储模式。启动方式与安全限制见 [电脑游戏包服务器说明](docs/LOCAL-GAME-SERVER-WINDOWS.md)。需要用 iPhone 测试真实 GPS 时，另见 [手机 HTTPS 测试入口说明](docs/LOCAL-GAME-SERVER-IOS-HTTPS.md)。启动脚本为 `scripts/start-local-server.bat`；游戏包存放在 `data/game-packages/`，不会随服务重启删除。
