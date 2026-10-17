@@ -68,11 +68,8 @@ export default function HomePage() {
             <span className="text-[11px] text-white/70">{game ? `${game.scenes.length} 个地点` : "GPS 探索游戏"}</span>
           </div>
           <h2 className="mt-4 max-w-[18rem] text-[25px] font-extrabold leading-tight">
-            下一条线索，<br />就在真实世界里。
+            发现身边的惊喜
           </h2>
-          <p className="mt-2 max-w-[19rem] text-[13px] leading-relaxed text-white/80">
-            带上手机，沿着地图探索地点、发现故事、完成任务。
-          </p>
           <div className="mt-4 overflow-hidden rounded-2xl border border-white/15 bg-[#f4ead4]">
             <svg viewBox="0 0 640 300" role="img" aria-label="山丘、树木与探索路线组成的插画地图" className="block h-auto w-full">
               <rect width="640" height="300" fill="#f4ead4" />
@@ -157,38 +154,29 @@ export default function HomePage() {
       ) : null}
 
       <section className="mt-4">
-        <h3 className="px-1 text-[12px] font-semibold text-[var(--muted)]">更多玩法与工具</h3>
         <div className="mt-2 grid grid-cols-2 gap-3">
           <Link href="/tutorial" className="card p-4 transition-transform active:scale-[0.99]">
             <span className="text-xl" aria-hidden="true">▷</span>
             <p className="mt-2 text-[14px] font-bold">一分钟演示</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">先看看怎么玩</p>
+            
           </Link>
           <Link href="/select" className="card p-4 transition-transform active:scale-[0.99]">
             <span className="text-xl" aria-hidden="true">⌖</span>
             <p className="mt-2 text-[14px] font-bold">选择游戏</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">寻找新的探索</p>
+            
           </Link>
           <Link href="/games" className="card p-4 transition-transform active:scale-[0.99]">
             <span className="text-xl" aria-hidden="true">◇</span>
             <p className="mt-2 text-[14px] font-bold">游戏中心</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">浏览可用游戏</p>
+            
           </Link>
           <Link href="/create" className="card p-4 transition-transform active:scale-[0.99]">
             <span className="text-xl" aria-hidden="true">✦</span>
-            <p className="mt-2 text-[14px] font-bold">创作 / 导入</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">设计自己的游戏</p>
+            <p className="mt-2 text-[14px] font-bold">创作中心</p>
+            
           </Link>
         </div>
-        {game ? (
-          <Link href="/select?game=bsop-eight-secrets" className="card mt-3 flex items-center justify-between gap-3 p-4">
-            <div>
-              <p className="text-[13px] font-semibold">经典示范 ·《神学院的八个秘密》</p>
-              <p className="mt-1 text-[11px] text-[var(--muted)]">八个地点、八道轻松任务，体验完整探索闭环。</p>
-            </div>
-            <span className="shrink-0 text-sm font-bold text-[var(--accent)]">试玩 →</span>
-          </Link>
-        ) : null}
+
       </section>
 
       {contentSource === "cache" ? (
