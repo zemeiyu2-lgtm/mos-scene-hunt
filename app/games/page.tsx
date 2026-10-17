@@ -16,6 +16,7 @@ export default function GamesPage() {
   const [localGames, setLocalGames] = useState<Game[]>([]);
   const [serverGames, setServerGames] = useState<Game[]>([]);
   const [serverEnabled, setServerEnabled] = useState(false);
+  const [serverTokenInput, setServerTokenInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -24,7 +25,10 @@ export default function GamesPage() {
 
   const refreshServer = async () => {
     try {
-      const response = await fetch("/api/local-games", { cache: "no-store" });
+      const token = window.sessionStorage.getItem("mos-local-game-token") ?? "";
+      if (!token) { setServerEnabled(false); setServerGames([]); return; }
+      const response = await fetch("/api/local-games", { cache: "no-store", headers: { "x-mos-local-token": token } });
+      if (response.status === 401) { window.sessionStorage.removeItem("mos-local-game-token"); setServerEnabled(false); setServerGames([]); return; }
       if (!response.ok) return;
       const result = await response.json() as { enabled?: boolean; games?: Game[] };
       setServerEnabled(Boolean(result.enabled));
@@ -156,8 +160,12 @@ export default function GamesPage() {
           <h2 className="text-lg font-bold">电脑服务器游戏</h2>
           <p className="text-xs text-[var(--muted)]">集中保存在运行本应用的电脑上；可下载到当前设备再游玩。</p>
         </div>
-        {!serverEnabled ? (
-          <div className="card p-4 text-sm leading-relaxed text-[var(--muted)]">电脑游戏包服务器尚未启用。当前网页的本机游戏仍保存在浏览器中，不会自动同步到电脑共享目录。</div>
+        {!serverEnabled && !serverTokenInput ? (
+          <div className="card p-4 text-sm leading-relaxed text-[var(--muted)]">
+            <p>请先连接电脑游戏包服务器。访问口令只保存在当前浏览器会话中。</p>
+            <div className="mt-3 flex gap-2"><input className="min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 text-sm" type="password" value={serverTokenInput} onChange={(e) => setServerTokenInput(e.target.value)} placeholder="电脑服务器访问口令" autoComplete="current-password" /><button className="btn btn-primary" type="button" onClick={() => { const token = serverTokenInput.trim(); if (!token) return; window.sessionStorage.setItem("mos-local-game-token", token); void refreshServer(); }}>连接</button></div>
+            <p className="mt-2 text-xs">若接口返回未启用，请确认正在访问电脑上运行的应用，而不是公共 Vercel 网站。</p>
+          </div>
         ) : serverGames.length ? (
           <div className="grid gap-2">
             {serverGames.map((game) => (
@@ -170,7 +178,8 @@ export default function GamesPage() {
               </article>
             ))}
           </div>
-        ) : <div className="card p-4 text-sm text-[var(--muted)]">电脑服务器已启用，但还没有保存的游戏包。</div>}
+        ) : <div className="card p-4 text-sm text-[var(--muted)]">电脑服务器已连接，但还没有保存的游戏包。可以在创作中心保存游戏。</div>}
+        {serverEnabled ? <button type="button" className="btn btn-ghost mt-2 w-full" onClick={() => { window.sessionStorage.removeItem("mos-local-game-token"); setServerEnabled(false); setServerGames([]); setServerTokenInput(""); }}>断开电脑服务器</button> : null}
       </section>
 
       <section className="mt-5">
