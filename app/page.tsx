@@ -4,10 +4,19 @@ import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
 import { Screen } from "@/components/ui";
 import { useOnlineStatus } from "@/components/providers";
+import { MapView } from "@/components/map-view";
+import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
+import type { MapSceneEntry } from "@/components/game-map";
+import type { PositionFix } from "@/lib/location";
 
 export default function HomePage() {
   const { game, state, loading, loadError, ratio, complete, contentSource, reloadContent } = useHunt();
   const online = useOnlineStatus();
+  const previewGame = RIZAL_PARK_TEMPLATE;
+  const previewPlayer: PositionFix = { lat: 14.58305, lng: 120.97936, accuracy: 12, timestamp: 0, simulated: true };
+  const previewEntries: MapSceneEntry[] = previewGame.scenes.map((scene, index) => ({
+    scene, status: index === 0 ? "available" : "locked", isActive: index === 0, distance: null, inRange: false,
+  }));
 
   // The reducer's currentSceneId is a navigation pointer, not necessarily
   // the scene whose challenge is currently open. Prefer active progress facts.
@@ -71,34 +80,10 @@ export default function HomePage() {
             发现身边的惊喜
           </h2>
           <div className="mt-4 overflow-hidden rounded-2xl border border-white/15 bg-[#f4ead4]">
-            <svg viewBox="0 0 640 300" role="img" aria-label="山丘、树木与探索路线组成的插画地图" className="block h-auto w-full">
-              <rect width="640" height="300" fill="#f4ead4" />
-              <path d="M0 65 Q95 15 190 70 T390 58 T640 42 V0 H0Z" fill="#e7d6b2" />
-              <path d="M0 188 Q110 130 215 182 T420 164 T640 184 V300 H0Z" fill="#b8c9a0" />
-              <path d="M0 235 Q125 190 250 236 T480 220 T640 228 V300 H0Z" fill="#8fae88" />
-              <path d="M-10 245 C95 255 95 125 220 146 S350 260 435 196 S545 88 660 120" fill="none" stroke="#fffaf0" strokeWidth="22" strokeLinecap="round" />
-              <path d="M-10 245 C95 255 95 125 220 146 S350 260 435 196 S545 88 660 120" fill="none" stroke="#d4a65c" strokeWidth="3" strokeDasharray="5 10" strokeLinecap="round" />
-              <g fill="#426d50">
-                <path d="M68 102 l-23 38 h46z" /><path d="M68 122 l-29 42 h58z" /><rect x="64" y="160" width="8" height="15" rx="2" />
-                <path d="M520 175 l-25 40 h50z" /><path d="M520 196 l-32 44 h64z" /><rect x="516" y="236" width="8" height="13" rx="2" />
-                <path d="M570 58 l-18 30 h36z" /><path d="M570 76 l-24 34 h48z" /><rect x="566" y="108" width="8" height="12" rx="2" />
-              </g>
-              <g transform="translate(220 146)">
-                <circle r="20" fill="#fffaf0" stroke="#d4a65c" strokeWidth="4" />
-                <path d="M0 -10 L3 -2 L11 0 L3 3 L0 11 L-3 3 L-11 0 L-3 -2Z" fill="#b77935" />
-              </g>
-              <g transform="translate(435 196)">
-                <circle r="18" fill="#fffaf0" stroke="#28685d" strokeWidth="4" />
-                <path d="M0 -8 L8 0 L0 8 L-8 0Z" fill="#28685d" />
-              </g>
-              <g transform="translate(565 111)">
-                <path d="M0 -22 L18 -5 L12 18 L-12 18 L-18 -5Z" fill="#b77935" stroke="#fffaf0" strokeWidth="4" />
-                <path d="M-7 -2 H7 M0 -9 V7" stroke="#fffaf0" strokeWidth="3" strokeLinecap="round" />
-              </g>
-              <g fill="#fffaf0" opacity=".85">
-                <circle cx="132" cy="73" r="3" /><circle cx="152" cy="91" r="2" /><circle cx="384" cy="92" r="3" /><circle cx="470" cy="61" r="2" /><circle cx="305" cy="70" r="2" />
-              </g>
-            </svg>
+            <div className="relative h-[210px] w-full">
+              <MapView player={previewPlayer} entries={previewEntries} huntArea={previewGame.huntArea} tileProvider="osm" fitToHunt />
+              <div className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[#173f3b]/90 px-3 py-1 text-[10px] font-semibold text-white shadow">真实地图 · 寻宝路线示意</div>
+            </div>
           </div>
           <div className="mt-4 rounded-2xl bg-white p-2 text-[#173f3b] shadow-sm">
             {loadError ? (
@@ -154,29 +139,11 @@ export default function HomePage() {
       ) : null}
 
       <section className="mt-4">
-        <div className="mt-2 grid grid-cols-2 gap-3">
-          <Link href="/tutorial" className="card border-[var(--line)] bg-gradient-to-br from-amber-50 to-white p-4 transition-transform active:scale-[0.99]">
-            <span className="text-xl" aria-hidden="true">▷</span>
-            <p className="mt-2 text-[14px] font-bold">一分钟演示</p>
-            
-          </Link>
-          <Link href="/select" className="card border-[var(--line)] bg-gradient-to-br from-emerald-50 to-white p-4 transition-transform active:scale-[0.99]">
-            <span className="text-xl" aria-hidden="true">⌖</span>
-            <p className="mt-2 text-[14px] font-bold">选择游戏</p>
-            
-          </Link>
-          <Link href="/games" className="card border-[var(--line)] bg-gradient-to-br from-sky-50 to-white p-4 transition-transform active:scale-[0.99]">
-            <span className="text-xl" aria-hidden="true">◇</span>
-            <p className="mt-2 text-[14px] font-bold">游戏中心</p>
-            
-          </Link>
-          <Link href="/create" className="card border-[var(--line)] bg-gradient-to-br from-violet-50 to-white p-4 transition-transform active:scale-[0.99]">
-            <span className="text-xl" aria-hidden="true">✦</span>
-            <p className="mt-2 text-[14px] font-bold">创作中心</p>
-            
-          </Link>
+        <div className="grid grid-cols-2 gap-3">
+          <Link href="/games" className="card border-[var(--line)] bg-gradient-to-br from-sky-50 to-white p-4 transition-transform active:scale-[0.99]"><span className="text-xl" aria-hidden="true">◇</span><p className="mt-2 text-[14px] font-bold">游戏中心</p></Link>
+          <Link href="/design" className="card border-[var(--line)] bg-gradient-to-br from-violet-50 to-white p-4 transition-transform active:scale-[0.99]"><span className="text-xl" aria-hidden="true">✦</span><p className="mt-2 text-[14px] font-bold">设计中心</p></Link>
         </div>
-        <Link href="/how-to-create" className="mt-3 inline-flex items-center gap-1 px-1 py-2 text-xs font-medium text-[var(--muted)]">第一次创作？查看创作说明 <span aria-hidden="true">→</span></Link>
+        <Link href="/how-to-create" className="mt-3 inline-flex items-center gap-1 px-1 py-2 text-xs font-medium text-[var(--muted)]">创作说明 <span aria-hidden="true">→</span></Link>
       </section>
 
       {contentSource === "cache" ? (

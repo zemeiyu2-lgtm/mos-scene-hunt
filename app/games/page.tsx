@@ -86,8 +86,7 @@ export default function GamesPage() {
 
       <section className="card mt-4 p-4">
         <p className="text-[13px] font-semibold">我是设计者</p>
-        <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">先在电脑上进入创作中心，完成游戏并导出游戏包。云端发布审核可以在后续版本加入。</p>
-        <Link href="/create" className="btn btn-secondary mt-3">设计 / 导入</Link>
+        <Link href="/design" className="btn btn-secondary mt-3">设计中心</Link>
       </section>
     </Screen>
   );
