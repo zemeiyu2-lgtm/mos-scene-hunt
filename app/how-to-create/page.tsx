@@ -67,7 +67,7 @@ export default function HowToCreatePage() {
       <section className="card mt-3 p-5">
         <h3 className="font-bold">文件与素材要求</h3>
         <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-[var(--muted)]">
-          <li><b>标准 JSON 游戏包：</b>唯一推荐的 AI 交付格式；最外层固定为 format: "mos-scene-hunt-game"、formatVersion: "1.0"、game: {…}。使用 UTF-8 编码，文件名可用游戏名称.json；也可以直接粘贴 JSON，不必先保存文件。</li>
+          <li><b>标准 JSON 游戏包：</b>唯一推荐的 AI 交付格式；最外层固定为 format: "mos-scene-hunt-game"、formatVersion: "1.0"、game: &#123;…&#125;。使用 UTF-8 编码，文件名可用游戏名称.json；也可以直接粘贴 JSON，不必先保存文件。</li>
           <li><b>Markdown：</b>适合人工阅读和修改，导入前确认字段结构完整。</li>
           <li><b>Word：</b>适合先写故事、地点和任务草稿；复杂媒体与逻辑以设计器和 JSON 为准。</li>
           <li><b>图片/文件：</b>可以为地点、线索、谜题或奖励提供视觉提示。优先上传清晰、体积适中的图片；不要用图片代替必要的文字说明，也不要放入私人信息。</li>
