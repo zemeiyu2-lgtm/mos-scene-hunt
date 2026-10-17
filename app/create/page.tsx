@@ -51,7 +51,7 @@ export default function CreatePage() {
   return <Screen title="创作中心">
     <section className="card p-5"><p className="game-kicker">MOS SCENE HUNT V0.6</p><h2 className="mt-2 text-2xl font-bold">创作、试玩、分享</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">地图、点位、故事、任务和奖励属于同一个游戏包。手机可以完成基础设计，电脑适合精细编辑。</p>
       <div className="mt-4 grid grid-cols-2 gap-2"><Link href={working ? `/design?game=${encodeURIComponent(working.id)}` : "/design"} className="btn btn-primary text-center">进入设计器</Link><button className="btn btn-secondary" onClick={() => inputRef.current?.click()}>导入 Word / 游戏包</button></div>
-      <input ref={inputRef} className="hidden" type="file" accept=".docx,.json,.md,.markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json,text/markdown" onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} /></section>
+      <input ref={inputRef} className="hidden" type="file" accept=".docx,.json,.md,.markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json,text/markdown" onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} /><Link href="/how-to-create" className="mt-3 inline-flex px-1 py-1 text-xs font-medium text-[var(--muted)]">第一次创作？查看创作说明 →</Link></section>
     <section className="card mt-4 p-5">
       <div className="flex items-start justify-between gap-3">
         <div><p className="text-sm font-bold">📚 本机游戏库</p><p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">导入或制作的游戏都会保存在这台设备上。设计者可以切换游戏、继续设计、试玩或删除；不需要登录。</p></div>
