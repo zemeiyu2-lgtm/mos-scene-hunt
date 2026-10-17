@@ -31,7 +31,7 @@ const PROMPT = `你是 MOS Scene Hunt 的户外寻宝游戏设计助手。请帮
     "scenes": []
   }
 }
-所有游戏内容必须放在 game 对象里。每个 scene 包含唯一 id、title、story、briefing、location、nextSceneId、challenge、reward。location 格式为 { "lat": 0, "lng": 0, "radius": 15, "name": "现场地点名称" }。challenge 类型只能是 choice、text、keyword；choice 必须包含 question、options（2至4项）、answer（正确选项从0开始的数字下标）；text/keyword 必须包含 question、answer（可接受答案字符串或字符串数组）、hint。reward 至少包含 type、title、value。nextSceneId 按路线连接，最后一站为 null，entrySceneId 指向第一站，所有 ID 唯一。媒体如有需要，使用 media 数组，格式为 { "id":"唯一编号", "kind":"image 或 document", "title":"资源名称", "url":"可访问的 https 地址", "description":"用途" }。不要编造图片链接；没有可靠地址时，说明设计者需要上传素材。
+所有游戏内容必须放在 game 对象里。每个 scene 包含唯一 id、title、story、briefing、location、nextSceneId、challenge、reward。location 格式为 { "lat": 0, "lng": 0, "radius": 15, "name": "现场地点名称" }。challenge 类型只能是 choice、text、keyword；choice 必须包含 question、options（2至4项）、answer（正确选项从0开始的数字下标）；text/keyword 必须包含 question、answer（可接受答案字符串或字符串数组）、hint。reward 至少包含 type、title、value；type 只能使用 keyword、item、badge、story 之一。nextSceneId 按路线连接，最后一站为 null，entrySceneId 指向第一站，所有 ID 唯一。媒体如有需要，使用 media 数组，格式为 { "id":"唯一编号", "kind":"image 或 document", "title":"资源名称", "url":"可访问的 https 地址", "description":"用途" }。不要编造图片链接；没有可靠地址时，说明设计者需要上传素材。
 不要编造真实 GPS 坐标：startLocation、huntArea.center 和每个 scene.location 的 lat、lng 一律填 0，作为待标定占位值。导入后必须在设计中心地图上逐站标定真实地点、设置游戏区域和触发距离，再进行现场试玩。请先问我最多三个关键问题；若我已经说明，直接设计。最后在 JSON 之外列出：现场需要确认的地点、需要准备的宝藏、需要上传的图片/文件，以及安全检查清单。`;
 
 export default function HowToCreatePage() {
