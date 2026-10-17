@@ -282,8 +282,8 @@ export async function POST(request: Request) {
       nextStep: publishNow
         ? "玩家已可通过手机游戏中心发现并下载这一版。"
         : publishAllowed
-          ? "如需立即上线，请在请求里加 ?publish=1（或请求体 publish: true）重新发布。"
-          : "服务端未开启直接发布：本次只进草稿。维护者确认后把 MOS_CLOUD_ALLOW_DIRECT_PUBLISH 设为 1 并重新发布即可上线。",
+          ? "本次只进待审核草稿；需维护者通过受保护的审核接口批准后才能上线。"
+          : "服务端未开启直接发布：本次只进草稿。维护者需通过受保护的审核接口批准这一版；旧的直接发布开关已永久停用。",
     },
     202,
     { "X-Publish-Digest": accepted.digest },
