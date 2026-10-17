@@ -11,7 +11,7 @@ import { parseWordText } from "@/lib/content/word";
 
 export default function CreatePage() {
   const { game } = useHunt(); const inputRef = useRef<HTMLInputElement>(null);
-  const [draft, setDraft] = useState<Game | null>(null); const [report, setReport] = useState<PackageReport | null>(null); const [message, setMessage] = useState(""); const [library, setLibrary] = useState<Game[]>([]);
+  const [draft, setDraft] = useState<Game | null>(null); const [report, setReport] = useState<PackageReport | null>(null); const [message, setMessage] = useState(""); const [library, setLibrary] = useState<Game[]>([]); const [guideStep, setGuideStep] = useState(0);
   const working = draft ?? game;
   const refreshLibrary = () => setLibrary(listAuthoredGames());
   useEffect(() => { refreshLibrary(); }, []);
@@ -48,7 +48,27 @@ export default function CreatePage() {
   const removeGame = (game: Game) => { if (!window.confirm("确定删除「" + game.title + "」？删除后需要重新导入游戏包才能恢复。")) return; deleteAuthoredGame(game.id); setLibrary(listAuthoredGames()); if (working?.id === game.id) setDraft(null); setMessage("已删除「" + game.title + "」。"); };
   if (!working) return <Screen title="创建游戏" subtitle="等待游戏内容加载"><div className="card p-5">正在加载……</div></Screen>;
   const spatial = report?.spatial ?? validateGamePackage(working).spatial;
-  return <Screen title="创建游戏" subtitle="手机优先 · 电脑增强">
+  const guideSteps = [
+    { title: "选一个小区域", detail: "先选公园、校园或街区的一小片安全区域，不要一开始就设计很长的路线。" },
+    { title: "放置三个地点", detail: "在地图上依次添加 3 个容易找到、步行可达的点位，并调整顺序。" },
+    { title: "给每站一个任务", detail: "每个地点写一句引导、一个观察问题或简单挑战，再决定完成后给什么线索。" },
+    { title: "检查并分享", detail: "检查路线、安全、点位和文字，保存游戏包；现场确认坐标后再分享给玩家。" },
+  ];
+  return <Screen title="设计中心" subtitle="创作、导入与分享">
+    <section className="card mb-4 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div><p className="game-kicker">CREATE GUIDE</p><h2 className="mt-1 text-lg font-bold">四步做出一场寻宝</h2></div>
+        <span className="chip shrink-0">{guideStep + 1} / {guideSteps.length}</span>
+      </div>
+      <div className="mt-3 flex gap-1.5" aria-label="创作步骤进度">
+        {guideSteps.map((item, index) => <span key={item.title} className={`h-1.5 flex-1 rounded-full ${index <= guideStep ? "bg-[var(--accent)]" : "bg-[var(--line)]"}`} />)}
+      </div>
+      <p className="mt-3 text-sm font-semibold">{guideSteps[guideStep].title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">{guideSteps[guideStep].detail}</p>
+      <button type="button" className="btn btn-secondary mt-3 w-full" onClick={() => setGuideStep((value) => (value + 1) % guideSteps.length)}>
+        {guideStep === guideSteps.length - 1 ? "重新看创作流程" : "下一步"}
+      </button>
+    </section>
     <section className="card p-5"><p className="game-kicker">MOS SCENE HUNT V0.6</p><h2 className="mt-2 text-2xl font-bold">先设计，再开始游戏</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">地图、点位、故事、任务和奖励属于同一个游戏包。手机可以完成基础设计；电脑只提供更大的编辑空间。</p>
       <div className="mt-4"><Link href={working ? `/design?game=${encodeURIComponent(working.id)}` : "/design"} className="btn btn-primary block text-center">进入设计器</Link></div>
       <input ref={inputRef} className="hidden" type="file" accept=".docx,.json,.md,.markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json,text/markdown" onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} /></section>
