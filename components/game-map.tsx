@@ -23,9 +23,9 @@
  */
 
 import "leaflet/dist/leaflet.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
-import { bearing, bearingToCompass, formatDistance, resolveRadius } from "@/lib/location";
+import { bearing, formatDistance, resolveRadius } from "@/lib/location";
 import type { SceneStatus } from "@/lib/game/state";
 import type { HuntArea, Scene } from "@/lib/game/types";
 import type { PositionFix } from "@/lib/location";
@@ -99,17 +99,20 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
   });
 }
 
-function playerIcon(simulated: boolean): L.DivIcon {
+function playerIcon(simulated: boolean, targetBearing: number | null): L.DivIcon {
+  const pointer = targetBearing === null ? "" : `
+    <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:22px;height:38px;transform:translate(-50%,-88%) rotate(${targetBearing}deg);transform-origin:50% 88%;pointer-events:none;z-index:1;filter:drop-shadow(0 0 5px rgba(255,177,45,.95));">
+      <div style="width:100%;height:100%;clip-path:polygon(50% 0%,100% 100%,50% 79%,0% 100%);background:linear-gradient(to bottom,rgba(255,246,190,.98) 0%,rgba(255,184,48,.82) 55%,rgba(255,158,25,.06) 100%);"></div>
+    </div>`;
   return L.divIcon({
     className: "",
-    // `data-role` is a stable hook for acceptance tests; the CSS class names are
-    // free to change with the visual design, the role is not.
-    html: `<div class="player-marker ${simulated ? "player-marker--sim" : ""}" data-role="player-marker">
-             <div class="player-marker__pulse"></div>
-             <div class="player-marker__dot"></div>
+    html: `<div class="player-marker ${simulated ? "player-marker--sim" : ""}" data-role="player-marker" style="position:relative;width:48px;height:48px;overflow:visible;">
+             ${pointer}
+             <div class="player-marker__pulse" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;"></div>
+             <div class="player-marker__dot" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;"></div>
            </div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
   });
 }
 
@@ -132,44 +135,6 @@ export default function GameMap({
   onHuntAreaDrag,
   drawingMode = false,
 }: GameMapProps) {
-  const [deviceHeading, setDeviceHeading] = useState<number | null>(null);
-  const [headingEnabled, setHeadingEnabled] = useState(false);
-  const [headingMessage, setHeadingMessage] = useState("");
-  const enableDeviceHeading = async () => {
-    try {
-      const orientationCtor = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
-        requestPermission?: () => Promise<"granted" | "denied">;
-      };
-      if (typeof orientationCtor.requestPermission === "function") {
-        const permission = await orientationCtor.requestPermission();
-        if (permission !== "granted") {
-          setHeadingMessage("未获方向感应权限；仍可按地图北向判断目标方向。");
-          return;
-        }
-      }
-      setHeadingEnabled(true);
-      setHeadingMessage("");
-    } catch {
-      setHeadingMessage("此设备暂不支持方向感应；可按地图北向判断目标方向。");
-    }
-  };
-
-  useEffect(() => {
-    if (!headingEnabled) return;
-    const onOrientation = (event: DeviceOrientationEvent) => {
-      const compassHeading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
-      let heading: number | null = null;
-      if (typeof compassHeading === "number" && Number.isFinite(compassHeading)) {
-        heading = compassHeading;
-      } else if (typeof event.alpha === "number" && Number.isFinite(event.alpha)) {
-        heading = (360 - event.alpha) % 360;
-      }
-      if (heading !== null) setDeviceHeading(heading);
-    };
-    window.addEventListener("deviceorientation", onOrientation, true);
-    return () => window.removeEventListener("deviceorientation", onOrientation, true);
-  }, [headingEnabled]);
-
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileRef = useRef<L.TileLayer | null>(null);
@@ -521,7 +486,7 @@ export default function GameMap({
 
       if (!playerMarkerRef.current) {
         const marker = L.marker(latlng, {
-          icon: playerIcon(simulated),
+          icon: playerIcon(simulated, activeEntry ? bearing(player, activeEntry.scene.location) : null),
           draggable: draggablePlayer,
           zIndexOffset: 1000,
         });
@@ -536,7 +501,7 @@ export default function GameMap({
       } else {
         const marker = playerMarkerRef.current;
         marker.setLatLng(latlng);
-        marker.setIcon(playerIcon(simulated));
+        marker.setIcon(playerIcon(simulated, activeEntry ? bearing(player, activeEntry.scene.location) : null));
         if (draggablePlayer !== marker.dragging?.enabled()) {
           if (draggablePlayer) marker.dragging?.enable();
           else marker.dragging?.disable();
@@ -570,7 +535,7 @@ export default function GameMap({
         playerHaloRef.current = null;
       }
     }
-  }, [player, draggablePlayer]);
+  }, [player, draggablePlayer, activeEntry]);
 
   /* ------------------------------------------------ 目标方向线 */
   useEffect(() => {
@@ -648,12 +613,6 @@ export default function GameMap({
   }, [fitToHunt, recenterToken, player?.lat, player?.lng, activeEntry?.scene.id, entries, player]);
 
   /* ------------------------------------------------ 渲染 */
-  const headingDegrees = useMemo(() => {
-    if (!player || !activeEntry) return null;
-    return bearing(player, { lat: activeEntry.scene.location.lat, lng: activeEntry.scene.location.lng });
-  }, [player, activeEntry]);
-  const headingLabel = headingDegrees === null ? null : bearingToCompass(headingDegrees);
-
   return (
     <div className={`map-root ${drawingMode ? "map-root--drawing" : ""}`}>
       <div ref={containerRef} className="h-full w-full" />
@@ -668,22 +627,6 @@ export default function GameMap({
         </div>
       ) : null}
 
-      {/* Direction hint overlay, kept in the DOM so it is readable by assistive tech. */}
-      {headingLabel && activeEntry && !drawingMode && headingDegrees !== null ? (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-center justify-center gap-2 p-2">
-          <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-emerald-700/50 bg-[#fffaf0]/95 shadow-lg" style={{ transform: deviceHeading === null ? undefined : `rotate(${-deviceHeading}deg)` }}>
-            <span className="absolute top-[1px] text-[7px] font-black text-emerald-900">N</span>
-            <span className="absolute h-7 w-7 rounded-full border border-emerald-800/20" />
-            <span className="absolute h-4 w-4 rounded-full border border-emerald-800/20" />
-            <span className="absolute h-0 w-0 border-x-[6px] border-x-transparent border-b-[19px] border-b-amber-500 drop-shadow" style={{ transform: `rotate(${headingDegrees}deg) translateY(-4px)`, transformOrigin: "50% 70%" }} />
-            <span className="absolute h-2 w-2 rounded-full border border-white bg-emerald-800" />
-          </div>
-          <div className="rounded-xl border border-white/70 bg-[#173f3b]/95 px-3 py-2 text-[11px] font-semibold text-white shadow-lg">
-            <p>目标方向 · {headingLabel}</p>
-            <p className="mt-0.5 max-w-[220px] truncate text-[10px] font-normal text-white/75">{activeEntry.scene.location.name ?? activeEntry.scene.title}{activeEntry.distance !== null ? ` · ${formatDistance(activeEntry.distance)}` : ""}</p><button type="button" className="pointer-events-auto mt-1 text-[10px] font-semibold text-amber-200 underline" onClick={enableDeviceHeading}>{deviceHeading === null ? "开启手机方向感应" : "方向感应已开启"}</button>{headingMessage ? <p className="mt-1 text-[10px] text-amber-100">{headingMessage}</p> : null}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
