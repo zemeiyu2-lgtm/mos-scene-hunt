@@ -4,7 +4,7 @@ import {
   readDrafts,
   readPublishedPack,
 } from "@/lib/cloud/blob-store";
-import { readPublishSecret, sha256Hex } from "@/lib/cloud/publish-server";
+import { sha256Hex } from "@/lib/cloud/publish-server";
 import { readPublishedIndex, writePublishedGame } from "@/lib/cloud/publish-store";
 
 export const dynamic = "force-dynamic";
@@ -22,10 +22,6 @@ function authorized(request: Request): boolean {
   const a = Buffer.from(supplied);
   const b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);
-}
-
-function reviewEnabled(): boolean {
-  return (process.env.MOS_CLOUD_REVIEW_KEY ?? "").trim().length >= 32;
 }
 
 /**
@@ -93,8 +89,7 @@ export async function POST(request: Request) {
       return json({ error: "package_identity_error", message: "包体内游戏 id 与申请不一致，已拒绝批准。" }, 409);
     }
 
-    const secret = readPublishSecret();
-    if (!secret) {
+    if ((process.env.MOS_CLOUD_PUBLISH_KEY ?? "").trim().length < 16) {
       return json({ error: "publish_disabled", message: "发布签名密钥未配置；审核结果未写入玩家目录。" }, 503);
     }
 
