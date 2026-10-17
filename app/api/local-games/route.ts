@@ -27,8 +27,9 @@ function unavailable() {
 }
 
 /** Persistent game-package storage for a Next.js instance running on the creator's own computer. */
-export async function GET() {
+export async function GET(request: Request) {
   if (!enabled()) return NextResponse.json({ enabled: false, games: [] });
+  if (!authorized(request)) return NextResponse.json({ error: "unauthorized", message: "请输入电脑游戏包服务器访问口令。" }, { status: 401 });
   try {
     await mkdir(STORE_DIR, { recursive: true });
     const names = (await readdir(STORE_DIR)).filter((name) => SAFE_ID.test(name.replace(/\.json$/i, "")) && name.endsWith(".json"));
