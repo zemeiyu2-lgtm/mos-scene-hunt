@@ -46,13 +46,10 @@ export default function GamesPage() {
   };
 
   return (
-    <Screen title="🎮 游戏中心" subtitle="从官方云端游戏库选择一个游戏">
+    <Screen title="🎮 游戏中心">
       <section className="card p-5">
         <p className="game-kicker">MOS SCENE HUNT · GAME CENTER</p>
         <h2 className="mt-2 text-2xl font-bold">选择一个游戏</h2>
-        <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-          游戏包从云端下载到本机。下载后不需要打开设计器，手机即可直接游玩；首次下载后也会进入本机缓存。
-        </p>
       </section>
 
       {message ? <div className="card mt-4 p-4 text-sm leading-relaxed">{message}</div> : null}
@@ -89,7 +86,7 @@ export default function GamesPage() {
 
       <section className="card mt-4 p-4">
         <p className="text-[13px] font-semibold">我是设计者</p>
-        <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">先在电脑上进入设计 / 导入，完成游戏并导出游戏包。云端发布审核可以在后续版本加入。</p>
+        <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">先在电脑上进入创作中心，完成游戏并导出游戏包。云端发布审核可以在后续版本加入。</p>
         <Link href="/create" className="btn btn-secondary mt-3">设计 / 导入</Link>
       </section>
     </Screen>
