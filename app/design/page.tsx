@@ -503,7 +503,7 @@ export default function DesignPage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/60">OFFICIAL TEMPLATE · RIZAL PARK</p>
           <h2 className="mt-1.5 text-[21px] font-bold">黎刹公园：寻找最后的宝藏</h2>
           <p className="mt-1 text-[12.5px] leading-relaxed text-white/75">把真实校园变成一条会留下记忆的路：探索 → 选择 → 行动 → 反思 → 带走。</p>
-          <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadBsopClassicTemplate}>
+          <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadOfficialTemplate}>
             载入黎刹公园官方母版
           </button>
           <p className="mt-2 text-[10.5px] text-white/55">这是官方示范母版。请在地图上核对各站坐标、调整区域，并现场试玩后再发布。</p>
