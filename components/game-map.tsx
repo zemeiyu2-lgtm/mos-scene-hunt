@@ -62,6 +62,8 @@ interface GameMapProps {
   editable?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
   onSceneDrag?: (sceneId: string, lat: number, lng: number) => void;
+  /** Called when an author taps a scene marker to select that scene. */
+  onSceneSelect?: (sceneId: string) => void;
   onHuntAreaDrag?: (lat: number, lng: number) => void;
   /**
    * True while the designer is actively drawing a polygon boundary. Switches
@@ -135,6 +137,7 @@ export default function GameMap({
   editable = false,
   onMapClick,
   onSceneDrag,
+  onSceneSelect,
   onHuntAreaDrag,
   drawingMode = false,
 }: GameMapProps) {
@@ -159,6 +162,8 @@ export default function GameMap({
   mapClickCallbackRef.current = onMapClick;
   const sceneDragCallbackRef = useRef(onSceneDrag);
   sceneDragCallbackRef.current = onSceneDrag;
+  const sceneSelectCallbackRef = useRef(onSceneSelect);
+  sceneSelectCallbackRef.current = onSceneSelect;
   const huntAreaDragCallbackRef = useRef(onHuntAreaDrag);
   huntAreaDragCallbackRef.current = onHuntAreaDrag;
 
@@ -450,6 +455,10 @@ export default function GameMap({
       } else {
         const marker = L.marker(latlng, { icon, interactive: editable, draggable: editable });
         if (editable) {
+          marker.on("click", (event) => {
+            L.DomEvent.stopPropagation(event.originalEvent);
+            sceneSelectCallbackRef.current?.(entry.scene.id);
+          });
           marker.on("dragend", () => {
             const pos = marker.getLatLng();
             sceneDragCallbackRef.current?.(entry.scene.id, pos.lat, pos.lng);
