@@ -57,7 +57,6 @@ export default function MapPage() {
 
   const currentDistance = current ? distances[current.id] ?? null : null;
   const targetBearing = fix && current ? bearingDegrees(fix, current.location) : null;
-  const targetDirection = targetBearing === null ? null : bearingLabel(targetBearing);
   const fixQuality = fix ? classifyFix(fix) : null;
   const huntAreaDistance = fix && game?.huntArea
     ? calculateDistance(fix, game.huntArea.center)
@@ -219,9 +218,9 @@ export default function MapPage() {
                 >
                   <div className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-sky-50">
                     <div
-                      className="absolute inset-0 opacity-80"
+                      className="absolute inset-0 animate-[spin_2.8s_linear_infinite] opacity-80"
                       style={{
-                        background: "conic-gradient(from " + (targetBearing ?? 0) + "deg, rgba(37,99,235,0.03) 0deg, rgba(37,99,235,0.03) 285deg, rgba(37,99,235,0.28) 330deg, rgba(37,99,235,0.7) 360deg)",
+                        background: "conic-gradient(from 0deg, rgba(37,99,235,0.0) 0deg, rgba(37,99,235,0.04) 280deg, rgba(37,99,235,0.24) 330deg, rgba(37,99,235,0.72) 360deg)",
                       }}
                       aria-hidden="true"
                     />
@@ -301,7 +300,4 @@ function bearingDegrees(from: { lat: number; lng: number }, to: { lat: number; l
   const y = Math.sin(dLng) * Math.cos(lat2);
   const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
-}
-function bearingLabel(degrees: number): string {
-  return ["北", "东北", "东", "东南", "南", "西南", "西", "西北"][Math.round(degrees / 45) % 8];
 }
