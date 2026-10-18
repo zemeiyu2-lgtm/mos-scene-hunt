@@ -587,6 +587,7 @@ export default function DesignPage() {
             editable
             drawingMode={drawingArea}
             onMapClick={handleMapClick}
+            onSceneSelect={(sceneId) => setSelectedId(sceneId)}
             onSceneDrag={(sceneId, lat, lng) => updateLocation(sceneId, lat, lng)}
           />
         </div>
@@ -602,7 +603,7 @@ export default function DesignPage() {
                 点击地图上任意一点，作为圆形区域的中心
               </span>
             ) : (
-              <>当前选中「{selected?.title ?? "地点"}」。直接拖动地点标记，或点击地图移动当前地点。</>
+              <>点击地图标记可选中对应站点；拖动标记可调整位置。点击地图空白处，则移动当前选中站点。</>
             )}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
