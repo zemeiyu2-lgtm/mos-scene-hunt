@@ -101,10 +101,20 @@ export interface Scene {
   /** Optional pre-arrival briefing shown while travelling to the scene. */
   briefing?: string;
   location: {
+    /**
+     * Internal GPS anchor used by the runtime arrival check. AI-generated
+     * packages must use 0,0 as an explicit unresolved placeholder, never invent
+     * coordinates. The designer confirms the actual point on the map later.
+     */
     lat: number;
     lng: number;
     radius?: number;
+    /** Human-readable place description shown to the designer. */
     name?: string;
+    /** Searchable street/place address; may be approximate. */
+    address?: string;
+    /** Whether this location has been reviewed on the map. */
+    locationStatus?: "needs_confirmation" | "approximate" | "confirmed";
   };
   /** Progression graph. `null` means "this is the final scene". */
   nextSceneId: string | null;
@@ -145,9 +155,15 @@ export interface Scene {
 }
 
 export interface StartLocation {
+  /** Internal GPS anchor; AI must not invent coordinates. */
   lat: number;
   lng: number;
+  /** Human-readable starting place or neighborhood. */
   name?: string;
+  /** Searchable address used to help locate the general area. */
+  address?: string;
+  /** Whether the designer has reviewed the location on the map. */
+  locationStatus?: "needs_confirmation" | "approximate" | "confirmed";
   /** Radius for the "you have arrived at the hunt start" gate. */
   radius?: number;
 }
@@ -171,6 +187,10 @@ export interface HuntArea {
   points?: Array<{ lat: number; lng: number }>;
   /** Optional player-facing label. */
   name?: string;
+  /** Human-readable address or area description; coordinates remain internal. */
+  address?: string;
+  /** Whether the designer has reviewed this area on the map. */
+  locationStatus?: "needs_confirmation" | "approximate" | "confirmed";
 }
 
 export interface Game {
