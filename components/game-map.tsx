@@ -119,6 +119,53 @@ function playerIcon(simulated: boolean, heading: number | null): L.DivIcon {
 }
 
 /* ------------------------------------------------------------------ */
+/* Layer lifecycle helpers                                            */
+/* ------------------------------------------------------------------ */
+
+/** Tooltip options shared by the "this is the current target" label. */
+const SCENE_TOOLTIP: L.TooltipOptions = {
+  permanent: true,
+  direction: "top",
+  offset: [0, -22],
+  className: "scene-target-tooltip",
+};
+
+/**
+ * Detach a layer from the map *before* it loses its `_map`.
+ *
+ * Leaflet only unregisters the handlers installed by `bindTooltip` /
+ * `bindPopup` when the layer actually fires `remove`, which happens in
+ * `Map.removeLayer`. `Map.remove()` — used when this component unmounts —
+ * deletes the panes directly, so those handlers survive with a `_map` that is
+ * about to become `null`. Anything that then calls back into the layer (a
+ * pending tooltip reposition, a queued drag frame) reaches
+ * `layerPointToLatLng` on a dead map and throws
+ * "Cannot read properties of undefined (reading 'layerPointToLatLng')".
+ *
+ * Calling this first makes teardown order explicit, and it is safe to call
+ * twice or on a layer that was never bound.
+ */
+function detachLayer(layer: L.Layer | null | undefined) {
+  if (!layer) return;
+  const withTooltip = layer as L.Layer & {
+    closeTooltip?: () => void;
+    unbindTooltip?: () => void;
+    closePopup?: () => void;
+    unbindPopup?: () => void;
+  };
+  if (!withTooltip.unbindTooltip) return;
+  try {
+    withTooltip.closeTooltip?.();
+    withTooltip.closePopup?.();
+  } catch {
+    // A layer whose map already went away can throw here; the unbind below is
+    // what actually matters, so it must still run.
+  }
+  withTooltip.unbindTooltip();
+  withTooltip.unbindPopup?.();
+}
+
+/* ------------------------------------------------------------------ */
 /* Component                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -144,6 +191,8 @@ export default function GameMap({
   const scaleRef = useRef<L.Control.Scale | null>(null);
   const ringsRef = useRef<Map<string, L.Circle>>(new Map());
   const sceneMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+  /** Last icon "meaning" rendered per scene, so `setIcon` only runs on change. */
+  const iconKeysRef = useRef<Map<string, string>>(new Map());
   const playerMarkerRef = useRef<L.Marker | null>(null);
   const playerHaloRef = useRef<L.Circle | null>(null);
   const huntAreaRef = useRef<L.Circle | null>(null);
@@ -215,18 +264,35 @@ export default function GameMap({
     scaleRef.current = scale;
 
     return () => {
-      map.remove();
-      mapRef.current = null;
-      tileRef.current = null;
-      scaleRef.current = null;
-      rings.clear();
-      sceneMarkers.clear();
-      playerMarkerRef.current = null;
-      playerHaloRef.current = null;
-      huntAreaRef.current = null;
-      huntAreaPolygonRef.current = null;
-      huntAreaLineRef.current = null;
-      areaVerticesRef.current = null;
+      // 1. Stop anything in flight so no frame can touch the panes below.
+      map.stop();
+      // 2. Unregister every tooltip/popup handler while the layers still know
+      //    their map — after `map.remove()` they would keep firing against a
+      //    disposed map (see `detachLayer`).
+      const layerSnapshot: L.Layer[] = [];
+      map.eachLayer((layer) => layerSnapshot.push(layer));
+      layerSnapshot.forEach(detachLayer);
+      // 3. Drop our own listeners, including the one registered above.
+      map.off();
+      // 4. Only now tear the map down.
+      try {
+        map.remove();
+      } finally {
+        // Even if Leaflet throws mid-teardown the module-level refs must be
+        // released, so a remount cannot be handed a half-disposed map.
+        mapRef.current = null;
+        tileRef.current = null;
+        scaleRef.current = null;
+        rings.clear();
+        sceneMarkers.clear();
+        iconKeysRef.current.clear();
+        playerMarkerRef.current = null;
+        playerHaloRef.current = null;
+        huntAreaRef.current = null;
+        huntAreaPolygonRef.current = null;
+        huntAreaLineRef.current = null;
+        areaVerticesRef.current = null;
+      }
     };
     // Mount/unmount only. Everything else is synced below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -386,6 +452,9 @@ export default function GameMap({
     // area stays clean so the scene markers remain the visual focus.
     if (!drawingMode || huntArea?.shape !== "polygon") {
       if (areaVerticesRef.current) {
+        // Detach labels before the group drops the markers: a permanent tooltip
+        // repositions on every map move, so it must not outlive its marker.
+        areaVerticesRef.current.eachLayer(detachLayer);
         map.removeLayer(areaVerticesRef.current);
         areaVerticesRef.current = null;
       }
@@ -396,6 +465,7 @@ export default function GameMap({
       areaVerticesRef.current = L.layerGroup().addTo(map);
     }
     const group = areaVerticesRef.current;
+    group.eachLayer(detachLayer);
     group.clearLayers();
     (huntArea.points ?? []).forEach((p, i) => {
       L.circleMarker([p.lat, p.lng], {
@@ -434,21 +504,39 @@ export default function GameMap({
       const existing = store.get(entry.scene.id);
       if (existing) {
         existing.setLatLng(latlng);
-        existing.setIcon(icon);
+        // `entries` is rebuilt on every design edit, so this branch runs
+        // constantly. `setIcon` tears down and recreates the marker's DOM node,
+        // which would detach an in-progress drag handle for no reason — only
+        // rebuild when the icon actually changed meaning.
+        const nextIconKey = `${entry.status}|${entry.isActive ? 1 : 0}|${index}|${entry.scene.mapStyle?.icon ?? ""}`;
+        const prevIconKey = iconKeysRef.current.get(entry.scene.id);
+        if (prevIconKey !== nextIconKey) {
+          existing.setIcon(icon);
+          iconKeysRef.current.set(entry.scene.id, nextIconKey);
+        }
         if (editable && existing.dragging && !existing.dragging.enabled()) existing.dragging.enable();
         if (!editable && existing.dragging?.enabled()) existing.dragging.disable();
+        // Re-binding a live tooltip re-registers its `move`/`remove` handlers on
+        // the marker every time; rebinding forever keeps them alive past layer
+        // removal. Update the content of the existing tooltip instead.
         if (entry.isActive) {
-          existing.bindTooltip(entry.scene.title, {
-            permanent: true,
-            direction: "top",
-            offset: [0, -22],
-            className: "scene-target-tooltip",
-          });
+          const tooltip = existing.getTooltip();
+          if (tooltip) {
+            if (tooltip.getContent() !== entry.scene.title) {
+              tooltip.setContent(entry.scene.title);
+            }
+          } else {
+            existing.bindTooltip(entry.scene.title, SCENE_TOOLTIP);
+          }
         } else if (existing.getTooltip()) {
           existing.unbindTooltip();
         }
       } else {
         const marker = L.marker(latlng, { icon, interactive: editable, draggable: editable });
+        iconKeysRef.current.set(
+          entry.scene.id,
+          `${entry.status}|${entry.isActive ? 1 : 0}|${index}|${entry.scene.mapStyle?.icon ?? ""}`,
+        );
         if (editable) {
           marker.on("dragend", () => {
             const pos = marker.getLatLng();
@@ -457,12 +545,7 @@ export default function GameMap({
         }
         marker.addTo(map);
         if (entry.isActive) {
-          marker.bindTooltip(entry.scene.title, {
-            permanent: true,
-            direction: "top",
-            offset: [0, -22],
-            className: "scene-target-tooltip",
-          });
+          marker.bindTooltip(entry.scene.title, SCENE_TOOLTIP);
         }
         store.set(entry.scene.id, marker);
       }
@@ -470,8 +553,12 @@ export default function GameMap({
 
     for (const [id, marker] of store) {
       if (!seen.has(id)) {
+        // Closing first means the tooltip is not repositioned while its marker
+        // is being dropped.
+        detachLayer(marker);
         map.removeLayer(marker);
         store.delete(id);
+        iconKeysRef.current.delete(id);
       }
     }
   }, [markersSignature, entries, editable]);
