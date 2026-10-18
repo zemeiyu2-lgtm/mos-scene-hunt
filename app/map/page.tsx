@@ -111,6 +111,14 @@ export default function MapPage() {
     ? statuses.find((s) => s.scene.id === insideSceneId)?.scene ?? null
     : null;
 
+  // When the current target is reached, reveal the next action automatically.
+  // This avoids making players guess that they need to expand the task card.
+  useEffect(() => {
+    if (arrivedScene && current && arrivedScene.id === current.id) {
+      setTaskExpanded(true);
+    }
+  }, [arrivedScene?.id, current?.id]);
+
   return (
     <>
       <div className="relative h-[100dvh] w-full overflow-hidden">
@@ -292,7 +300,7 @@ export default function MapPage() {
                     </p>
                   </div>
                   {arrivedScene && arrivedScene.id === current.id ? (
-                    <span className="chip shrink-0 bg-emerald-100 text-emerald-700">已接近</span>
+                    <span className="chip shrink-0 bg-emerald-100 text-emerald-700">已抵达</span>
                   ) : null}
                   <span className="shrink-0 text-[var(--muted)]" aria-hidden="true">{taskExpanded ? "⌄" : "⌃"}</span>
                 </button>
