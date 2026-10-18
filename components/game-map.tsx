@@ -243,10 +243,15 @@ export default function GameMap({
       // every tooltip before removing the map so no late callback can call
       // layerPointToLatLng on a detached map/layer.
       const detachTooltips = (layer: L.Layer) => {
-        if (layer instanceof L.Marker) {
-          layer.closeTooltip();
-          layer.unbindTooltip();
-        }
+        // Tooltips can be bound to Path layers (CircleMarker/Polygon), not
+        // only Marker instances. Detach every tooltip before Leaflet clears
+        // the layer's internal map reference.
+        const tooltipLayer = layer as L.Layer & {
+          closeTooltip?: () => L.Layer;
+          unbindTooltip?: () => L.Layer;
+        };
+        tooltipLayer.closeTooltip?.();
+        tooltipLayer.unbindTooltip?.();
         if (layer instanceof L.LayerGroup) {
           layer.eachLayer(detachTooltips);
         }
@@ -436,6 +441,16 @@ export default function GameMap({
       areaVerticesRef.current = L.layerGroup().addTo(map);
     }
     const group = areaVerticesRef.current;
+    // Vertex dots are CircleMarkers with permanent tooltips. Detach each
+    // tooltip before clearLayers removes the child and its map reference.
+    group.eachLayer((layer) => {
+      const tooltipLayer = layer as L.Layer & {
+        closeTooltip?: () => L.Layer;
+        unbindTooltip?: () => L.Layer;
+      };
+      tooltipLayer.closeTooltip?.();
+      tooltipLayer.unbindTooltip?.();
+    });
     group.clearLayers();
     (huntArea.points ?? []).forEach((p, i) => {
       L.circleMarker([p.lat, p.lng], {
