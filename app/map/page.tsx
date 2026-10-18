@@ -22,6 +22,29 @@ import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
 import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
 
+function bearingToTarget(from: { lat: number; lng: number }, to: { lat: number; lng: number }): number {
+  const toRad = (degrees: number) => (degrees * Math.PI) / 180;
+  const toDeg = (radians: number) => (radians * 180) / Math.PI;
+  const lat1 = toRad(from.lat);
+  const lat2 = toRad(to.lat);
+  const deltaLng = toRad(to.lng - from.lng);
+  const y = Math.sin(deltaLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+function directionLabel(relativeDegrees: number): string {
+  const angle = ((relativeDegrees % 360) + 360) % 360;
+  if (angle < 22.5 || angle >= 337.5) return "前方";
+  if (angle < 67.5) return "右前方";
+  if (angle < 112.5) return "右侧";
+  if (angle < 157.5) return "右后方";
+  if (angle < 202.5) return "后方";
+  if (angle < 247.5) return "左后方";
+  if (angle < 292.5) return "左侧";
+  return "左前方";
+}
+
 export default function MapPage() {
   const router = useRouter();
   const { settings, update } = useSettings();
@@ -273,6 +296,26 @@ export default function MapPage() {
                       </p>
                     </div>
                   </div>
+
+                  {fix && current && !currentDistance?.inRange ? (() => {
+                    const targetBearing = bearingToTarget(fix, current.location);
+                    const relativeBearing = heading === null ? targetBearing : targetBearing - heading;
+                    return (
+                      <div className="mt-3 flex items-center gap-3 rounded-2xl bg-[#173f3b] px-3 py-3 text-white">
+                        <div className="grid h-[64px] w-[64px] shrink-0 place-items-center rounded-full border border-white/20 bg-white/10">
+                          <span aria-hidden="true" className="text-[42px] leading-none transition-transform duration-200" style={{ transform: `rotate(${relativeBearing}deg)` }}>↑</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12px] text-white/75">目标方向</p>
+                          <p className="text-[20px] font-extrabold leading-tight">{heading === null ? "目标方位已标出" : directionLabel(relativeBearing)}</p>
+                          <p className="mt-1 text-[13px] text-white/90">距离 {formatDistance(currentDistance?.distance ?? 0)}</p>
+                          {heading === null ? (
+                            <button type="button" onClick={() => void enableHeading()} className="mt-1 text-left text-[11px] font-semibold text-amber-200 underline underline-offset-2">开启指南针，获得转向提示</button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })() : null}
 
                   <div className="mt-2.5">
                     {currentDistance ? (
