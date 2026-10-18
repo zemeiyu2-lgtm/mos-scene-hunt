@@ -216,6 +216,13 @@ export default function GameMap({
       attributionControl: true,
       minZoom: 3,
       maxZoom: tiles.maxZoom,
+      // Avoid Leaflet overlay animation callbacks running after a map is
+      // unmounted or a marker/tooltip is removed during fast route changes.
+      // This is especially important for the small, frequently remounted
+      // preview map on the home and design pages.
+      zoomAnimation: false,
+      fadeAnimation: false,
+      markerZoomAnimation: false,
     });
     mapRef.current = map;
     // Capture the collections owned by this map instance for deterministic cleanup.
