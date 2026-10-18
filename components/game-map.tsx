@@ -52,8 +52,10 @@ interface GameMapProps {
   onSimulatedDrag?: (lat: number, lng: number) => void;
   /** When true, the player marker is draggable (simulator only). */
   draggablePlayer?: boolean;
-  /** Fit the view to the whole hunt on first render. */
+  /** Fit the view to the imported game's valid scene coordinates and play area. */
   fitToHunt?: boolean;
+  /** Start location from the active game package; used when scene coordinates are placeholders. */
+  mapCenter?: { lat: number; lng: number };
   /** Re-centre on the player when this value changes. */
   recenterToken?: number;
   /** Device compass heading in degrees clockwise from north; null until available. */
@@ -192,11 +194,19 @@ export default function GameMap({
     const container = containerRef.current;
     if (!container || mapRef.current) return;
 
+    const validMapCenter = mapCenter && Number.isFinite(mapCenter.lat) && Number.isFinite(mapCenter.lng) && !(mapCenter.lat === 0 && mapCenter.lng === 0);
+    const firstLocatedScene = entries.find((entry) =>
+      Number.isFinite(entry.scene.location.lat) &&
+      Number.isFinite(entry.scene.location.lng) &&
+      !(entry.scene.location.lat === 0 && entry.scene.location.lng === 0),
+    );
     const initialCenter: L.LatLngExpression = player
       ? [player.lat, player.lng]
-      : entries.length
-        ? [entries[0].scene.location.lat, entries[0].scene.location.lng]
-        : [14.5832, 120.9794];
+      : firstLocatedScene
+        ? [firstLocatedScene.scene.location.lat, firstLocatedScene.scene.location.lng]
+        : validMapCenter
+          ? [mapCenter!.lat, mapCenter!.lng]
+          : [14.5832, 120.9794];
 
     const map = L.map(container, {
       center: initialCenter,
@@ -550,6 +560,7 @@ export default function GameMap({
   /* ------------------------------------------------ 视角：整场取景或跟随玩家 */
   const fitDoneRef = useRef(false);
   const lastFitTokenRef = useRef<string | undefined>(undefined);
+  const lastFitSignatureRef = useRef<string | undefined>(undefined);
   const lastCentredAtRef = useRef(0);
 
   useEffect(() => {
@@ -557,22 +568,58 @@ export default function GameMap({
     if (!map || !entries.length) return;
 
     if (fitToHunt) {
-      const force =
-        activeEntry !== undefined &&
-        activeEntry !== null &&
-        activeEntry.scene.id !== lastFitTokenRef.current;
+      const fitSignature = [
+        entries.map((entry) => {
+          const { id, location } = entry.scene;
+          return `${id}:${location.lat.toFixed(6)},${location.lng.toFixed(6)}`;
+        }).join("|"),
+        huntArea?.shape ?? "",
+        huntArea?.center ? `${huntArea.center.lat.toFixed(6)},${huntArea.center.lng.toFixed(6)}` : "",
+        huntArea?.radiusMeters ?? "",
+        huntArea?.points?.map((point) => `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`).join("|") ?? "",
+        mapCenter ? `${mapCenter.lat.toFixed(6)},${mapCenter.lng.toFixed(6)}` : "",
+      ].join(";");
+      const force = fitSignature !== lastFitSignatureRef.current ||
+        (activeEntry !== undefined && activeEntry !== null && activeEntry.scene.id !== lastFitTokenRef.current);
       if (fitDoneRef.current && !force) return;
       lastFitTokenRef.current = activeEntry?.scene.id;
+      lastFitSignatureRef.current = fitSignature;
 
-      const points: L.LatLngExpression[] = entries.map((e) => [
-        e.scene.location.lat,
-        e.scene.location.lng,
-      ]);
-      if (player) points.push([player.lat, player.lng]);
-      if (points.length === 1) {
-        map.setView(points[0], 17);
+      const points: L.LatLngExpression[] = entries
+        .filter((entry) =>
+          Number.isFinite(entry.scene.location.lat) &&
+          Number.isFinite(entry.scene.location.lng) &&
+          !(entry.scene.location.lat === 0 && entry.scene.location.lng === 0),
+        )
+        .map((entry) => [entry.scene.location.lat, entry.scene.location.lng]);
+      if (player && Number.isFinite(player.lat) && Number.isFinite(player.lng) && !(player.lat === 0 && player.lng === 0)) {
+        points.push([player.lat, player.lng]);
+      }
+      if (huntArea?.shape === "polygon" && huntArea.points?.length) {
+        huntArea.points.forEach((point) => {
+          if (Number.isFinite(point.lat) && Number.isFinite(point.lng) && !(point.lat === 0 && point.lng === 0)) {
+            points.push([point.lat, point.lng]);
+          }
+        });
+      } else if (huntArea && Number.isFinite(huntArea.center.lat) && Number.isFinite(huntArea.center.lng) &&
+        !(huntArea.center.lat === 0 && huntArea.center.lng === 0) && huntArea.radiusMeters > 0) {
+        const areaBounds = L.circle([huntArea.center.lat, huntArea.center.lng], { radius: huntArea.radiusMeters }).getBounds();
+        points.push(areaBounds.getSouthWest(), areaBounds.getNorthEast());
+      }
+
+      if (points.length === 0) {
+        const fallback = mapCenter && Number.isFinite(mapCenter.lat) && Number.isFinite(mapCenter.lng) &&
+          !(mapCenter.lat === 0 && mapCenter.lng === 0)
+          ? mapCenter
+          : huntArea?.center && Number.isFinite(huntArea.center.lat) && Number.isFinite(huntArea.center.lng) &&
+            !(huntArea.center.lat === 0 && huntArea.center.lng === 0)
+            ? huntArea.center
+            : { lat: 14.5832, lng: 120.9794 };
+        map.setView([fallback.lat, fallback.lng], 16, { animate: !fitDoneRef.current });
+      } else if (points.length === 1) {
+        map.setView(points[0], 17, { animate: !fitDoneRef.current });
       } else {
-        map.fitBounds(L.latLngBounds(points).pad(0.35), { animate: !fitDoneRef.current });
+        map.fitBounds(L.latLngBounds(points).pad(0.2), { animate: !fitDoneRef.current, maxZoom: 17 });
       }
       fitDoneRef.current = true;
       return;
