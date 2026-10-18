@@ -42,20 +42,29 @@ export default function MapPage() {
   const [taskExpanded, setTaskExpanded] = useState(false);
   const [heading, setHeading] = useState<number | null>(null);
   const [headingEnabled, setHeadingEnabled] = useState(false);
+  const [headingMessage, setHeadingMessage] = useState<string | null>(null);
 
   const enableHeading = async () => {
-    if (typeof window === "undefined" || typeof window.DeviceOrientationEvent === "undefined") return;
+    if (typeof window === "undefined" || typeof window.DeviceOrientationEvent === "undefined") {
+      setHeadingMessage("此设备或浏览器无法提供指南针方向；仍可使用蓝色目标箭头和地图。");
+      return;
+    }
     const Orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & {
       requestPermission?: () => Promise<string>;
     };
     try {
       if (typeof Orientation.requestPermission === "function") {
         const permission = await Orientation.requestPermission();
-        if (permission !== "granted") return;
+        if (permission !== "granted") {
+          setHeadingMessage("未获得手机朝向权限；蓝色目标箭头仍可正常使用。");
+          return;
+        }
       }
       setHeadingEnabled(true);
+      setHeadingMessage("正在获取手机朝向……请稍候。");
     } catch {
       setHeadingEnabled(false);
+      setHeadingMessage("暂时无法读取手机朝向；请检查浏览器权限后重试。");
     }
   };
 
@@ -69,7 +78,10 @@ export default function MapPage() {
       } else if (event.absolute && event.alpha !== null && Number.isFinite(event.alpha)) {
         next = (360 - event.alpha + 360) % 360;
       }
-      if (next !== null) setHeading(next);
+      if (next !== null) {
+        setHeading(next);
+        setHeadingMessage(null);
+      }
     };
     window.addEventListener("deviceorientation", handleOrientation as EventListener);
     window.addEventListener("deviceorientationabsolute", handleOrientation as EventListener);
@@ -167,7 +179,7 @@ export default function MapPage() {
                 onClick={() => void enableHeading()}
                 className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
                 aria-label={heading !== null ? "手机朝向指示已启用" : "启用手机朝向指示"}
-                title="手机朝向指示"
+                title="黄色箭头显示手机朝向；蓝色箭头指向目标"
               >
                 🧭
               </button>
@@ -198,6 +210,12 @@ export default function MapPage() {
             </div>
 
             {/* GPS status strip: only shown when something is wrong or simulated. */}
+            {headingMessage && heading === null ? (
+              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-[12px] leading-snug text-amber-900">{headingMessage}</p>
+              </div>
+            ) : null}
+
             {outsideHuntArea ? (
               <div className="pointer-events-auto mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
                 <p className="text-[12.5px] leading-snug text-amber-900">
@@ -296,7 +314,11 @@ export default function MapPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14px] font-bold">{current.title}</p>
                     <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">
-                      {targetBearing === null ? "等待可靠定位方向…" : "跟随蓝色方向指示寻找目标"}
+                      {targetBearing === null
+                        ? "等待可靠定位方向…"
+                        : heading !== null
+                          ? "蓝色箭头指向目标 · 黄色箭头显示手机朝向"
+                          : "蓝色箭头指向目标 · 可点指南针显示手机朝向"}
                     </p>
                   </div>
                   {arrivedScene && arrivedScene.id === current.id ? (
