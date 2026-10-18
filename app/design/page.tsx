@@ -554,6 +554,7 @@ export default function DesignPage() {
             player={null}
             entries={entries}
             huntArea={working.huntArea}
+            mapCenter={working.startLocation}
             tileProvider={settings.tileProvider as TileProviderId}
             fitToHunt
             editable
