@@ -177,6 +177,7 @@ export default function GameMap({
   player,
   entries,
   huntArea,
+  mapCenter,
   tileProvider,
   onSimulatedDrag,
   draggablePlayer = false,
