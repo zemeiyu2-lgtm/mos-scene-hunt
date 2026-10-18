@@ -16,8 +16,7 @@ import { useSettings } from "@/components/providers";
 import { useGps } from "@/components/gps-provider";
 import { MapView } from "@/components/map-view";
 import { SimulatorPanel } from "@/components/simulator-panel";
-import { StatusChip } from "@/components/ui";
-import { calculateDistance, classifyFix, formatDistance, resolveRadius } from "@/lib/location";
+import { calculateDistance, classifyFix } from "@/lib/location";
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
 import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
@@ -40,22 +39,32 @@ export default function MapPage() {
   } = useHunt();
 
   const [recenterToken, setRecenterToken] = useState(0);
+  const [taskExpanded, setTaskExpanded] = useState(false);
   const [heading, setHeading] = useState<number | null>(null);
   const [headingEnabled, setHeadingEnabled] = useState(false);
+  const [headingMessage, setHeadingMessage] = useState<string | null>(null);
 
   const enableHeading = async () => {
-    if (typeof window === "undefined" || typeof window.DeviceOrientationEvent === "undefined") return;
+    if (typeof window === "undefined" || typeof window.DeviceOrientationEvent === "undefined") {
+      setHeadingMessage("此设备或浏览器无法提供指南针方向；仍可使用蓝色目标箭头和地图。");
+      return;
+    }
     const Orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & {
       requestPermission?: () => Promise<string>;
     };
     try {
       if (typeof Orientation.requestPermission === "function") {
         const permission = await Orientation.requestPermission();
-        if (permission !== "granted") return;
+        if (permission !== "granted") {
+          setHeadingMessage("未获得手机朝向权限；蓝色目标箭头仍可正常使用。");
+          return;
+        }
       }
       setHeadingEnabled(true);
+      setHeadingMessage("正在获取手机朝向……请稍候。");
     } catch {
       setHeadingEnabled(false);
+      setHeadingMessage("暂时无法读取手机朝向；请检查浏览器权限后重试。");
     }
   };
 
@@ -69,7 +78,10 @@ export default function MapPage() {
       } else if (event.absolute && event.alpha !== null && Number.isFinite(event.alpha)) {
         next = (360 - event.alpha + 360) % 360;
       }
-      if (next !== null) setHeading(next);
+      if (next !== null) {
+        setHeading(next);
+        setHeadingMessage(null);
+      }
     };
     window.addEventListener("deviceorientation", handleOrientation as EventListener);
     window.addEventListener("deviceorientationabsolute", handleOrientation as EventListener);
@@ -93,7 +105,7 @@ export default function MapPage() {
   }, [statuses, distances]);
 
   const currentDistance = current ? distances[current.id] ?? null : null;
-  const currentRadius = current ? resolveRadius(current.location) : 50;
+  const targetBearing = fix && current ? bearingDegrees(fix, current.location) : null;
   const fixQuality = fix ? classifyFix(fix) : null;
   const huntAreaDistance = fix && game?.huntArea
     ? calculateDistance(fix, game.huntArea.center)
@@ -110,6 +122,14 @@ export default function MapPage() {
   const arrivedScene = insideSceneId
     ? statuses.find((s) => s.scene.id === insideSceneId)?.scene ?? null
     : null;
+
+  // When the current target is reached, reveal the next action automatically.
+  // This avoids making players guess that they need to expand the task card.
+  useEffect(() => {
+    if (arrivedScene && current && arrivedScene.id === current.id) {
+      setTaskExpanded(true);
+    }
+  }, [arrivedScene?.id, current?.id]);
 
   return (
     <>
@@ -159,7 +179,7 @@ export default function MapPage() {
                 onClick={() => void enableHeading()}
                 className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
                 aria-label={heading !== null ? "手机朝向指示已启用" : "启用手机朝向指示"}
-                title="手机朝向指示"
+                title="黄色箭头显示手机朝向；蓝色箭头指向目标"
               >
                 🧭
               </button>
@@ -190,10 +210,16 @@ export default function MapPage() {
             </div>
 
             {/* GPS status strip: only shown when something is wrong or simulated. */}
+            {headingMessage && heading === null ? (
+              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-[12px] leading-snug text-amber-900">{headingMessage}</p>
+              </div>
+            ) : null}
+
             {outsideHuntArea ? (
               <div className="pointer-events-auto mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
                 <p className="text-[12.5px] leading-snug text-amber-900">
-                  你已离开本次寻宝区域。当前距区域中心约 {huntAreaDistance !== null ? formatDistance(huntAreaDistance) : "--"}。
+                  你已离开本次寻宝区域，请结合地图回到寻宝范围内。
                 </p>
               </div>
             ) : null}
@@ -214,7 +240,7 @@ export default function MapPage() {
             {status === "idle" && !fix ? (
               <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
                 <p className="text-[12.5px] leading-snug text-amber-900">
-                  尚未开始定位。允许定位后才能看到你与目标地点的距离。
+                  尚未开始定位。允许定位后才能显示你的当前位置和目标方向。
                 </p>
                 <button
                   type="button"
@@ -242,94 +268,98 @@ export default function MapPage() {
           </div>
         </div>
 
-        {/* Bottom action sheet: distance + arrival CTA. */}
+        {/* Compact task control: keep the map visible during exploration. */}
         <div
           className="absolute inset-x-0 bottom-0 z-[550]"
           style={{ paddingBottom: "calc(12px + var(--tabbar-h) + var(--safe-bottom))" }}
         >
           <div className="page">
-            <div className="card p-3 shadow-sheet">
-              {loading ? (
-                <p className="py-2 text-center text-[13px] text-[var(--muted)]">正在加载游戏数据…</p>
-              ) : complete ? (
-                <div className="py-1 text-center">
-                  <p className="text-[15px] font-semibold text-emerald-700">
-                    🎉 你已走完全部 {statuses.length} 个地点
-                  </p>
-                  <Link href="/bag" className="btn btn-primary btn-block mt-3">
-                    查看我的收获
-                  </Link>
-                </div>
-              ) : current ? (
-                <>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-[15px] font-bold">{current.title}</p>
-                        <StatusChip status={statuses.find((s) => s.scene.id === current.id)?.status ?? "available"} />
-                      </div>
-                      <p className="mt-0.5 truncate text-[12px] text-[var(--muted)]">
-                        {current.location.name ?? "目标地点"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-2.5">
-                    {currentDistance ? (
-                      currentDistance.inRange ? (
-                        <p className="text-[15px] font-bold text-emerald-600">
-                          ◉ 你已经找到这里
-                        </p>
-                      ) : (
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-[13px] text-[var(--muted)]">距离目标：</span>
-                          <span className="tabular text-[19px] font-bold">
-                            {formatDistance(currentDistance.distance)}
-                          </span>
-                          <span className="text-[11px] text-[var(--muted)]">
-                            （触发半径 {currentRadius} m）
-                          </span>
-                        </div>
-                      )
-                    ) : (
-                      <p className="text-[13px] text-[var(--muted)]">等待定位以计算距离…</p>
-                    )}
-                  </div>
-
-
-
-                  {fixQuality?.message && !currentDistance?.inRange ? (
-                    <p className="mt-1.5 text-[11.5px] leading-snug text-amber-700">
-                      {fixQuality.message}
-                    </p>
-                  ) : null}
-
-                  {arrivedScene && arrivedScene.id === current.id ? (
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-block mt-3"
-                      onClick={() => router.push(`/scene/${arrivedScene.id}`)}
+            {loading ? (
+              <div className="card p-3 text-center text-[13px] text-[var(--muted)]">正在加载游戏数据…</div>
+            ) : complete ? (
+              <div className="card p-3 shadow-sheet">
+                <p className="text-[14px] font-semibold text-emerald-700">🎉 你已走完全部 {statuses.length} 个地点</p>
+                <Link href="/bag" className="btn btn-primary btn-block mt-2">查看我的收获</Link>
+              </div>
+            ) : current ? (
+              <section className="card shadow-sheet">
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 p-3 text-left"
+                  onClick={() => setTaskExpanded((expanded) => !expanded)}
+                  aria-expanded={taskExpanded}
+                  aria-label={taskExpanded ? "收起任务详情" : "展开任务详情"}
+                >
+                  <div className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-sky-50">
+                    <div
+                      className="absolute inset-0 animate-[spin_2.8s_linear_infinite] opacity-80"
+                      style={{
+                        background: "conic-gradient(from 0deg, rgba(37,99,235,0.0) 0deg, rgba(37,99,235,0.04) 280deg, rgba(37,99,235,0.24) 330deg, rgba(37,99,235,0.72) 360deg)",
+                      }}
+                      aria-hidden="true"
+                    />
+                    <div className="absolute inset-[7px] rounded-full border border-sky-200/80" aria-hidden="true" />
+                    <svg
+                      viewBox="0 0 40 40"
+                      className="relative h-9 w-9 drop-shadow-sm"
+                      style={{ transform: "rotate(" + (targetBearing ?? 0) + "deg)" }}
+                      role="img"
+                      aria-label={targetBearing === null ? "目标方向暂不可用" : "目标方向指示"}
                     >
-                      解锁情境 →
-                    </button>
-                  ) : (
-                    <Link href="/quest" className="btn btn-secondary btn-block mt-3">
-                      查看任务详情
-                    </Link>
-                  )}
-
-                  {insideAnyScene && arrivedScene && arrivedScene.id !== current.id ? (
-                    <p className="mt-2 text-[11.5px] text-[var(--muted)]">
-                      你正在「{arrivedScene.title}」的范围内，但它尚未解锁。先去完成当前目标。
+                      <path d="M20 4 C25 11 29 17 29 23 A9 9 0 0 1 11 23 C11 17 15 11 20 4Z" fill="#60A5FA" opacity="0.35" />
+                      <path d="M20 3 L27 24 L20 20 L13 24 Z" fill="#2563EB" stroke="#FFFFFF" strokeWidth="1.4" strokeLinejoin="round" />
+                      <circle cx="20" cy="21" r="3.2" fill="#FFFFFF" stroke="#2563EB" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14px] font-bold">{current.title}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">
+                      {targetBearing === null
+                        ? "等待可靠定位方向…"
+                        : heading !== null
+                          ? "蓝色箭头指向目标 · 黄色箭头显示手机朝向"
+                          : "蓝色箭头指向目标 · 可点指南针显示手机朝向"}
                     </p>
+                  </div>
+                  {arrivedScene && arrivedScene.id === current.id ? (
+                    <span className="chip shrink-0 bg-emerald-100 text-emerald-700">已抵达</span>
                   ) : null}
-                </>
-              ) : (
-                <p className="py-2 text-center text-[13px] text-[var(--muted)]">
-                  没有可进行的任务。
-                </p>
-              )}
-            </div>
+                  <span className="shrink-0 text-[var(--muted)]" aria-hidden="true">{taskExpanded ? "⌄" : "⌃"}</span>
+                </button>
+
+                {taskExpanded ? (
+                  <div className="border-t border-[var(--line)] px-3 pb-3 pt-2">
+                    <p className="text-[12px] text-[var(--muted)]">{current.location.name ?? "当前目标地点"}</p>
+                    <p className="mt-2 text-[13px] leading-snug">
+                      {targetBearing === null
+                        ? "暂时无法确定目标方向。请确认定位权限，并移动到 GPS 信号较好的开阔位置。"
+                        : "蓝色方向指示指向当前目标。请同时观察地图和现场环境；方向会随定位更新，不显示可能不准确的距离数字。"}
+                    </p>
+                    {fixQuality?.message && !currentDistance?.inRange ? (
+                      <p className="mt-2 text-[11.5px] leading-snug text-amber-700">{fixQuality.message}</p>
+                    ) : null}
+                    {arrivedScene && arrivedScene.id === current.id ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-block mt-3"
+                        onClick={() => router.push(`/scene/${arrivedScene.id}`)}
+                      >
+                        解锁情境 →
+                      </button>
+                    ) : (
+                      <Link href="/quest" className="btn btn-secondary btn-block mt-3">查看任务详情</Link>
+                    )}
+                    {insideAnyScene && arrivedScene && arrivedScene.id !== current.id ? (
+                      <p className="mt-2 text-[11.5px] text-[var(--muted)]">
+                        你正在「{arrivedScene.title}」的范围内，但它尚未解锁。先去完成当前目标。
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+            ) : (
+              <div className="card p-3 text-center text-[13px] text-[var(--muted)]">没有可进行的任务。</div>
+            )}
           </div>
         </div>
 
@@ -340,3 +370,13 @@ export default function MapPage() {
   );
 }
 
+
+function bearingDegrees(from: { lat: number; lng: number }, to: { lat: number; lng: number }): number {
+  const toRad = (value: number) => value * Math.PI / 180;
+  const toDeg = (value: number) => value * 180 / Math.PI;
+  const lat1 = toRad(from.lat), lat2 = toRad(to.lat);
+  const dLng = toRad(to.lng - from.lng);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}

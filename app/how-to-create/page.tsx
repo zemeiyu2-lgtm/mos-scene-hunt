@@ -31,8 +31,8 @@ const PROMPT = `你是 MOS Scene Hunt 的户外寻宝游戏设计助手。请帮
     "scenes": []
   }
 }
-所有游戏内容必须放在 game 对象里。每个 scene 包含唯一 id、title、story、briefing、location、nextSceneId、challenge、reward。location 格式为 { "lat": 0, "lng": 0, "radius": 15, "name": "现场地点名称" }。challenge 类型只能是 choice、text、keyword；choice 必须包含 question、options（2至4项）、answer（正确选项从0开始的数字下标）；text/keyword 必须包含 question、answer（可接受答案字符串或字符串数组）、hint。reward 至少包含 type、title、value；type 只能使用 keyword、item、badge、story 之一。nextSceneId 按路线连接，最后一站为 null，entrySceneId 指向第一站，所有 ID 唯一。媒体如有需要，使用 media 数组，格式为 { "id":"唯一编号", "kind":"image 或 document", "title":"资源名称", "url":"可访问的 https 地址", "description":"用途" }。不要编造图片链接；没有可靠地址时，说明设计者需要上传素材。
-不要编造真实 GPS 坐标：startLocation、huntArea.center 和每个 scene.location 的 lat、lng 一律填 0，作为待标定占位值。导入后必须在设计中心地图上逐站标定真实地点、设置游戏区域和触发距离，再进行现场试玩。请先问我最多三个关键问题；若我已经说明，直接设计。最后在 JSON 之外列出：现场需要确认的地点、需要准备的宝藏、需要上传的图片/文件，以及安全检查清单。`;
+所有游戏内容必须放在 game 对象里。每个 scene 包含唯一 id、title、story、briefing、location、nextSceneId、challenge、reward。location 格式为 { "lat": 0, "lng": 0, "radius": 15, "name": "现场地点名称", "address": "可搜索的文字地址或附近地标", "locationStatus": "needs_confirmation" }。startLocation 和 huntArea 也可包含 address 与 locationStatus。locationStatus 只能是 needs_confirmation、approximate、confirmed 之一；AI 初稿一律使用 needs_confirmation。challenge 类型只能是 choice、text、keyword；choice 必须包含 question、options（2至4项）、answer（正确选项从0开始的数字下标）；text/keyword 必须包含 question、answer（可接受答案字符串或字符串数组）、hint。reward 至少包含 type、title、value；type 只能使用 keyword、item、badge、story 之一。nextSceneId 按路线连接，最后一站为 null，entrySceneId 指向第一站，所有 ID 唯一。媒体如有需要，使用 media 数组，格式为 { "id":"唯一编号", "kind":"image 或 document", "title":"资源名称", "url":"可访问的 https 地址", "description":"用途" }。不要编造图片链接；没有可靠地址时，说明设计者需要上传素材。
+不要编造真实 GPS 坐标：startLocation、huntArea.center 和每个 scene.location 的 lat、lng 一律填 0，作为待确认占位值。必须用 name/address 写出人能理解、可搜索的地点或附近地标，例如国家、城市、街道、公园入口或建筑名称；若用户只给出大致区域，就明确标记 approximate，不要假装知道具体站点。AI 不负责提供精确经纬度，也不要要求设计者手工查坐标。导入后，创作工具应帮助设计者按文字地址找到附近地图，再由设计者调整游戏范围并确认实际站点。游戏包中的坐标只是运行时内部锚点，0,0 不能直接发布。请先问我最多三个关键问题；若我已经说明，直接设计。最后在 JSON 之外列出：需要地图确认的地点、需要准备的宝藏、需要上传的图片/文件，以及安全检查清单。`;
 
 export default function HowToCreatePage() {
   const [copied, setCopied] = useState(false);

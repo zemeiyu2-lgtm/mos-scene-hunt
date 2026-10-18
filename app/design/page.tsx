@@ -32,7 +32,6 @@ import {
   importGamePackage,
 } from "@/lib/content";
 import type { Game, HuntArea, Scene } from "@/lib/game/types";
-import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
 import {
   isPointInPolygon,
   polygonBoundingRadius,
@@ -465,16 +464,6 @@ export default function DesignPage() {
     if (save()) router.push("/select");
   };
 
-  const loadOfficialTemplate = () => {
-    const template = structuredClone(RIZAL_PARK_TEMPLATE);
-    setDraft(template);
-    setSelectedId(template.scenes[0]?.id ?? null);
-    setSaved(false);
-    setDrawingArea(false);
-    setPlacingCircle(false);
-    setAreaSnapshot(undefined);
-  };
-
   const resetOfficial = () => {
     clearAuthoredGame(working.id);
     // Hand the title back to the bundled pack, otherwise /select would keep
@@ -554,18 +543,6 @@ export default function DesignPage() {
         ))}
       </ol>
 
-      <section className="card mb-4 overflow-hidden">
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#15233d] via-[#243b5d] to-[#3f6a68] px-5 py-5 text-white">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/60">OFFICIAL TEMPLATE · RIZAL PARK</p>
-          <h2 className="mt-1.5 text-[21px] font-bold">黎刹公园：寻找最后的宝藏</h2>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-white/75">观察 → 发现 → 挑战 → 寻宝 → 兑现</p>
-          <button type="button" className="mt-3 rounded-xl bg-white/95 px-4 py-2.5 text-[13px] font-bold text-[#15233d]" onClick={loadOfficialTemplate}>
-            载入黎刹公园官方母版
-          </button>
-          <p className="mt-2 text-[10.5px] text-white/55">这是官方示范母版。请在地图上核对各站坐标、调整区域，并现场试玩后再发布。</p>
-        </div>
-      </section>
-
       {/* ------------------------------------------------ 地图 */}
       <section className="card overflow-hidden">
         {/* `relative` is load-bearing: .map-root is position:absolute/inset:0
@@ -577,11 +554,13 @@ export default function DesignPage() {
             player={null}
             entries={entries}
             huntArea={working.huntArea}
+            mapCenter={working.startLocation}
             tileProvider={settings.tileProvider as TileProviderId}
             fitToHunt
             editable
             drawingMode={drawingArea}
             onMapClick={handleMapClick}
+            onSceneSelect={(sceneId) => setSelectedId(sceneId)}
             onSceneDrag={(sceneId, lat, lng) => updateLocation(sceneId, lat, lng)}
           />
         </div>
@@ -597,7 +576,7 @@ export default function DesignPage() {
                 点击地图上任意一点，作为圆形区域的中心
               </span>
             ) : (
-              <>当前选中「{selected?.title ?? "地点"}」。直接拖动地点标记，或点击地图移动当前地点。</>
+              <>点击地图标记可选中对应站点；拖动标记可调整位置。点击地图空白处，则移动当前选中站点。</>
             )}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">

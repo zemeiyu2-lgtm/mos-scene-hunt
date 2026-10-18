@@ -52,8 +52,10 @@ interface GameMapProps {
   onSimulatedDrag?: (lat: number, lng: number) => void;
   /** When true, the player marker is draggable (simulator only). */
   draggablePlayer?: boolean;
-  /** Fit the view to the whole hunt on first render. */
+  /** Fit the view to the imported game's valid scene coordinates and play area. */
   fitToHunt?: boolean;
+  /** Start location from the active game package; used when scene coordinates are placeholders. */
+  mapCenter?: { lat: number; lng: number };
   /** Re-centre on the player when this value changes. */
   recenterToken?: number;
   /** Device compass heading in degrees clockwise from north; null until available. */
@@ -62,6 +64,8 @@ interface GameMapProps {
   editable?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
   onSceneDrag?: (sceneId: string, lat: number, lng: number) => void;
+  /** Called when an author taps a scene marker to select that scene. */
+  onSceneSelect?: (sceneId: string) => void;
   onHuntAreaDrag?: (lat: number, lng: number) => void;
   /**
    * True while the designer is actively drawing a polygon boundary. Switches
@@ -126,6 +130,7 @@ export default function GameMap({
   player,
   entries,
   huntArea,
+  mapCenter,
   tileProvider,
   onSimulatedDrag,
   draggablePlayer = false,
@@ -135,6 +140,7 @@ export default function GameMap({
   editable = false,
   onMapClick,
   onSceneDrag,
+  onSceneSelect,
   onHuntAreaDrag,
   drawingMode = false,
 }: GameMapProps) {
@@ -159,6 +165,8 @@ export default function GameMap({
   mapClickCallbackRef.current = onMapClick;
   const sceneDragCallbackRef = useRef(onSceneDrag);
   sceneDragCallbackRef.current = onSceneDrag;
+  const sceneSelectCallbackRef = useRef(onSceneSelect);
+  sceneSelectCallbackRef.current = onSceneSelect;
   const huntAreaDragCallbackRef = useRef(onHuntAreaDrag);
   huntAreaDragCallbackRef.current = onHuntAreaDrag;
 
@@ -187,11 +195,19 @@ export default function GameMap({
     const container = containerRef.current;
     if (!container || mapRef.current) return;
 
+    const validMapCenter = mapCenter && Number.isFinite(mapCenter.lat) && Number.isFinite(mapCenter.lng) && !(mapCenter.lat === 0 && mapCenter.lng === 0);
+    const firstLocatedScene = entries.find((entry) =>
+      Number.isFinite(entry.scene.location.lat) &&
+      Number.isFinite(entry.scene.location.lng) &&
+      !(entry.scene.location.lat === 0 && entry.scene.location.lng === 0),
+    );
     const initialCenter: L.LatLngExpression = player
       ? [player.lat, player.lng]
-      : entries.length
-        ? [entries[0].scene.location.lat, entries[0].scene.location.lng]
-        : [14.5832, 120.9794];
+      : firstLocatedScene
+        ? [firstLocatedScene.scene.location.lat, firstLocatedScene.scene.location.lng]
+        : validMapCenter
+          ? [mapCenter!.lat, mapCenter!.lng]
+          : [14.5832, 120.9794];
 
     const map = L.map(container, {
       center: initialCenter,
@@ -200,6 +216,13 @@ export default function GameMap({
       attributionControl: true,
       minZoom: 3,
       maxZoom: tiles.maxZoom,
+      // Avoid Leaflet overlay animation callbacks running after a map is
+      // unmounted or a marker/tooltip is removed during fast route changes.
+      // This is especially important for the small, frequently remounted
+      // preview map on the home and design pages.
+      zoomAnimation: false,
+      fadeAnimation: false,
+      markerZoomAnimation: false,
     });
     mapRef.current = map;
     // Capture the collections owned by this map instance for deterministic cleanup.
@@ -215,6 +238,28 @@ export default function GameMap({
     scaleRef.current = scale;
 
     return () => {
+      // Leaflet tooltips keep their own map reference and may schedule a
+      // position update while React is tearing this map down. Close and detach
+      // every tooltip before removing the map so no late callback can call
+      // layerPointToLatLng on a detached map/layer.
+      const detachTooltips = (layer: L.Layer) => {
+        // Tooltips can be bound to Path layers (CircleMarker/Polygon), not
+        // only Marker instances. Detach every tooltip before Leaflet clears
+        // the layer's internal map reference.
+        const tooltipLayer = layer as L.Layer & {
+          closeTooltip?: () => L.Layer;
+          unbindTooltip?: () => L.Layer;
+        };
+        tooltipLayer.closeTooltip?.();
+        tooltipLayer.unbindTooltip?.();
+        if (layer instanceof L.LayerGroup) {
+          layer.eachLayer(detachTooltips);
+        }
+      };
+      map.stop();
+      map.closePopup();
+      map.eachLayer(detachTooltips);
+      map.off();
       map.remove();
       mapRef.current = null;
       tileRef.current = null;
@@ -396,6 +441,16 @@ export default function GameMap({
       areaVerticesRef.current = L.layerGroup().addTo(map);
     }
     const group = areaVerticesRef.current;
+    // Vertex dots are CircleMarkers with permanent tooltips. Detach each
+    // tooltip before clearLayers removes the child and its map reference.
+    group.eachLayer((layer) => {
+      const tooltipLayer = layer as L.Layer & {
+        closeTooltip?: () => L.Layer;
+        unbindTooltip?: () => L.Layer;
+      };
+      tooltipLayer.closeTooltip?.();
+      tooltipLayer.unbindTooltip?.();
+    });
     group.clearLayers();
     (huntArea.points ?? []).forEach((p, i) => {
       L.circleMarker([p.lat, p.lng], {
@@ -438,18 +493,30 @@ export default function GameMap({
         if (editable && existing.dragging && !existing.dragging.enabled()) existing.dragging.enable();
         if (!editable && existing.dragging?.enabled()) existing.dragging.disable();
         if (entry.isActive) {
-          existing.bindTooltip(entry.scene.title, {
-            permanent: true,
-            direction: "top",
-            offset: [0, -22],
-            className: "scene-target-tooltip",
-          });
+          // Update an existing tooltip in place. Re-binding on every scene
+          // update can recreate/open it repeatedly while Leaflet is projecting
+          // points, which is fragile during rapid authoring edits.
+          if (existing.getTooltip()) {
+            existing.setTooltipContent(entry.scene.title);
+          } else {
+            existing.bindTooltip(entry.scene.title, {
+              permanent: true,
+              direction: "top",
+              offset: [0, -22],
+              className: "scene-target-tooltip",
+            });
+          }
         } else if (existing.getTooltip()) {
+          existing.closeTooltip();
           existing.unbindTooltip();
         }
       } else {
         const marker = L.marker(latlng, { icon, interactive: editable, draggable: editable });
         if (editable) {
+          marker.on("click", (event) => {
+            L.DomEvent.stopPropagation(event.originalEvent);
+            sceneSelectCallbackRef.current?.(entry.scene.id);
+          });
           marker.on("dragend", () => {
             const pos = marker.getLatLng();
             sceneDragCallbackRef.current?.(entry.scene.id, pos.lat, pos.lng);
@@ -541,6 +608,7 @@ export default function GameMap({
   /* ------------------------------------------------ 视角：整场取景或跟随玩家 */
   const fitDoneRef = useRef(false);
   const lastFitTokenRef = useRef<string | undefined>(undefined);
+  const lastFitSignatureRef = useRef<string | undefined>(undefined);
   const lastCentredAtRef = useRef(0);
 
   useEffect(() => {
@@ -548,22 +616,58 @@ export default function GameMap({
     if (!map || !entries.length) return;
 
     if (fitToHunt) {
-      const force =
-        activeEntry !== undefined &&
-        activeEntry !== null &&
-        activeEntry.scene.id !== lastFitTokenRef.current;
+      const fitSignature = [
+        entries.map((entry) => {
+          const { id, location } = entry.scene;
+          return `${id}:${location.lat.toFixed(6)},${location.lng.toFixed(6)}`;
+        }).join("|"),
+        huntArea?.shape ?? "",
+        huntArea?.center ? `${huntArea.center.lat.toFixed(6)},${huntArea.center.lng.toFixed(6)}` : "",
+        huntArea?.radiusMeters ?? "",
+        huntArea?.points?.map((point) => `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`).join("|") ?? "",
+        mapCenter ? `${mapCenter.lat.toFixed(6)},${mapCenter.lng.toFixed(6)}` : "",
+      ].join(";");
+      const force = fitSignature !== lastFitSignatureRef.current ||
+        (activeEntry !== undefined && activeEntry !== null && activeEntry.scene.id !== lastFitTokenRef.current);
       if (fitDoneRef.current && !force) return;
       lastFitTokenRef.current = activeEntry?.scene.id;
+      lastFitSignatureRef.current = fitSignature;
 
-      const points: L.LatLngExpression[] = entries.map((e) => [
-        e.scene.location.lat,
-        e.scene.location.lng,
-      ]);
-      if (player) points.push([player.lat, player.lng]);
-      if (points.length === 1) {
-        map.setView(points[0], 17);
+      const points: L.LatLngExpression[] = entries
+        .filter((entry) =>
+          Number.isFinite(entry.scene.location.lat) &&
+          Number.isFinite(entry.scene.location.lng) &&
+          !(entry.scene.location.lat === 0 && entry.scene.location.lng === 0),
+        )
+        .map((entry) => [entry.scene.location.lat, entry.scene.location.lng]);
+      if (player && Number.isFinite(player.lat) && Number.isFinite(player.lng) && !(player.lat === 0 && player.lng === 0)) {
+        points.push([player.lat, player.lng]);
+      }
+      if (huntArea?.shape === "polygon" && huntArea.points?.length) {
+        huntArea.points.forEach((point) => {
+          if (Number.isFinite(point.lat) && Number.isFinite(point.lng) && !(point.lat === 0 && point.lng === 0)) {
+            points.push([point.lat, point.lng]);
+          }
+        });
+      } else if (huntArea && Number.isFinite(huntArea.center.lat) && Number.isFinite(huntArea.center.lng) &&
+        !(huntArea.center.lat === 0 && huntArea.center.lng === 0) && huntArea.radiusMeters > 0) {
+        const areaBounds = L.circle([huntArea.center.lat, huntArea.center.lng], { radius: huntArea.radiusMeters }).getBounds();
+        points.push(areaBounds.getSouthWest(), areaBounds.getNorthEast());
+      }
+
+      if (points.length === 0) {
+        const fallback = mapCenter && Number.isFinite(mapCenter.lat) && Number.isFinite(mapCenter.lng) &&
+          !(mapCenter.lat === 0 && mapCenter.lng === 0)
+          ? mapCenter
+          : huntArea?.center && Number.isFinite(huntArea.center.lat) && Number.isFinite(huntArea.center.lng) &&
+            !(huntArea.center.lat === 0 && huntArea.center.lng === 0)
+            ? huntArea.center
+            : { lat: 14.5832, lng: 120.9794 };
+        map.setView([fallback.lat, fallback.lng], 16, { animate: !fitDoneRef.current });
+      } else if (points.length === 1) {
+        map.setView(points[0], 17, { animate: !fitDoneRef.current });
       } else {
-        map.fitBounds(L.latLngBounds(points).pad(0.35), { animate: !fitDoneRef.current });
+        map.fitBounds(L.latLngBounds(points).pad(0.2), { animate: !fitDoneRef.current, maxZoom: 17 });
       }
       fitDoneRef.current = true;
       return;
@@ -583,7 +687,7 @@ export default function GameMap({
       animate: tokenRequested,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitToHunt, recenterToken, player?.lat, player?.lng, activeEntry?.scene.id, entries, player]);
+  }, [fitToHunt, recenterToken, player?.lat, player?.lng, activeEntry?.scene.id, entries, player, huntArea, mapCenter]);
 
   /* ------------------------------------------------ 渲染 */
   return (
