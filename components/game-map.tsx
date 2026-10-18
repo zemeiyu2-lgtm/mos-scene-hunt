@@ -238,6 +238,23 @@ export default function GameMap({
     scaleRef.current = scale;
 
     return () => {
+      // Leaflet tooltips keep their own map reference and may schedule a
+      // position update while React is tearing this map down. Close and detach
+      // every tooltip before removing the map so no late callback can call
+      // layerPointToLatLng on a detached map/layer.
+      const detachTooltips = (layer: L.Layer) => {
+        if (layer instanceof L.Marker) {
+          layer.closeTooltip();
+          layer.unbindTooltip();
+        }
+        if (layer instanceof L.LayerGroup) {
+          layer.eachLayer(detachTooltips);
+        }
+      };
+      map.stop();
+      map.closePopup();
+      map.eachLayer(detachTooltips);
+      map.off();
       map.remove();
       mapRef.current = null;
       tileRef.current = null;
@@ -461,13 +478,21 @@ export default function GameMap({
         if (editable && existing.dragging && !existing.dragging.enabled()) existing.dragging.enable();
         if (!editable && existing.dragging?.enabled()) existing.dragging.disable();
         if (entry.isActive) {
-          existing.bindTooltip(entry.scene.title, {
-            permanent: true,
-            direction: "top",
-            offset: [0, -22],
-            className: "scene-target-tooltip",
-          });
+          // Update an existing tooltip in place. Re-binding on every scene
+          // update can recreate/open it repeatedly while Leaflet is projecting
+          // points, which is fragile during rapid authoring edits.
+          if (existing.getTooltip()) {
+            existing.setTooltipContent(entry.scene.title);
+          } else {
+            existing.bindTooltip(entry.scene.title, {
+              permanent: true,
+              direction: "top",
+              offset: [0, -22],
+              className: "scene-target-tooltip",
+            });
+          }
         } else if (existing.getTooltip()) {
+          existing.closeTooltip();
           existing.unbindTooltip();
         }
       } else {
