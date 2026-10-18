@@ -639,7 +639,7 @@ export default function GameMap({
       animate: tokenRequested,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitToHunt, recenterToken, player?.lat, player?.lng, activeEntry?.scene.id, entries, player]);
+  }, [fitToHunt, recenterToken, player?.lat, player?.lng, activeEntry?.scene.id, entries, player, huntArea, mapCenter]);
 
   /* ------------------------------------------------ 渲染 */
   return (
