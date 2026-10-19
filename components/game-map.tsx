@@ -219,6 +219,11 @@ export default function GameMap({
   const huntAreaDragCallbackRef = useRef(onHuntAreaDrag);
   huntAreaDragCallbackRef.current = onHuntAreaDrag;
 
+  // Marker click handlers are bound once at creation time, so they cannot read
+  // the `drawingMode` prop directly without going stale.
+  const drawingModeRef = useRef(drawingMode);
+  drawingModeRef.current = drawingMode;
+
   const tiles = TILE_PROVIDERS[tileProvider] ?? TILE_PROVIDERS["osm-hot"];
   const activeEntry = useMemo(() => entries.find((e) => e.isActive) ?? null, [entries]);
 
@@ -556,6 +561,13 @@ export default function GameMap({
         if (editable) {
           marker.on("click", (event) => {
             L.DomEvent.stopPropagation(event.originalEvent);
+            // While drawing the hunt area, a click on a marker must still land
+            // as a vertex — swallowing it here would make the drawing flow drop
+            // points whenever a scene happens to sit under the cursor.
+            if (drawingModeRef.current) {
+              mapClickCallbackRef.current?.(event.latlng.lat, event.latlng.lng);
+              return;
+            }
             sceneSelectCallbackRef.current?.(entry.scene.id);
           });
           marker.on("dragend", () => {
@@ -691,8 +703,19 @@ export default function GameMap({
         });
       } else if (huntArea && Number.isFinite(huntArea.center.lat) && Number.isFinite(huntArea.center.lng) &&
         !(huntArea.center.lat === 0 && huntArea.center.lng === 0) && huntArea.radiusMeters > 0) {
-        const areaBounds = L.circle([huntArea.center.lat, huntArea.center.lng], { radius: huntArea.radiusMeters }).getBounds();
-        points.push(areaBounds.getSouthWest(), areaBounds.getNorthEast());
+        // `L.circle(...).getBounds()` requires the circle to be on a map
+        // (it projects through `map.layerPointToLatLng`). This circle is
+        // never added to any map, so compute the bounding box geometrically
+        // instead — this is also what fixes the `layerPointToLatLng` crash
+        // the radar branch shipped with.
+        const centerLat = huntArea.center.lat;
+        const centerLng = huntArea.center.lng;
+        const latDelta = huntArea.radiusMeters / 110574;
+        const lngDelta = huntArea.radiusMeters / (111320 * Math.max(0.1, Math.cos((centerLat * Math.PI) / 180)));
+        points.push(
+          [centerLat - latDelta, centerLng - lngDelta],
+          [centerLat + latDelta, centerLng + lngDelta],
+        );
       }
 
       if (points.length === 0) {

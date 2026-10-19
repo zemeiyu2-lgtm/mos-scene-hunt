@@ -243,6 +243,9 @@ async function main() {
       if (msg.type() === "error") consoleErrors.push(msg.text());
     });
     page.on("pageerror", (err) => pageErrors.push(String(err)));
+    page.on("response", (res) => {
+      if (res.status() === 404) consoleErrors.push(`404 ${res.url()}`);
+    });
 
     const homeResponse = await page.goto(BASE, { waitUntil: "networkidle2", timeout: 45_000 });
 
@@ -341,11 +344,13 @@ async function main() {
       );
     });
 
-    await check("地图页显示距离读数或已进入提示", async () => {
+    await check("地图页显示雷达任务卡或已进入提示", async () => {
+      // 雷达指针线移除了不可靠的距离数字：/map 改为展示紧凑任务卡
+      // （「蓝色箭头指向目标」），已进入时展示进入提示。
       const t = await bodyText(page);
       assert(
-        t.includes(COPY.distanceLabel) || t.includes(COPY.inRange) || /距离/.test(t),
-        `正文中没有距离信息：\n${t.slice(0, 400)}`,
+        t.includes("蓝色箭头指向目标") || t.includes(COPY.inRange),
+        `地图页没有雷达任务卡或进入提示：\n${t.slice(0, 400)}`,
       );
     });
 
