@@ -399,6 +399,40 @@ export default function DesignPage() {
     }
   };
 
+  const shareToPlatform = async (platform: "wechat" | "viber" | "facebook" | "system") => {
+    if (!shareUrl) return;
+    const title = working?.title || "MOS Scene Hunt";
+    const message = "邀请你来玩：" + title + "\n" + shareUrl;
+    try {
+      if (platform === "wechat") {
+        await navigator.clipboard.writeText(message);
+        setShareMessage("游戏链接和邀请文字已复制。请打开微信，进入朋友或群聊后粘贴发送；网页不能直接替你选择微信联系人。");
+        return;
+      }
+      if (platform === "facebook") {
+        const target = "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(shareUrl);
+        window.open(target, "_blank", "noopener,noreferrer");
+        setShareMessage("已打开 Facebook 分享页面。发布前请确认分享内容中保留完整游戏链接。");
+        return;
+      }
+      if (platform === "viber") {
+        const target = "viber://forward?text=" + encodeURIComponent(message);
+        window.location.href = target;
+        setShareMessage("已尝试打开 Viber。如果没有打开，请复制下方链接并粘贴到 Viber 对话中。");
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ title, text: "邀请你来玩：" + title, url: shareUrl });
+        setShareMessage("系统分享面板已打开。请选择微信、Viber、Facebook 或其他应用。");
+      } else {
+        await navigator.clipboard.writeText(message);
+        setShareMessage("此浏览器不支持系统分享，游戏链接和邀请文字已复制。");
+      }
+    } catch {
+      setShareMessage("未能直接打开该应用。请复制下方链接，再在对应应用中粘贴发送。");
+    }
+  };
+
   const downloadQrCode = () => {
     const canvas = qrContainerRef.current?.querySelector("canvas");
     if (!canvas || !shareUrl) {
@@ -955,19 +989,25 @@ export default function DesignPage() {
           {shareUrl ? (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
               <p className="text-[12px] font-semibold">游戏二维码已生成</p>
-              {shareUrl.length <= 2600 ? (
+              {shareUrl.length <= 2900 ? (
                 <>
                   <div ref={qrContainerRef} className="mx-auto mt-3 flex w-full max-w-[320px] justify-center rounded-xl bg-white p-3">
-                    <QRCodeCanvas value={shareUrl} size={280} level="L" marginSize={2} />
+                    <QRCodeCanvas value={shareUrl} size={320} level="L" marginSize={3} />
                   </div>
                   <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">让朋友用手机相机或微信扫一扫。现场展示时请调亮屏幕，并保持二维码完整可见。</p>
                   <button type="button" className="btn btn-primary btn-block mt-3" onClick={downloadQrCode}>下载二维码图片（PNG）</button>
                 </>
               ) : (
-                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">这款游戏的分享链接较长，二维码可能过于复杂，因此暂不生成二维码。请先复制链接分享；以后可以考虑短链接方案。</p>
+                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">这款游戏的数据量较大，二维码已接近标准容量上限，暂时无法可靠生成。请尝试精简游戏中的长文本或媒体数据后重新发布；也可以继续复制链接分享。</p>
               )}
               <p className="mt-3 text-[12px] font-semibold">分享链接</p>
               <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" className="btn btn-secondary" onClick={() => shareToPlatform("wechat")}>微信分享</button>
+                <button type="button" className="btn btn-secondary" onClick={() => shareToPlatform("viber")}>Viber 分享</button>
+                <button type="button" className="btn btn-secondary" onClick={() => shareToPlatform("facebook")}>Facebook 分享</button>
+                <button type="button" className="btn btn-secondary" onClick={() => shareToPlatform("system")}>其他应用分享</button>
+              </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button type="button" className="btn btn-secondary" onClick={copyShareUrl}>复制链接</button>
                 <button type="button" className="btn btn-ghost" onClick={() => setShareUrl(null)}>收起二维码</button>
