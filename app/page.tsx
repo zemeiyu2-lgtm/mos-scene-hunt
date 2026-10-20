@@ -35,6 +35,7 @@ export default function HomePage() {
         state.inventory.length > 0 ||
         Object.values(state.scenes).some((scene) => scene.status === "completed" || scene.status === "challenging" || scene.status === "arrived")),
   );
+  const progressPercent = Math.round(ratio * 100);
   const actionHref = complete
     ? "/bag"
     : currentSceneId && currentSceneStatus === "challenging"
@@ -57,35 +58,41 @@ export default function HomePage() {
             : hasProgress
               ? "继续探索"
               : "开始探索";
+  // Single source of truth for progress status, shown next to the CTA.
+  const statusLabel = loadError
+    ? "加载失败"
+    : complete
+      ? "已完成"
+      : hasProgress
+        ? `${progressPercent}% 已探索`
+        : "等待你的第一步";
 
   return (
     <Screen
       title="MOS Scene Hunt"
-      subtitle="把现实世界变成一场探索游戏"
       headerRight={
         <span className={`chip shrink-0 ${online ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
           {online ? "在线" : "离线"}
         </span>
       }
     >
+      {/* 首屏重点：地图演示 + 主操作 */}
       <section className="card overflow-hidden">
-        <div className="relative overflow-hidden bg-[linear-gradient(145deg,#173f3b_0%,#27665c_55%,#d6ad67_140%)] px-5 pb-5 pt-5 text-white">
-          <div className="flex items-center justify-between gap-3">
-            <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/90">
-              Explore · Discover · Play
-            </span>
-            <span className="text-[11px] text-white/70">{game ? `${game.scenes.length} 个地点` : "GPS 探索游戏"}</span>
-          </div>
-          <h2 className="mt-4 max-w-[18rem] text-[25px] font-extrabold leading-tight">
-            发现身边的惊喜
-          </h2>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-white/15 bg-[#f4ead4]">
-            <div className="relative h-[210px] w-full">
+        <div className="relative overflow-hidden bg-[linear-gradient(145deg,#173f3b_0%,#27665c_55%,#d6ad67_140%)] px-4 pb-4 pt-4 text-white">
+          {game ? (
+            <div className="flex items-center justify-between gap-3 text-[12px]">
+              <span className="truncate font-semibold">{game.title}</span>
+              <span className="shrink-0 rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-white/90">
+                {statusLabel}
+              </span>
+            </div>
+          ) : null}
+          <div className="mt-3 overflow-hidden rounded-2xl border border-white/15 bg-[#f4ead4]">
+            <div className="relative h-[230px] w-full">
               <MapView player={previewPlayer} entries={previewEntries} huntArea={previewGame.huntArea} tileProvider="osm" fitToHunt />
-              <div className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[#173f3b]/90 px-3 py-1 text-[10px] font-semibold text-white shadow">真实地图 · 寻宝路线示意</div>
             </div>
           </div>
-          <div className="mt-4 rounded-2xl bg-white p-2 text-[#173f3b] shadow-sm">
+          <div className="mt-3 rounded-2xl bg-white p-2 text-[#173f3b] shadow-sm">
             {loadError ? (
               <button type="button" className="btn btn-primary w-full" onClick={() => reloadContent(true)}>
                 重新加载游戏
@@ -96,10 +103,9 @@ export default function HomePage() {
               </Link>
             )}
           </div>
-          {game ? (
-            <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-white/75">
-              <span className="truncate">{game.title}</span>
-              <span className="shrink-0">{complete ? "已完成" : hasProgress ? `${Math.round(ratio * 100)}% 已探索` : "等待你的第一步"}</span>
+          {hasProgress && !complete ? (
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/20">
+              <div className="h-full rounded-full bg-[#f5c26b] transition-all" style={{ width: `${progressPercent}%` }} />
             </div>
           ) : null}
         </div>
@@ -108,22 +114,6 @@ export default function HomePage() {
           <p>请在安全、开放的户外区域游玩。GPS 在室内或高楼附近可能不够准确。</p>
         </div>
       </section>
-
-      {hasProgress && game ? (
-        <section className="card mt-3 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] text-[var(--muted)]">当前游戏</p>
-              <p className="truncate text-[15px] font-semibold">{game.title}</p>
-            </div>
-            <span className="chip shrink-0 bg-amber-100 text-amber-800">{complete ? "已完成" : `${Math.round(ratio * 100)}%`}</span>
-          </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-            <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${Math.round(ratio * 100)}%` }} />
-          </div>
-          <Link href="/bag" className="btn btn-secondary mt-3 w-full">查看背包与已获线索</Link>
-        </section>
-      ) : null}
 
       {loading ? (
         <section className="card mt-3 animate-pulse p-4">
@@ -138,18 +128,28 @@ export default function HomePage() {
         </section>
       ) : null}
 
+      {/* 次级入口：降权为紧凑文字按钮 */}
       <section className="mt-4">
         <div className="grid grid-cols-2 gap-3">
-          <Link href="/games" className="card border-[var(--line)] bg-gradient-to-br from-sky-50 to-white p-4 transition-transform active:scale-[0.99]"><span className="text-xl" aria-hidden="true">◇</span><p className="mt-2 text-[14px] font-bold">游戏中心</p></Link>
-          <Link href="/design" className="card border-[var(--line)] bg-gradient-to-br from-violet-50 to-white p-4 transition-transform active:scale-[0.99]"><span className="text-xl" aria-hidden="true">✦</span><p className="mt-2 text-[14px] font-bold">设计中心</p></Link>
+          <Link href="/games" className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--line)] bg-[var(--card)] px-3 py-2.5 text-[13px] font-semibold text-[var(--muted)] transition-colors active:bg-[var(--surface)]">
+            <span aria-hidden="true" className="text-[14px]">◇</span>游戏中心
+          </Link>
+          <Link href="/design" className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--line)] bg-[var(--card)] px-3 py-2.5 text-[13px] font-semibold text-[var(--muted)] transition-colors active:bg-[var(--surface)]">
+            <span aria-hidden="true" className="text-[14px]">✦</span>设计中心
+          </Link>
         </div>
-        <Link href="/how-to-create" className="mt-3 inline-flex items-center gap-1 px-1 py-2 text-xs font-medium text-[var(--muted)]">创作说明 <span aria-hidden="true">→</span></Link>
+        <div className="mt-2 flex items-center justify-between px-1">
+          <Link href="/how-to-create" className="inline-flex items-center gap-1 py-2 text-xs font-medium text-[var(--muted)]">创作说明 <span aria-hidden="true">→</span></Link>
+          {hasProgress ? (
+            <Link href="/bag" className="inline-flex items-center gap-1 py-2 text-xs font-medium text-[var(--muted)]">背包与线索 <span aria-hidden="true">→</span></Link>
+          ) : null}
+        </div>
       </section>
 
       {contentSource === "cache" ? (
-        <p className="mt-4 text-center text-[11px] text-[var(--muted)]">当前使用离线缓存内容</p>
+        <p className="mt-3 text-center text-[11px] text-[var(--muted)]">当前使用离线缓存内容</p>
       ) : contentSource === "local" ? (
-        <p className="mt-4 text-center text-[11px] text-[var(--muted)]">当前使用本机创作的游戏</p>
+        <p className="mt-3 text-center text-[11px] text-[var(--muted)]">当前使用本机创作的游戏</p>
       ) : null}
     </Screen>
   );
