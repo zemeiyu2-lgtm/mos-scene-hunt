@@ -19,9 +19,11 @@ export default function CreatePage() {
   const activateGame = (game: Game) => { saveAuthoredGameChecked(game); markCurrentAuthoredGame(game.id); setDraft(game); setReport(validateGamePackage(game)); setMessage("已切换到「" + game.title + "」，现在可以试玩或继续设计。"); };
   const renameGame = (game: Game) => { const title = window.prompt("给游戏换一个显示名称：", game.title); if (!title?.trim()) return; const next = renameAuthoredGame(game.id, title); if (next) { setLibrary(listAuthoredGames()); if (working?.id === next.id) setDraft(next); setMessage("已重命名。"); } };
   const removeGame = (game: Game) => { if (!window.confirm("确定删除「" + game.title + "」？删除后需要重新导入游戏包才能恢复。")) return; deleteAuthoredGame(game.id); setLibrary(listAuthoredGames()); if (working?.id === game.id) setDraft(null); setMessage("已删除「" + game.title + "」。"); };
-  if (!working) return <Screen title="创作中心"><div className="card p-5">正在加载……</div></Screen>;
+  if (!working) return <Screen title="创作库"><div className="card p-5">正在加载……</div></Screen>;
   const spatial = report?.spatial ?? validateGamePackage(working).spatial;
-  return <Screen title="创作中心">
+  // 「创作中心」专指 /design（首页入口同名）。本页是本机游戏库管理（切换/重命名/
+  // 删除/导出），历史上与 /design 同名造成两个「创作中心」并存的入口混淆。
+  return <Screen title="创作库">
     <section className="card p-5"><p className="game-kicker">MOS SCENE HUNT V0.6</p><h2 className="mt-2 text-2xl font-bold">创作、试玩、分享</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">地图、点位、故事、任务和奖励属于同一个游戏包。手机可以完成基础设计，电脑适合精细编辑。</p>
       <div className="mt-4 grid grid-cols-2 gap-2"><Link href={working ? `/design?game=${encodeURIComponent(working.id)}` : "/design"} className="btn btn-primary text-center">进入设计器</Link><Link href="/design#package-import" className="btn btn-secondary text-center">导入 AI / 游戏包</Link></div>
       <Link href="/how-to-create" className="mt-3 inline-flex px-1 py-1 text-xs font-medium text-[var(--muted)]">第一次创作？查看创作说明 →</Link></section>

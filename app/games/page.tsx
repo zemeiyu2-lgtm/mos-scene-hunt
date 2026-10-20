@@ -128,7 +128,7 @@ export default function GamesPage() {
       <section className="mt-5">
         <div className="mb-2">
           <h2 className="text-lg font-bold">云端游戏</h2>
-          <p className="text-xs text-[var(--muted)]">从服务器下载到本机后游玩；这是后续共享游戏的重要入口。</p>
+          <p className="text-xs text-[var(--muted)]">从服务器下载到本机后即可游玩。</p>
         </div>
         {loading ? <LoadingState label="正在读取云端游戏库…" /> : (
           <div className="grid gap-3">

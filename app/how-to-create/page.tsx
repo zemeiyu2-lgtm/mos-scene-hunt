@@ -86,7 +86,7 @@ export default function HowToCreatePage() {
       </section>
       <section className="card mt-3 p-4">
         <div className="grid gap-2 sm:grid-cols-2">
-          <Link href="/create" className="btn btn-primary text-center">进入创作中心</Link>
+          <Link href="/create" className="btn btn-primary text-center">打开创作库</Link>
           <Link href="/tutorial" className="btn btn-secondary text-center">体验玩家演示</Link>
         </div>
       </section>
