@@ -402,7 +402,7 @@ export default function DesignPage() {
   const shareToPlatform = async (platform: "wechat" | "viber" | "facebook" | "system") => {
     if (!shareUrl) return;
     const title = working?.title || "MOS Scene Hunt";
-    const message = "邀请你来玩：" + title + "\\n" + shareUrl;
+    const message = "邀请你来玩：" + title + "\n" + shareUrl;
     try {
       if (platform === "wechat") {
         await navigator.clipboard.writeText(message);
