@@ -955,16 +955,16 @@ export default function DesignPage() {
           {shareUrl ? (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
               <p className="text-[12px] font-semibold">游戏二维码已生成</p>
-              {shareUrl.length <= 2600 ? (
+              {shareUrl.length <= 2900 ? (
                 <>
                   <div ref={qrContainerRef} className="mx-auto mt-3 flex w-full max-w-[320px] justify-center rounded-xl bg-white p-3">
-                    <QRCodeCanvas value={shareUrl} size={280} level="L" marginSize={2} />
+                    <QRCodeCanvas value={shareUrl} size={320} level="L" marginSize={3} />
                   </div>
                   <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">让朋友用手机相机或微信扫一扫。现场展示时请调亮屏幕，并保持二维码完整可见。</p>
                   <button type="button" className="btn btn-primary btn-block mt-3" onClick={downloadQrCode}>下载二维码图片（PNG）</button>
                 </>
               ) : (
-                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">这款游戏的分享链接较长，二维码可能过于复杂，因此暂不生成二维码。请先复制链接分享；以后可以考虑短链接方案。</p>
+                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">这款游戏的数据量较大，二维码已接近标准容量上限，暂时无法可靠生成。请尝试精简游戏中的长文本或媒体数据后重新发布；也可以继续复制链接分享。</p>
               )}
               <p className="mt-3 text-[12px] font-semibold">分享链接</p>
               <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>
