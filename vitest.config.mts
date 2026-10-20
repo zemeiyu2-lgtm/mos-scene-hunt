@@ -4,6 +4,11 @@ import { fileURLToPath } from "node:url";
 
 export default defineConfig({
   plugins: [react()],
+  // Vitest 4 ships a rolldown/oxc transform pipeline; the JSX runtime must be
+  // set for oxc too, otherwise .tsx test files fail to parse.
+  oxc: {
+    jsx: { runtime: "automatic" },
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./", import.meta.url)),
