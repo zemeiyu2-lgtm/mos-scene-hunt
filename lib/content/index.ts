@@ -2,7 +2,12 @@
  * lib/content - content pack loading, validation and offline fallback.
  */
 
-import { validateGame, type Game, type ValidationIssue } from "../game/types";
+import {
+  GameDataError,
+  validateGame,
+  type Game,
+  type ValidationIssue,
+} from "../game/types";
 import { readSharedGameFromUrl } from "./share";
 import { unwrapGamePackage, validateGamePackage } from "../game/package";
 import {
@@ -20,15 +25,101 @@ function authoringKey(gameId: string): string {
   return `${AUTHORING_PREFIX}${gameId}`;
 }
 
-/** Save a locally authored pack. It is intentionally browser-local until a future backend exists. */
-export function saveAuthoredGame(game: Game): boolean {
-  if (typeof window === "undefined") return false;
+export interface SaveAuthoredResult {
+  /** True only when the pack was validated *and* written. */
+  ok: boolean;
+  /** Blocking problems. Empty when `ok` is true. */
+  errors: ValidationIssue[];
+  /** Non-blocking remarks; a save with warnings still succeeds. */
+  warnings: ValidationIssue[];
+}
+
+/**
+ * Save a locally authored pack, but only if it can be read back.
+ *
+ * `readAuthoredGame` re-runs `validateGame` on the way out, so anything that
+ * validator rejects would be written and then silently disappear from the
+ * library on the next reload - the author sees "已保存", reopens the editor and
+ * finds the game gone. Gating on the *same* validator on the way in keeps the
+ * two sides symmetric: if this returns `ok`, the slot is guaranteed readable.
+ *
+ * Deliberately does not apply the stricter spatial publishing rules
+ * (`validateSpatial`): those are warnings for an in-progress draft, and blocking
+ * on them would stop a designer from checkpointing work before the area is drawn.
+ */
+export function saveAuthoredGameChecked(game: Game): SaveAuthoredResult {
+  if (typeof window === "undefined") {
+    return {
+      ok: false,
+      errors: [{ path: "$", message: "当前环境不支持本机存档", severity: "error" }],
+      warnings: [],
+    };
+  }
+
+  let issues: ValidationIssue[];
+  try {
+    // Validates the exact value that is about to be persisted.
+    issues = validateGame(game).issues;
+  } catch (error) {
+    if (error instanceof GameDataError) {
+      return {
+        ok: false,
+        errors: error.issues.filter((issue) => issue.severity === "error"),
+        warnings: error.issues.filter((issue) => issue.severity === "warning"),
+      };
+    }
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "$",
+          message: error instanceof Error ? error.message : "游戏数据无法校验",
+          severity: "error",
+        },
+      ],
+      warnings: [],
+    };
+  }
+
+  const errors = issues.filter((issue) => issue.severity === "error");
+  const warnings = issues.filter((issue) => issue.severity === "warning");
+  if (errors.length > 0) return { ok: false, errors, warnings };
+
+  // `validateGame` only checks `title.length > 0`, so a title of pure spaces
+  // passes and would show up as a blank card in the library. Refusing here is
+  // always safe: the gate may be stricter than the reader, never looser.
+  if (!game.title || !game.title.trim()) {
+    return {
+      ok: false,
+      errors: [{ path: "$.title", message: "游戏名称不能为空", severity: "error" }],
+      warnings,
+    };
+  }
+
   try {
     window.localStorage.setItem(authoringKey(game.id), JSON.stringify(game));
-    return true;
-  } catch {
-    return false;
+    return { ok: true, errors: [], warnings };
+  } catch (error) {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "$",
+          message:
+            error instanceof Error && /quota/i.test(error.message)
+              ? "浏览器本机存储已满，请删除不再需要的游戏后重试"
+              : "无法写入浏览器本机存储，请检查隐私模式或存储权限",
+          severity: "error",
+        },
+      ],
+      warnings,
+    };
   }
+}
+
+/** Save a locally authored pack. It is intentionally browser-local until a future backend exists. */
+export function saveAuthoredGame(game: Game): boolean {
+  return saveAuthoredGameChecked(game).ok;
 }
 
 export function clearAuthoredGame(gameId: string): void {
@@ -59,9 +150,29 @@ export function listAuthoredGames(): Game[] {
   return games.sort((a, b) => a.title.localeCompare(b.title, "zh-CN"));
 }
 
+/**
+ * Ids of every stored authored pack, including entries that fail validation.
+ *
+ * A blank game is allocated against this list so it can never land on an
+ * existing save slot - not even one the validator currently rejects (those are
+ * invisible in `listAuthoredGames` but still occupy their key).
+ */
+export function listAuthoredGameIds(): string[] {
+  if (typeof window === "undefined") return [];
+  const ids: string[] = [];
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(AUTHORING_PREFIX)) ids.push(key.slice(AUTHORING_PREFIX.length));
+    }
+  } catch {
+    return ids;
+  }
+  return ids;
+}
+
 /** Remove a locally installed/authored game pack. */
-export function deleteAuthoredGame(gameId: string): void {
-  clearAuthoredGame(gameId);
+export function deleteAuthoredGame(gameId: string): void {  clearAuthoredGame(gameId);
   if (getActiveAuthoredGameId() === gameId) clearActiveAuthoredGame();
 }
 
