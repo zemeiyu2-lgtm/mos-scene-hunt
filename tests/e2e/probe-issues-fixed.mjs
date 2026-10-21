@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import puppeteer from "puppeteer-core";
 
-const BASE = "http://127.0.0.1:3102";
+const BASE = process.env.E2E_BASE_URL || "http://127.0.0.1:3102";
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const profile = mkdtempSync(join(tmpdir(), "mos-fixed-"));
 
