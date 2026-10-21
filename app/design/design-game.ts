@@ -49,7 +49,8 @@ export function createBlankGame(options: BlankGameOptions): Game {
     title: "第1站 · 新地点",
     story: "到达这里时，玩家会看到这段文字。换成你希望他看到的内容。",
     briefing: "前往这个地点，到达后解锁任务。",
-    location: { lat: origin.lat, lng: origin.lng, radius: 20, name: "新地点" },
+    // 15 m: the recommended default trigger radius (稳定落在真实 GPS 误差内).
+    location: { lat: origin.lat, lng: origin.lng, radius: 15, name: "新地点" },
     nextSceneId: null,
     challenge: {
       type: "choice",

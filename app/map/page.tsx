@@ -152,7 +152,8 @@ export default function MapPage() {
 
   // ---- 问题 1：方向尾巴的最终驱动值 ----------------------------------
   // 优先级：设备指南针（真实设备朝向）> GPS 航向（真实移动方向，仅在移动时
-  // 可信）。两者都不是伪造的方向数据；都不可用时尾巴隐藏，不显示假方向。
+  // 可信）。两者都不是伪造的方向数据；都不可用时尾巴保持指向上方（北），
+  // 拿到第一个可信方向后立即跟随。
   // 所有更新经过最短弧指数平滑，避免指南针抖动让尾巴抽搐。
   const gpsCourse = fix?.heading != null && Number.isFinite(fix.heading) && (fix.speed ?? 0) > GPS_COURSE_MIN_SPEED_MPS
     ? fix.heading
@@ -230,7 +231,7 @@ export default function MapPage() {
                 onClick={() => void enableHeading()}
                 className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
                 aria-label={heading !== null ? "手机朝向指示已启用" : "启用手机朝向指示"}
-                title="青色尾巴显示手机朝向；蓝色箭头指向目标"
+                title="蓝色尾巴显示手机朝向；蓝色箭头指向目标"
               >
                 🧭
               </button>

@@ -112,12 +112,14 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
 }
 
 function playerIcon(simulated: boolean, heading: number | null): L.DivIcon {
-  // Direction tail: a soft teal wedge, deliberately a different hue from the
-  // blue position dot and the amber trigger rings so the three map layers stay
-  // distinguishable at a glance.
-  const pointer = heading === null ? "" : `
-    <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:22px;height:38px;transform:translate(-50%,-88%) rotate(${heading}deg);transform-origin:50% 88%;pointer-events:none;z-index:1;filter:drop-shadow(0 0 4px rgba(20,184,166,.55));">
-      <div style="width:100%;height:100%;clip-path:polygon(50% 0%,100% 100%,50% 79%,0% 100%);background:linear-gradient(to bottom,rgba(240,253,250,.98) 0%,rgba(20,184,166,.85) 55%,rgba(13,148,136,.05) 100%);"></div>
+  // Direction tail: same blue as the position dot (#1d7ff0), so the marker
+  // reads as one object instead of two mismatched layers. It always renders -
+  // before the first compass/GPS course fix it simply points up (north on the
+  // fixed north-up map) rather than leaving the marker tail-less.
+  const direction = heading ?? 0;
+  const pointer = `
+    <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:22px;height:38px;transform:translate(-50%,-88%) rotate(${direction}deg);transform-origin:50% 88%;pointer-events:none;z-index:1;filter:drop-shadow(0 0 4px rgba(29,127,240,.55));">
+      <div style="width:100%;height:100%;clip-path:polygon(50% 0%,100% 100%,50% 79%,0% 100%);background:linear-gradient(to bottom,rgba(219,234,254,.98) 0%,rgba(29,127,240,.85) 55%,rgba(29,127,240,.05) 100%);"></div>
     </div>`;
   return L.divIcon({
     className: "",

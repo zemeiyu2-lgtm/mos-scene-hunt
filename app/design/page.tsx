@@ -62,7 +62,6 @@ import { createGameShareUrl } from "@/lib/content/share";
 import { MediaEditor } from "@/components/media-gallery";
 import { exportGameJson, summarizeSpatial, validateGamePackage } from "@/lib/game/package";
 import { describeSaveErrors, type SaveFailureText } from "@/lib/game/save-errors";
-import { parseTriggerRadius } from "@/lib/game/trigger-radius";
 import { pickDesignGame } from "./design-target";
 import { createBlankGame, nextBlankGameId } from "./design-game";
 
@@ -104,8 +103,6 @@ export default function DesignPage() {
   // 问题 4：地图视野归设计者所有。只有显式「重置视野」才重新取景；选站、
   // 拖动标记、开关面板都不会再自动重置缩放。
   const [fitToken, setFitToken] = useState(0);
-  // 问题 7：触发距离数字输入的草稿值（按场景 id 记录），输入过程中不回写非法值。
-  const [radiusDrafts, setRadiusDrafts] = useState<Record<string, string>>({});
 
   // 「继续设计」 deep link from the games centre (/design?game=<id>). Without
   // this the designer would land on whatever pack happens to be active - often
@@ -429,8 +426,17 @@ export default function DesignPage() {
         try {
           await navigator.share({ title: working.title, text: "邀请你来玩：" + working.title, url });
           setShareMessage("已打开系统分享面板；也可以在下方展示二维码或下载二维码图片。");
-        } catch {
-          // User cancelled native sharing; the QR code and link remain available.
+        } catch (error) {
+          // 区分「用户取消」和「分享面板真的失败」：两者都曾静默吞掉，
+          // 让作者以为分享成功或按钮失灵。取消不算失败，面板失败则回退到
+          // 链接 + 二维码，它们本来就已生成。
+          if (error instanceof DOMException && error.name === "AbortError") {
+            setShareMessage("已取消系统分享；链接和二维码仍然可用，可复制链接或截图二维码发给朋友。");
+          } else {
+            setShareMessage(
+              `系统分享未完成（${error instanceof Error ? error.message : "未知原因"}）；请复制链接或使用下方二维码发送。`,
+            );
+          }
         }
       } else {
         try {
@@ -1145,22 +1151,12 @@ export default function DesignPage() {
       <section className="card mt-4 p-4">
         <p className="text-[15px] font-bold">③ 设置触发距离</p>
         <p className="mt-1 text-[11.5px] text-[var(--muted)]">
-          每个场景的解锁半径。15–30m 在真实 GPS 误差下最稳；滑杆调常用值，右侧数字框可输入 5–500m 的精确值。
+          每个场景的解锁半径。15–30m 在真实 GPS 误差下最稳。
         </p>
 
         <div className="mt-3 grid gap-3">
           {working.scenes.map((scene, i) => {
             const radius = scene.location.radius ?? 15;
-            const draft = radiusDrafts[scene.id];
-            const parsed = draft === undefined ? null : parseTriggerRadius(draft);
-            const commitRadius = (raw: string) => {
-              const result = parseTriggerRadius(raw);
-              setRadiusDrafts((prev) => ({ ...prev, [scene.id]: raw }));
-              // 只有合法值才写入草稿；非法值留在输入框里并显示原因。
-              if (result.ok) {
-                updateScene(scene.id, { location: { ...scene.location, radius: result.value } });
-              }
-            };
             return (
               <div key={scene.id} className="rounded-xl bg-[var(--surface)] p-3">
                 <div className="flex items-center justify-between gap-2">
@@ -1173,44 +1169,18 @@ export default function DesignPage() {
                   </button>
                   <span className="tabular text-xs font-bold">{radius} m</span>
                 </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    className="min-w-0 flex-1 accent-[var(--accent)]"
-                    type="range"
-                    min={10}
-                    max={100}
-                    step={5}
-                    value={radius}
-                    aria-label={`${scene.title} 触发距离（滑杆）`}
-                    onChange={(e) =>
-                      updateScene(scene.id, { location: { ...scene.location, radius: Number(e.target.value) } })
-                    }
-                  />
-                  <input
-                    className="input w-[72px] shrink-0 text-center tabular"
-                    type="number"
-                    inputMode="numeric"
-                    min={5}
-                    max={500}
-                    step={1}
-                    value={draft ?? String(radius)}
-                    aria-label={`${scene.title} 触发距离（米）`}
-                    onChange={(e) => commitRadius(e.target.value)}
-                    onBlur={() =>
-                      setRadiusDrafts((prev) => {
-                        const next = { ...prev };
-                        delete next[scene.id];
-                        return next;
-                      })
-                    }
-                  />
-                  <span className="shrink-0 text-xs text-[var(--muted)]">m</span>
-                </div>
-                {parsed && !parsed.ok ? (
-                  <p className="mt-1.5 text-[11px] font-semibold leading-snug text-red-700" role="alert">
-                    {parsed.error}
-                  </p>
-                ) : null}
+                <input
+                  className="mt-2 w-full accent-[var(--accent)]"
+                  type="range"
+                  min={10}
+                  max={100}
+                  step={5}
+                  value={radius}
+                  aria-label={`${scene.title} 触发距离（滑杆）`}
+                  onChange={(e) =>
+                    updateScene(scene.id, { location: { ...scene.location, radius: Number(e.target.value) } })
+                  }
+                />
               </div>
             );
           })}
