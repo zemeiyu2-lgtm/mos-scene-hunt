@@ -18,7 +18,7 @@
  */
 
 import { useMemo, useRef, useState, useEffect } from "react";
-import { QRCodeCanvas } from "qrcode.react";
+import { GameQr } from "@/components/game-qr";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapView } from "@/components/map-view";
@@ -81,7 +81,6 @@ export default function DesignPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
-  const qrContainerRef = useRef<HTMLDivElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importText, setImportText] = useState("");
   const [importMessage, setImportMessage] = useState<string | null>(null);
@@ -461,23 +460,6 @@ export default function DesignPage() {
       setShareMessage("分享链接已复制，可以发给微信好友或群。");
     } catch {
       setShareMessage("复制失败；请长按或选择下方链接复制。");
-    }
-  };
-
-  const downloadQrCode = () => {
-    const canvas = qrContainerRef.current?.querySelector("canvas");
-    if (!canvas || !shareUrl) {
-      setShareMessage("二维码尚未准备好，请稍后重试。");
-      return;
-    }
-    try {
-      const link = document.createElement("a");
-      link.download = `${(working?.title || "MOS-Scene-Hunt").replace(/[^\\w-]+/g, "-")}-二维码.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-      setShareMessage("二维码 PNG 已生成；请在浏览器下载记录或文件中查看，需要时可再保存到相册。");
-    } catch {
-      setShareMessage("无法保存二维码图片，请尝试截图保存。");
     }
   };
 
@@ -1261,18 +1243,12 @@ export default function DesignPage() {
           </button>
           {shareUrl ? (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
-              <p className="text-[12px] font-semibold">游戏二维码已生成</p>
-              {shareUrl.length <= 2600 ? (
-                <>
-                  <div ref={qrContainerRef} className="mx-auto mt-3 flex w-full max-w-[320px] justify-center rounded-xl bg-white p-3">
-                    <QRCodeCanvas value={shareUrl} size={280} level="L" marginSize={2} />
-                  </div>
-                  <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">让朋友用手机相机或微信扫一扫。现场展示时请调亮屏幕，并保持二维码完整可见。</p>
-                  <button type="button" className="btn btn-primary btn-block mt-3" onClick={downloadQrCode}>下载二维码图片（PNG）</button>
-                </>
-              ) : (
-                <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">这款游戏的分享链接较长，二维码可能过于复杂，因此暂不生成二维码。请先复制链接分享；以后可以考虑短链接方案。</p>
-              )}
+            <p className="text-[12px] font-semibold">游戏二维码</p>
+            <GameQr
+              url={shareUrl}
+              fileNamePrefix={(working?.title || "MOS-Scene-Hunt").replace(/[^\\w-]+/g, "-")}
+              onMessage={setShareMessage}
+            />
               <p className="mt-3 text-[12px] font-semibold">分享链接</p>
               <p className="mt-1 break-all text-[10.5px] leading-relaxed text-[var(--muted)]">{shareUrl}</p>
               <div className="mt-2 grid grid-cols-2 gap-2">
