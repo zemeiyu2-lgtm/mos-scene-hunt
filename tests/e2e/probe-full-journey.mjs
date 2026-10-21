@@ -257,16 +257,43 @@ try {
 
   await check("A4b 地图上设置圆形游戏区域（发布前置条件）", async () => {
     await clickByText(page, "button", "圆形区域");
-    await sleep(500);
-    const box = await page.evaluate(() => {
-      const el = document.querySelector(".leaflet-container");
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return { x: r.x, y: r.y, w: r.width, h: r.height };
-    });
-    assert(box, "找不到地图容器");
-    await page.mouse.click(box.x + box.w / 2, box.y + box.h / 2);
     await sleep(600);
+    assert(
+      (await bodyText(page)).includes("点击地图上任意一点"),
+      "进入圆形区域模式后未出现放置提示",
+    );
+    // 视野不再随编辑自动重取景后，标记可能停在屏幕中央；
+    // 逐个尝试离所有场景标记至少 60px 的空白点，点击后确认放置成功再继续。
+    let placed = false;
+    for (let attempt = 0; attempt < 6 && !placed; attempt++) {
+      const spot = await page.evaluate((skip) => {
+        const el = document.querySelector(".leaflet-container");
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        const markers = [...document.querySelectorAll("[data-role='scene-marker']")].map((m) => {
+          const b = m.getBoundingClientRect();
+          return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+        });
+        const candidates = [];
+        for (let fy = 0.15; fy <= 0.85; fy += 0.1) {
+          for (let fx = 0.1; fx <= 0.9; fx += 0.1) {
+            const p = { x: r.x + r.width * fx, y: r.y + r.height * fy };
+            if (markers.every((m) => Math.hypot(m.x - p.x, m.y - p.y) > 60)) candidates.push(p);
+          }
+        }
+        const hitOk = (p) => {
+          const e = document.elementFromPoint(p.x, p.y);
+          return !!e && !!e.closest(".leaflet-container");
+        };
+        return candidates.filter(hitOk).slice(skip, skip + 1)[0] ?? null;
+      }, attempt);
+      if (!spot) continue;
+      await page.mouse.click(spot.x, spot.y);
+      await sleep(900);
+      const text = await bodyText(page);
+      placed = text.includes("250m") || !text.includes("点击地图上任意一点");
+    }
+    assert(placed, "在地图空白处点击后圆形区域仍未放置");
     // 半径预设 250m，覆盖两个相距约 140m 的场景
     await clickByText(page, "button", "250m");
     // 区域保存在编辑草稿中，保存后一起落盘；这里只确认 UI 进入已完成状态

@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { EmptyState, ProgressBar, Screen, StatusChip } from "@/components/ui";
 import { formatDistance, resolveRadius } from "@/lib/location";
@@ -18,6 +19,9 @@ import { TabBar } from "@/components/tab-bar";
 export default function QuestPage() {
   const router = useRouter();
   const { game, state, statuses, distances, current, ratio, complete, loading } = useHunt();
+  // 问题 6：游戏内唯一的显式退出入口。退出只是回到游戏中心，进度由
+  // HuntProvider 自动持久化，不会重置；「继续游戏」关闭弹窗原地不动。
+  const [confirmExit, setConfirmExit] = useState(false);
 
   if (loading || !game || !state) {
     return (
@@ -35,7 +39,18 @@ export default function QuestPage() {
       title="任务"
       subtitle={`${game.title} · ${completedCount}/${statuses.length} 个地点已完成`}
       headerRight={
-        complete ? <span className="chip bg-emerald-100 text-emerald-700">全部完成</span> : null
+        <span className="flex items-center gap-2">
+          {complete ? <span className="chip bg-emerald-100 text-emerald-700">全部完成</span> : null}
+          <button
+            type="button"
+            className="chip bg-[var(--surface)] text-[var(--muted)]"
+            onClick={() => setConfirmExit(true)}
+            aria-haspopup="dialog"
+            aria-label="退出本次寻宝"
+          >
+            退出
+          </button>
+        </span>
       }
     >
       <div className="card story-card p-5">
@@ -183,6 +198,37 @@ export default function QuestPage() {
         </div>
       ) : null}
     </Screen>
+      {confirmExit ? (
+        <div
+          className="fixed inset-0 z-[900] grid place-items-center bg-black/45 px-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="退出确认"
+        >
+          <div className="card w-full max-w-[320px] p-4 shadow-sheet">
+            <p className="text-[15px] font-semibold">退出本次寻宝？</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
+              进度已自动保存在本机，随时可以从游戏中心「继续寻宝」回到现在的位置。
+            </p>
+            <div className="mt-3 grid gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary btn-block"
+                onClick={() => setConfirmExit(false)}
+              >
+                继续游戏
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                onClick={() => router.push("/select")}
+              >
+                退出并回到游戏中心
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <TabBar />
     </>
   );

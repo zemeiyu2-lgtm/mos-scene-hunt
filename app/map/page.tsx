@@ -8,7 +8,7 @@
  * radius is entered.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHunt } from "@/components/hunt-provider";
@@ -16,10 +16,15 @@ import { useSettings } from "@/components/providers";
 import { useGps } from "@/components/gps-provider";
 import { MapView } from "@/components/map-view";
 import { SimulatorPanel } from "@/components/simulator-panel";
-import { calculateDistance, classifyFix } from "@/lib/location";
+import { calculateDistance, classifyFix, formatDistance, smoothHeading } from "@/lib/location";
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
 import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
+
+/** A GPS course heading is only trustworthy while the player is actually moving. */
+const GPS_COURSE_MIN_SPEED_MPS = 1;
+/** Only a *fresh* arrival (recently crossed into the ring) auto-opens the scene. */
+const FRESH_ARRIVAL_WINDOW_MS = 30_000;
 
 export default function MapPage() {
   const router = useRouter();
@@ -27,6 +32,7 @@ export default function MapPage() {
   const { fix, start, status, error, isSimulated, retry, simulatorAvailable } = useGps();
   const {
     game,
+    state,
     loading,
     loadError,
     current,
@@ -44,9 +50,10 @@ export default function MapPage() {
   const [headingEnabled, setHeadingEnabled] = useState(false);
   const [headingMessage, setHeadingMessage] = useState<string | null>(null);
 
-  const enableHeading = async () => {
+  const enableHeading = async (auto = false) => {
     if (typeof window === "undefined" || typeof window.DeviceOrientationEvent === "undefined") {
-      setHeadingMessage("此设备或浏览器无法提供指南针方向；仍可使用蓝色目标箭头和地图。");
+      // 无传感器：不打扰玩家，蓝色目标箭头仍然可用。
+      if (!auto) setHeadingMessage("此设备或浏览器无法提供指南针方向；仍可使用蓝色目标箭头和地图。");
       return;
     }
     const Orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & {
@@ -56,17 +63,29 @@ export default function MapPage() {
       if (typeof Orientation.requestPermission === "function") {
         const permission = await Orientation.requestPermission();
         if (permission !== "granted") {
-          setHeadingMessage("未获得手机朝向权限；蓝色目标箭头仍可正常使用。");
+          // 自动尝试被拒（iOS 无用户手势时的常态）：保持安静，指南针按钮仍在。
+          if (!auto) setHeadingMessage("未获得手机朝向权限；蓝色目标箭头仍可正常使用。");
           return;
         }
       }
       setHeadingEnabled(true);
-      setHeadingMessage("正在获取手机朝向……请稍候。");
+      if (!auto) setHeadingMessage("正在获取手机朝向……请稍候。");
     } catch {
       setHeadingEnabled(false);
-      setHeadingMessage("暂时无法读取手机朝向；请检查浏览器权限后重试。");
+      if (!auto) setHeadingMessage("暂时无法读取手机朝向；请检查浏览器权限后重试。");
     }
   };
+
+  // 问题 1：方向尾巴默认显示。挂载时自动尝试启用指南针——在 Android/桌面或已
+  // 授权过的浏览器上会静默成功；在 iOS 上无手势会被拒，此时保持安静，玩家仍可
+  // 点🧭手动授权，行走时的 GPS 航向也会作为回退驱动尾巴。
+  const autoHeadingTriedRef = useRef(false);
+  useEffect(() => {
+    if (autoHeadingTriedRef.current) return;
+    autoHeadingTriedRef.current = true;
+    void enableHeading(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!headingEnabled) return;
@@ -131,12 +150,44 @@ export default function MapPage() {
     }
   }, [arrivedScene?.id, current?.id]);
 
+  // ---- 问题 1：方向尾巴的最终驱动值 ----------------------------------
+  // 优先级：设备指南针（真实设备朝向）> GPS 航向（真实移动方向，仅在移动时
+  // 可信）。两者都不是伪造的方向数据；都不可用时尾巴隐藏，不显示假方向。
+  // 所有更新经过最短弧指数平滑，避免指南针抖动让尾巴抽搐。
+  const gpsCourse = fix?.heading != null && Number.isFinite(fix.heading) && (fix.speed ?? 0) > GPS_COURSE_MIN_SPEED_MPS
+    ? fix.heading
+    : null;
+  const [displayHeading, setDisplayHeading] = useState<number | null>(null);
+  const displayHeadingRef = useRef<number | null>(null);
+  useEffect(() => {
+    const target = heading ?? gpsCourse;
+    if (target === null || !Number.isFinite(target)) return;
+    const next = smoothHeading(displayHeadingRef.current, target);
+    displayHeadingRef.current = next;
+    setDisplayHeading(next);
+  }, [heading, gpsCourse]);
+
+  // ---- 问题 3：到达当前目标后自动显示情境/问题 ------------------------
+  // 只对「新鲜到达」触发（30 秒内跨入触发圈），避免老进度或站在圈内反复打开。
+  // 每个场景一次（ref 去重）；OPEN_CHALLENGE 在状态机里幂等，GPS 抖动不会重复
+  // 解锁或重复发奖。离开范围后挑战状态由状态机保留（challenging 不回退），
+  // 已填写的答案不会丢失。
+  const autoOpenedSceneRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!current || !arrivedScene || arrivedScene.id !== current.id) return;
+    if (autoOpenedSceneRef.current === arrivedScene.id) return;
+    const arrivedAt = state?.scenes[current.id]?.arrivedAt ?? 0;
+    if (!arrivedAt || Date.now() - arrivedAt > FRESH_ARRIVAL_WINDOW_MS) return;
+    autoOpenedSceneRef.current = arrivedScene.id;
+    router.push(`/scene/${arrivedScene.id}?auto=1`);
+  }, [arrivedScene?.id, current?.id, state, router]);
+
   return (
     <>
       <div className="relative h-[100dvh] w-full overflow-hidden">
         <MapView
           player={fix}
-          heading={heading}
+          heading={displayHeading}
           entries={entries}
           huntArea={game?.huntArea}
           tileProvider={settings.tileProvider as TileProviderId}
@@ -179,7 +230,7 @@ export default function MapPage() {
                 onClick={() => void enableHeading()}
                 className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
                 aria-label={heading !== null ? "手机朝向指示已启用" : "启用手机朝向指示"}
-                title="黄色箭头显示手机朝向；蓝色箭头指向目标"
+                title="青色尾巴显示手机朝向；蓝色箭头指向目标"
               >
                 🧭
               </button>
@@ -313,14 +364,12 @@ export default function MapPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14px] font-bold">{current.title}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">
-                      {targetBearing === null
-                        ? "等待可靠定位方向…"
-                        : heading !== null
-                          ? "蓝色箭头指向目标 · 黄色箭头显示手机朝向"
-                          : "蓝色箭头指向目标 · 可点指南针显示手机朝向"}
-                    </p>
                   </div>
+                  {currentDistance && !currentDistance.inRange ? (
+                    <span className="shrink-0 tabular text-[12px] font-semibold text-[var(--muted)]">
+                      {formatDistance(currentDistance.distance)}
+                    </span>
+                  ) : null}
                   {arrivedScene && arrivedScene.id === current.id ? (
                     <span className="chip shrink-0 bg-emerald-100 text-emerald-700">已抵达</span>
                   ) : null}

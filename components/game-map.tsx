@@ -54,6 +54,12 @@ interface GameMapProps {
   draggablePlayer?: boolean;
   /** Fit the view to the imported game's valid scene coordinates and play area. */
   fitToHunt?: boolean;
+  /**
+   * Bump to re-run the fit explicitly (e.g. a "重置视野" button). Regular
+   * re-renders, scene edits and selection changes never re-fit on their own —
+   * the designer owns the viewport once the first fit has happened.
+   */
+  fitToken?: number;
   /** Start location from the active game package; used when scene coordinates are placeholders. */
   mapCenter?: { lat: number; lng: number };
   /** Re-centre on the player when this value changes. */
@@ -106,9 +112,12 @@ function sceneIcon(entry: MapSceneEntry, index: number): L.DivIcon {
 }
 
 function playerIcon(simulated: boolean, heading: number | null): L.DivIcon {
+  // Direction tail: a soft teal wedge, deliberately a different hue from the
+  // blue position dot and the amber trigger rings so the three map layers stay
+  // distinguishable at a glance.
   const pointer = heading === null ? "" : `
-    <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:22px;height:38px;transform:translate(-50%,-88%) rotate(${heading}deg);transform-origin:50% 88%;pointer-events:none;z-index:1;filter:drop-shadow(0 0 5px rgba(255,177,45,.95));">
-      <div style="width:100%;height:100%;clip-path:polygon(50% 0%,100% 100%,50% 79%,0% 100%);background:linear-gradient(to bottom,rgba(255,246,190,.98) 0%,rgba(255,184,48,.82) 55%,rgba(255,158,25,.06) 100%);"></div>
+    <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:22px;height:38px;transform:translate(-50%,-88%) rotate(${heading}deg);transform-origin:50% 88%;pointer-events:none;z-index:1;filter:drop-shadow(0 0 4px rgba(20,184,166,.55));">
+      <div style="width:100%;height:100%;clip-path:polygon(50% 0%,100% 100%,50% 79%,0% 100%);background:linear-gradient(to bottom,rgba(240,253,250,.98) 0%,rgba(20,184,166,.85) 55%,rgba(13,148,136,.05) 100%);"></div>
     </div>`;
   return L.divIcon({
     className: "",
@@ -182,6 +191,7 @@ export default function GameMap({
   onSimulatedDrag,
   draggablePlayer = false,
   fitToHunt = false,
+  fitToken = 0,
   recenterToken,
   heading = null,
   editable = false,
@@ -225,7 +235,6 @@ export default function GameMap({
   drawingModeRef.current = drawingMode;
 
   const tiles = TILE_PROVIDERS[tileProvider] ?? TILE_PROVIDERS["osm-hot"];
-  const activeEntry = useMemo(() => entries.find((e) => e.isActive) ?? null, [entries]);
 
   // Signatures keep the imperative diffs cheap: effects only run when the
   // *meaning* of the layer changed, not on every parent re-render.
@@ -272,6 +281,9 @@ export default function GameMap({
       maxZoom: tiles.maxZoom,
     });
     mapRef.current = map;
+    // E2E/test handle: lets probes read zoom/centre without reaching into
+    // Leaflet internals. Harmless in production (client-only, single instance).
+    (window as Window & { __mosSceneHuntMap?: L.Map }).__mosSceneHuntMap = map;
     // Capture the collections owned by this map instance for deterministic cleanup.
     const rings = ringsRef.current;
     const sceneMarkers = sceneMarkersRef.current;
@@ -297,6 +309,8 @@ export default function GameMap({
       map.off();
       // 4. Only now tear the map down.
       try {
+        const mapWindow = window as Window & { __mosSceneHuntMap?: L.Map };
+        if (mapWindow.__mosSceneHuntMap === map) delete mapWindow.__mosSceneHuntMap;
         map.remove();
       } finally {
         // Even if Leaflet throws mid-teardown the module-level refs must be
@@ -659,8 +673,7 @@ export default function GameMap({
 
   /* ------------------------------------------------ 视角：整场取景或跟随玩家 */
   const fitDoneRef = useRef(false);
-  const lastFitTokenRef = useRef<string | undefined>(undefined);
-  const lastFitSignatureRef = useRef<string | undefined>(undefined);
+  const lastFitTokenRef = useRef<number | null>(null);
   const lastCentredAtRef = useRef(0);
 
   useEffect(() => {
@@ -668,22 +681,15 @@ export default function GameMap({
     if (!map || !entries.length) return;
 
     if (fitToHunt) {
-      const fitSignature = [
-        entries.map((entry) => {
-          const { id, location } = entry.scene;
-          return `${id}:${location.lat.toFixed(6)},${location.lng.toFixed(6)}`;
-        }).join("|"),
-        huntArea?.shape ?? "",
-        huntArea?.center ? `${huntArea.center.lat.toFixed(6)},${huntArea.center.lng.toFixed(6)}` : "",
-        huntArea?.radiusMeters ?? "",
-        huntArea?.points?.map((point) => `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`).join("|") ?? "",
-        mapCenter ? `${mapCenter.lat.toFixed(6)},${mapCenter.lng.toFixed(6)}` : "",
-      ].join(";");
-      const force = fitSignature !== lastFitSignatureRef.current ||
-        (activeEntry !== undefined && activeEntry !== null && activeEntry.scene.id !== lastFitTokenRef.current);
-      if (fitDoneRef.current && !force) return;
-      lastFitTokenRef.current = activeEntry?.scene.id;
-      lastFitSignatureRef.current = fitSignature;
+      // The viewport belongs to the user after the first fit: only an explicit
+      // fitToken bump (e.g. a "重置视野" button) may re-run the fit. Re-fitting
+      // on scene edits, selection changes or panel toggles used to snap the
+      // designer's zoom back on every interaction.
+      const firstFit = !fitDoneRef.current;
+      const tokenFit = lastFitTokenRef.current !== fitToken;
+      if (!firstFit && !tokenFit) return;
+      lastFitTokenRef.current = fitToken;
+      fitDoneRef.current = true;
 
       const points: L.LatLngExpression[] = entries
         .filter((entry) =>
@@ -726,13 +732,12 @@ export default function GameMap({
             !(huntArea.center.lat === 0 && huntArea.center.lng === 0)
             ? huntArea.center
             : { lat: 14.5832, lng: 120.9794 };
-        map.setView([fallback.lat, fallback.lng], 16, { animate: !fitDoneRef.current });
+        map.setView([fallback.lat, fallback.lng], 16, { animate: !firstFit });
       } else if (points.length === 1) {
-        map.setView(points[0], 17, { animate: !fitDoneRef.current });
+        map.setView(points[0], 17, { animate: !firstFit });
       } else {
-        map.fitBounds(L.latLngBounds(points).pad(0.2), { animate: !fitDoneRef.current, maxZoom: 17 });
+        map.fitBounds(L.latLngBounds(points).pad(0.2), { animate: !firstFit, maxZoom: 17 });
       }
-      fitDoneRef.current = true;
       return;
     }
 
@@ -749,8 +754,7 @@ export default function GameMap({
     map.setView([player!.lat, player!.lng], map.getZoom(), {
       animate: tokenRequested,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitToHunt, recenterToken, player?.lat, player?.lng, activeEntry?.scene.id, entries, player, huntArea, mapCenter]);
+  }, [fitToHunt, fitToken, recenterToken, player?.lat, player?.lng, entries, player, huntArea, mapCenter]);
 
   /* ------------------------------------------------ 渲染 */
   return (
