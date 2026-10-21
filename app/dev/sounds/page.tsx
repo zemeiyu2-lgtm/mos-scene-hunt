@@ -10,12 +10,12 @@
 import { playSound, SoundToggle, type SoundCue } from "@/components/sound";
 
 const CUES: Array<{ cue: SoundCue; label: string; desc: string }> = [
-  { cue: "tap", label: "tap", desc: "轻点反馈（最克制）" },
-  { cue: "arrive", label: "arrive", desc: "抵达反馈（温暖两音）" },
-  { cue: "unlock", label: "unlock", desc: "场景解锁 / 发现感" },
-  { cue: "success", label: "success", desc: "答题成功（积极、不抢戏）" },
-  { cue: "reward", label: "reward", desc: "领取奖励（标杆音效）" },
-  { cue: "finish", label: "finish", desc: "全程完成（完整收尾）" },
+  { cue: "tap", label: "tap", desc: "轻点反馈（最小的闷钟，最克制）" },
+  { cue: "arrive", label: "arrive", desc: "抵达反馈（温暖两钟，稳定落地）" },
+  { cue: "unlock", label: "unlock", desc: "场景解锁（低音开门 + 钟声揭示）" },
+  { cue: "success", label: "success", desc: "答题成功（两钟肯定，不抢戏）" },
+  { cue: "reward", label: "reward", desc: "领取奖励（深钟 + 上行钟旋律，标杆）" },
+  { cue: "finish", label: "finish", desc: "全程完成（慢钟归途 + 低音收束）" },
 ];
 
 export default function DevSoundsPage() {
