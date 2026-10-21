@@ -19,8 +19,9 @@ import { TabBar } from "@/components/tab-bar";
 export default function QuestPage() {
   const router = useRouter();
   const { game, state, statuses, distances, current, ratio, complete, loading } = useHunt();
-  // 问题 6：游戏内唯一的显式退出入口。退出只是回到游戏中心，进度由
-  // HuntProvider 自动持久化，不会重置；「继续游戏」关闭弹窗原地不动。
+  // 游戏内唯一的显式退出入口：确认后回到「游戏中心」（/games），不跳首页、
+  // 不影响浏览器本身。进度由 HuntProvider 自动持久化；从游戏中心点「开始
+  // 游戏」即可回到原游戏，指针与奖励都会恢复（见 state.ts 的 START）。
   const [confirmExit, setConfirmExit] = useState(false);
 
   if (loading || !game || !state) {
@@ -208,7 +209,7 @@ export default function QuestPage() {
           <div className="card w-full max-w-[320px] p-4 shadow-sheet">
             <p className="text-[15px] font-semibold">退出本次寻宝？</p>
             <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
-              进度已自动保存在本机，随时可以从游戏中心「继续寻宝」回到现在的位置。
+              进度已自动保存在本机。回到游戏中心后点「开始游戏」即可回到现在的位置，奖励和已完成的地点都不会丢失。
             </p>
             <div className="mt-3 grid gap-2">
               <button
@@ -221,7 +222,7 @@ export default function QuestPage() {
               <button
                 type="button"
                 className="btn btn-primary btn-block"
-                onClick={() => router.push("/select")}
+                onClick={() => router.push("/games")}
               >
                 退出并回到游戏中心
               </button>

@@ -292,8 +292,11 @@ export function HuntProvider({
     const game = loadedGameRef.current;
     const entry = game ? entryScene(game) : undefined;
     if (entry && game && state) {
-      // The entry scene is reachable by definition; this only moves the pointer.
-      if (statusOf(game, state, entry.id) !== "locked") {
+      // Auto-entering the entry scene is a first-start convenience only. On a
+      // re-entry (退出后从游戏中心回来) the pointer already points at the
+      // scene the player left; forcing the entry scene here would drag them
+      // back to scene 1 despite the preserved state.
+      if (state.currentSceneId == null && statusOf(game, state, entry.id) !== "locked") {
         act({ type: "ENTER_SCENE", sceneId: entry.id, now: Date.now() });
       }
     }

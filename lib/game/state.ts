@@ -381,6 +381,11 @@ export function gameReducer(game: Game, state: GameState, action: GameAction): G
       return action.state;
 
     case "START": {
+      // First start moves the pointer to the entry scene. A re-entry (退出后
+      // 从游戏中心重新进入) keeps the pointer where the player left it, so
+      // resuming restores the current target instead of walking back to the
+      // entry; completed scenes and rewards are never touched either way.
+      if (state.currentSceneId) return { ...state, lastUpdatedAt: action.now };
       const entry = entryScene(game);
       // Starting only moves the pointer; the entry scene is already reachable by
       // construction, so there is no stored flag to flip here.

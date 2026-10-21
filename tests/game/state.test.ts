@@ -120,6 +120,28 @@ describe("initial state", () => {
   });
 });
 
+describe("START: first start vs re-entry", () => {
+  it("first start moves the pointer to the entry scene", () => {
+    const s = gameReducer(game, fresh(), { type: "START", now: T + 5 });
+    expect(s.currentSceneId).toBe("a");
+  });
+
+  it("re-entry keeps the pointer where the player left it (退出后恢复)", () => {
+    // Simulate a mid-hunt exit: pointer at scene b, scene a already completed.
+    let s = solve(fresh(), "a", {
+      type: "SUBMIT_ANSWER",
+      sceneId: "a",
+      selectedIndex: 1,
+      now: T + 1,
+    });
+    s = { ...s, currentSceneId: "b" };
+    const resumed = gameReducer(game, s, { type: "START", now: T + 9 });
+    expect(resumed.currentSceneId).toBe("b");
+    expect(resumed.scenes.a.status).toBe("completed");
+    expect(resumed.inventory.length).toBe(1);
+  });
+});
+
 describe("GPS FIX_UPDATE only moves between available and arrived", () => {
   it("flips an available scene to arrived when the player enters the ring", () => {
     let s = fresh();

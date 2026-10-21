@@ -43,24 +43,16 @@ await page.evaluate(() => window.__mosSceneHuntMap.setZoom(19));
 await new Promise((r) => setTimeout(r, 400));
 
 // 选中第二个场景 → 视野不应被重置
-const sel = await page.evaluate(() => {
+await page.evaluate(() => {
   const btns = [...document.querySelectorAll("button")].filter((b) => /^\d+\./.test((b.innerText || "").trim()));
-  if (btns.length < 2) return false;
+  if (btns.length < 2) return;
   btns[1].click();
-  return true;
 });
 await new Promise((r) => setTimeout(r, 2000));
 const zoomAfterSelect = await zoomNow();
 check("E2E-2 选中其他场景后缩放保持 19", zoomAfterSelect?.zoom === 19, `zoom=${zoomAfterSelect?.zoom}`);
 
-// 拖动一个场景标记（改坐标）→ 视野仍不应重置
-await page.evaluate(() => {
-  const map = window.__mosSceneHuntMap;
-  const entries = document.querySelectorAll("[data-role='scene-marker']");
-  void entries;
-  // 直接修改第一个标记的位置（模拟 dragend 回调走 updateLocation 路径）
-  map.fire && null;
-});
+// 等待一段时间（期间无任何编辑操作）→ 视野仍不应重置
 await new Promise((r) => setTimeout(r, 300));
 const zoomAfterWait = await zoomNow();
 check("E2E-3 等待后缩放仍保持 19", zoomAfterWait?.zoom === 19, `zoom=${zoomAfterWait?.zoom}`);
@@ -101,40 +93,8 @@ await new Promise((r) => setTimeout(r, 3500));
 const minAfter = await page.evaluate(() => document.querySelector('input[type="range"][min="10"]')?.value ?? null);
 check("E2E-6 最小值 10 重载后仍为 10", minAfter === "10", `value=${minAfter}`);
 
-// 数字输入 8（合法最小）→ 保存 → 重载
-await page.evaluate(() => {
-  const input = document.querySelector('input[type="number"][min="5"]');
-  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-  setter.call(input, "8");
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  input.dispatchEvent(new Event("change", { bubbles: true }));
-});
-await new Promise((r) => setTimeout(r, 300));
-check("E2E-7 数字输入 8 写入场景", await clickSave());
-await page.reload({ waitUntil: "networkidle2" });
-await new Promise((r) => setTimeout(r, 3500));
-const eightAfter = await page.evaluate(() => document.querySelector('input[type="number"][min="5"]')?.value ?? null);
-check("E2E-8 精确值 8 保存并重载", eightAfter === "8", `value=${eightAfter}`);
-
-// 数字输入 0（非法）→ 显示错误且不写入
-await page.evaluate(() => {
-  const input = document.querySelector('input[type="number"][min="5"]');
-  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-  setter.call(input, "0");
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  input.dispatchEvent(new Event("change", { bubbles: true }));
-});
-await new Promise((r) => setTimeout(r, 400));
-const illegal = await page.evaluate(() => {
-  const alert = document.querySelector('[role="alert"]');
-  return alert ? alert.textContent.slice(0, 60) : null;
-});
-check("E2E-9 非法值 0 显示明确错误", Boolean(illegal?.includes("最小")), illegal ?? "no-alert");
-await clickSave();
-await page.reload({ waitUntil: "networkidle2" });
-await new Promise((r) => setTimeout(r, 3500));
-const stillEight = await page.evaluate(() => document.querySelector('input[type="number"][min="5"]')?.value ?? null);
-check("E2E-10 非法值未写入（重载仍为 8）", stillEight === "8", `value=${stillEight}`);
+// （第二轮：触发距离 UI 已恢复为纯滑杆，数字输入检查随 UI 一并移除。
+//   新建游戏默认 15 m 的检查由 probe-round3.mjs 覆盖。）
 
 /* ============ 第二部分：地图页（问题 2 / 3） ============ */
 // 注入真机验收测试包并标记为当前游戏

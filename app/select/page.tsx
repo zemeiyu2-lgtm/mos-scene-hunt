@@ -10,9 +10,11 @@
  */
 
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
 import { findManifestEntry } from "@/lib/content";
+import { readSharedGameOutcome } from "@/lib/content/share";
 import { ErrorState, Screen } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 
@@ -20,6 +22,19 @@ export default function SelectPage() {
   const router = useRouter();
   const { game, loadError, reloadContent, state, statuses, startHunt, contentSource } = useHunt();
   const { start, status, permission } = useGps();
+
+  // 分享链接诊断：URL 带 #hunt= 载荷却没能还原出游戏时，必须告诉接收者原因。
+  // 旧版这里静默回退到示范游戏，接收者会以为作者分享了别的游戏。
+  const [shareBroken, setShareBroken] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void readSharedGameOutcome().then((outcome) => {
+      if (!cancelled && outcome.status === "broken") setShareBroken(outcome.reason);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const begin = () => {
     // Kick off GPS and the hunt together: the permission prompt appears while
     // the map is already loading, so the player is not staring at a blank screen.
@@ -65,6 +80,15 @@ export default function SelectPage() {
   return (
     <>
     <Screen title="选择寻宝" subtitle="确认信息后开始">
+      {shareBroken ? (
+        <div className="card mb-4 border border-amber-200 bg-amber-50 p-4 text-[12.5px] leading-relaxed text-amber-900">
+          <p className="font-semibold">分享链接未能打开</p>
+          <p className="mt-1">{shareBroken}</p>
+          <p className="mt-1 text-amber-800">
+            下面显示的不是朋友分享的游戏。请让朋友重新发送完整链接，或用手机相机扫描对方屏幕上的二维码。
+          </p>
+        </div>
+      ) : null}
       <section className="card story-card overflow-hidden">
         <div className="hero-explore px-5 py-6">
           <p className="game-kicker">

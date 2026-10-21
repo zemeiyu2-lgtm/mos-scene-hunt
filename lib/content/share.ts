@@ -51,22 +51,70 @@ export async function createGameShareUrl(game: Game): Promise<string> {
   return window.location.origin + "/select" + PREFIX + payload;
 }
 
-/** Reads a self-contained shared game from the current URL, if present. */
+/**
+ * Reads a self-contained shared game from the current URL, if present.
+ * Convenience wrapper around {@link readSharedGameOutcome} for callers that
+ * only need the game (or null).
+ */
 export async function readSharedGameFromUrl(): Promise<Game | null> {
-  if (typeof window === "undefined") return null;
+  const outcome = await readSharedGameOutcome();
+  return outcome.status === "ok" ? outcome.game : null;
+}
+
+/** Synchronous check: does the current URL carry a share payload at all? */
+export function hasSharePayload(): boolean {
+  if (typeof window === "undefined") return false;
+  const hash = window.location?.hash;
+  return typeof hash === "string" && hash.startsWith(PREFIX);
+}
+
+export type SharedGameOutcome =
+  | { status: "ok"; game: Game }
+  | { status: "absent" }
+  | { status: "broken"; reason: string };
+
+/**
+ * Reads the share payload and reports WHY it failed when it does.
+ *
+ * The silent-null behaviour of `readSharedGameFromUrl` hid real failures from
+ * recipients: a link truncated by forwarding, or a webview without
+ * DecompressionStream, fell back to the demo game with no explanation - it
+ * looked like the author had shared the wrong game. Callers that surface UI
+ * (the /select briefing) should use this and show the reason.
+ */
+export async function readSharedGameOutcome(): Promise<SharedGameOutcome> {
+  if (typeof window === "undefined") return { status: "absent" };
   // Test harnesses, embedded webviews, or restricted browser contexts may expose
   // a partial window object without a location. That means there is no shared URL.
   const hash = window.location?.hash;
-  if (typeof hash !== "string" || !hash.startsWith(PREFIX)) return null;
+  if (typeof hash !== "string" || !hash.startsWith(PREFIX)) return { status: "absent" };
   try {
     const payload = hash.slice(PREFIX.length);
-    const [kind, encoded] = payload.split(".");
-    if (!encoded || (kind !== "g" && kind !== "j")) return null;
+    const dot = payload.indexOf(".");
+    if (dot <= 0) {
+      return { status: "broken", reason: "链接中的游戏数据不完整（可能在复制或转发时被截断）。" };
+    }
+    const kind = payload.slice(0, dot);
+    const encoded = payload.slice(dot + 1);
+    if (!encoded || (kind !== "g" && kind !== "j")) {
+      return { status: "broken", reason: "链接中的游戏数据格式无法识别（可能不完整或已损坏）。" };
+    }
+    if (kind === "g" && typeof DecompressionStream === "undefined") {
+      return {
+        status: "broken",
+        reason: "当前浏览器不支持解压分享数据。请用手机 Safari（iOS）或更新微信/浏览器后重新打开。",
+      };
+    }
     const bytes = fromBase64Url(encoded);
     const raw = kind === "g" ? await gunzipText(bytes) : new TextDecoder().decode(bytes);
-    if (!raw) return null;
-    return validateGame(JSON.parse(raw)).game;
+    if (!raw) {
+      return { status: "broken", reason: "链接中的游戏数据无法解压，可能已被截断。请让朋友重新发送完整链接。" };
+    }
+    // validateGame throws GameDataError for invalid packs; the catch below
+    // turns that into a readable "broken" reason instead of a silent fallback.
+    const game = validateGame(JSON.parse(raw)).game;
+    return { status: "ok", game };
   } catch {
-    return null;
+    return { status: "broken", reason: "链接中的游戏数据无法读取（可能不完整或已损坏）。请让朋友重新发送完整链接。" };
   }
 }
