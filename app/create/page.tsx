@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Screen } from "@/components/ui";
 import { useHunt } from "@/components/hunt-provider";
-import { deleteAuthoredGame, listAuthoredGames, markCurrentAuthoredGame, renameAuthoredGame, saveAuthoredGame } from "@/lib/content";
+import { deleteAuthoredGame, listAuthoredGames, markCurrentAuthoredGame, renameAuthoredGame, saveAuthoredGameChecked } from "@/lib/content";
 import type { Game } from "@/lib/game/types";
+import { describeSaveErrors } from "@/lib/game/save-errors";
 import { exportGameJson, gameToMarkdown, validateGamePackage, type PackageReport } from "@/lib/game/package";
 
 export default function CreatePage() {
@@ -14,8 +15,8 @@ export default function CreatePage() {
   const refreshLibrary = () => setLibrary(listAuthoredGames());
   useEffect(() => { refreshLibrary(); }, []);
   const download = (filename: string, text: string, type: string) => { const blob = new Blob([text], { type }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); };
-  const saveLibrary = () => { if (!working) return; if (!saveAuthoredGame(working)) { setMessage("保存失败：浏览器存储空间不可用。"); return; } markCurrentAuthoredGame(working.id); refreshLibrary(); setMessage("已保存到本机游戏库"); };
-  const activateGame = (game: Game) => { saveAuthoredGame(game); markCurrentAuthoredGame(game.id); setDraft(game); setReport(validateGamePackage(game)); setMessage("已切换到「" + game.title + "」，现在可以试玩或继续设计。"); };
+  const saveLibrary = () => { if (!working) return; const result = saveAuthoredGameChecked(working); if (!result.ok) { setMessage(describeSaveErrors(result.errors).summary); return; } markCurrentAuthoredGame(working.id); refreshLibrary(); setMessage("已保存到本机游戏库"); };
+  const activateGame = (game: Game) => { saveAuthoredGameChecked(game); markCurrentAuthoredGame(game.id); setDraft(game); setReport(validateGamePackage(game)); setMessage("已切换到「" + game.title + "」，现在可以试玩或继续设计。"); };
   const renameGame = (game: Game) => { const title = window.prompt("给游戏换一个显示名称：", game.title); if (!title?.trim()) return; const next = renameAuthoredGame(game.id, title); if (next) { setLibrary(listAuthoredGames()); if (working?.id === next.id) setDraft(next); setMessage("已重命名。"); } };
   const removeGame = (game: Game) => { if (!window.confirm("确定删除「" + game.title + "」？删除后需要重新导入游戏包才能恢复。")) return; deleteAuthoredGame(game.id); setLibrary(listAuthoredGames()); if (working?.id === game.id) setDraft(null); setMessage("已删除「" + game.title + "」。"); };
   if (!working) return <Screen title="创作中心"><div className="card p-5">正在加载……</div></Screen>;

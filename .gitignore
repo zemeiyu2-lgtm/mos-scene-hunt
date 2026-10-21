@@ -13,9 +13,9 @@
 /out/
 /build
 
-# 测试与覆盖率
+# 测试与覆盖率（artifacts 为探针生成的截图/二维码/链接，可随时重跑再生）
 /coverage
-/tests/e2e/artifacts/*.png
+/tests/e2e/artifacts/
 
 # 运行时与本地环境
 *.pem
@@ -34,3 +34,6 @@ yarn-error.log*
 .idea
 .vscode
 vitest.config.*.timestamp-*
+
+.vercel
+.env*

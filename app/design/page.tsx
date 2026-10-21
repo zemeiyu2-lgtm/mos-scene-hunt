@@ -17,7 +17,7 @@
  * No GPS is required or requested: the designer works entirely from the map.
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,11 +27,28 @@ import { Screen } from "@/components/ui";
 import {
   clearActiveAuthoredGame,
   clearAuthoredGame,
+  DEFAULT_GAME_ID,
+  HUNT_MANIFEST,
+  listAuthoredGameIds,
   markCurrentAuthoredGame,
-  saveAuthoredGame,
+  saveAuthoredGameChecked,
   importGamePackage,
+  readAuthoredGame,
 } from "@/lib/content";
 import type { Game, HuntArea, Scene } from "@/lib/game/types";
+import {
+  addChoiceOption,
+  answerLines,
+  CHALLENGE_TYPE_LABEL,
+  changeChallengeType,
+  createChallenge,
+  MAX_CHOICE_OPTIONS,
+  MIN_CHOICE_OPTIONS,
+  removeChoiceOption,
+  setChoiceOption,
+  setCorrectOption,
+  withAnswerLines,
+} from "@/lib/game/challenge-edit";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
 import {
   isPointInPolygon,
@@ -44,6 +61,9 @@ import { useHunt } from "@/components/hunt-provider";
 import { createGameShareUrl } from "@/lib/content/share";
 import { MediaEditor } from "@/components/media-gallery";
 import { exportGameJson, summarizeSpatial, validateGamePackage } from "@/lib/game/package";
+import { describeSaveErrors, type SaveFailureText } from "@/lib/game/save-errors";
+import { pickDesignGame } from "./design-target";
+import { createBlankGame, nextBlankGameId } from "./design-game";
 
 const MICRO_PRESETS = [30, 50, 75, 100, 150, 250];
 const MIN_POLYGON_POINTS = 3;
@@ -55,6 +75,9 @@ export default function DesignPage() {
   const [draft, setDraft] = useState<Game | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Set when a save is refused because the pack would not survive a reload.
+  // Cleared on the next successful save so a stale banner never misleads.
+  const [saveFailure, setSaveFailure] = useState<SaveFailureText | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
@@ -72,9 +95,39 @@ export default function DesignPage() {
   // What the area looked like before the current drawing session began, so
   // 「取消」 can restore it instead of destroying the designer's work.
   const [areaSnapshot, setAreaSnapshot] = useState<HuntArea | undefined>(undefined);
+  // 「新建空白游戏」 guard: when the draft has unsaved edits we ask first instead
+  // of silently replacing them (save / discard / cancel).
+  const [pendingBlank, setPendingBlank] = useState(false);
+  const [blankMessage, setBlankMessage] = useState<string | null>(null);
+  // The intro is secondary to the map, so it stays collapsed until asked for.
+  const [infoOpen, setInfoOpen] = useState(false);
+
+  // 「继续设计」 deep link from the games centre (/design?game=<id>). Without
+  // this the designer would land on whatever pack happens to be active - often
+  // the bundled demo - and could silently edit and save over the wrong game.
+  // Runs once on mount; a missing or unknown id keeps the current behaviour.
+  useEffect(() => {
+    const target = pickDesignGame(window.location.search, readAuthoredGame);
+    if (!target) return;
+    setDraft(target);
+    setSelectedId(target.scenes[0]?.id ?? null);
+    // The draft is byte-identical to the stored pack, so it starts in the
+    // saved state; any subsequent edit flips it back to unsaved.
+    setSaved(true);
+    setDrawingArea(false);
+    setPlacingCircle(false);
+    setAreaSnapshot(undefined);
+  }, []);
 
   const working = draft ?? game;
   const selected = working?.scenes.find((scene) => scene.id === selectedId) ?? working?.scenes[0] ?? null;
+  const challenge = selected?.challenge;
+  /**
+   * Edits exist only in the draft, so a fresh page showing the bundled or
+   * active pack (`draft === null`) is not "unsaved" - it simply has nothing of
+   * the author's yet.
+   */
+  const hasUnsavedEdits = Boolean(draft) && !saved;
 
   const entries = useMemo<MapSceneEntry[]>(
     () =>
@@ -364,7 +417,7 @@ export default function DesignPage() {
       }
       if (working.scenes.some((scene) => !configured(scene.location))) missing.push("所有站点的真实 GPS 坐标");
       if (missing.length) throw new Error("暂不能发布，请先设置：" + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。");
-      if (!save()) throw new Error("游戏未能保存到本机，请检查浏览器存储空间后重试。");
+      if (!save()) throw new Error("游戏未能保存到本机，请先修正下方提示的问题后再发布。");
       const url = await createGameShareUrl(working);
       setShareUrl(url);
       if (navigator.share) {
@@ -445,15 +498,19 @@ export default function DesignPage() {
 
   const save = (): boolean => {
     if (!working || areaIncomplete || drawingArea) return false;
-    if (saveAuthoredGame(working)) {
-      // Point the app at this pack so 「立即试玩」 - and every screen after it -
-      // loads the game the author just built instead of the bundled demo.
-      markCurrentAuthoredGame(working.id);
-      setDraft(working);
-      setSaved(true);
-      return true;
+    const result = saveAuthoredGameChecked(working);
+    if (!result.ok) {
+      // Refused before the write: the previous valid save (if any) is intact.
+      setSaveFailure(describeSaveErrors(result.errors));
+      return false;
     }
-    return false;
+    setSaveFailure(null);
+    // Point the app at this pack so 「立即试玩」 - and every screen after it -
+    // loads the game the author just built instead of the bundled demo.
+    markCurrentAuthoredGame(working.id);
+    setDraft(working);
+    setSaved(true);
+    return true;
   };
 
   /**
@@ -476,6 +533,60 @@ export default function DesignPage() {
     setDrawingArea(false);
     setPlacingCircle(false);
     setAreaSnapshot(undefined);
+  };
+
+  /* ------------------------------------------------ 新建空白游戏 */
+
+  /**
+   * Replace the draft with a brand-new pack.
+   *
+   * The id is allocated against every stored slot (not just the ones that
+   * currently validate) plus the bundled pack ids, so a blank game can never
+   * land on top of an existing game or the demo. Nothing is written to storage
+   * here - the author still has to press 保存, exactly like the template flow.
+   */
+  const startBlankGame = () => {
+    const reserved = [
+      ...listAuthoredGameIds(),
+      DEFAULT_GAME_ID,
+      ...HUNT_MANIFEST.map((entry) => entry.id),
+    ];
+    const id = nextBlankGameId(reserved);
+    const blank = createBlankGame({ id, startLocation: working.startLocation });
+    setDraft(blank);
+    setSelectedId(blank.scenes[0]?.id ?? null);
+    setSaved(false);
+    setDrawingArea(false);
+    setPlacingCircle(false);
+    setAreaSnapshot(undefined);
+    setShareUrl(null);
+    setShareMessage(null);
+    setImportMessage(null);
+    setPendingBlank(false);
+    setBlankMessage(
+      `已新建空白游戏「${blank.title}」（ID：${blank.id}）。点「仅保存到本机」后才会出现在游戏中心。`,
+    );
+  };
+
+  const requestBlankGame = () => {
+    setBlankMessage(null);
+    if (drawingArea || areaIncomplete) {
+      setBlankMessage("游戏区域还没画完，请先「完成区域」或「取消」绘制，再新建游戏。");
+      return;
+    }
+    if (hasUnsavedEdits) {
+      setPendingBlank(true);
+      return;
+    }
+    startBlankGame();
+  };
+
+  const saveThenBlank = () => {
+    if (!save()) {
+      setBlankMessage("当前游戏保存失败，请检查浏览器存储空间后重试。");
+      return;
+    }
+    startBlankGame();
   };
 
   const resetOfficial = () => {
@@ -545,6 +656,76 @@ export default function DesignPage() {
             </p>
             {importMessage ? <p role="status" className="mt-3 rounded-xl bg-[var(--surface)] px-3 py-2 text-xs leading-relaxed">{importMessage}</p> : null}
           </div>
+        ) : null}
+      </section>
+
+      {/* ------------------------------------------------ 当前游戏 / 新建 */}
+      <section className="card mb-4 p-3">
+        <div className="flex items-center gap-2">
+          <label className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="shrink-0 text-[11px] font-semibold">游戏名称</span>
+            <input className="input" value={working.title} onChange={(e) => update({ title: e.target.value })} />
+          </label>
+          <button
+            type="button"
+            className="btn btn-secondary h-10 min-h-0 shrink-0 px-3 text-xs"
+            onClick={requestBlankGame}
+          >
+            ＋ 新建空白游戏
+          </button>
+        </div>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-[var(--muted)]">
+          <span>
+            存档 ID：<span className="font-mono">{working.id}</span>
+          </span>
+          <button
+            type="button"
+            className="font-semibold underline"
+            aria-expanded={infoOpen}
+            onClick={() => setInfoOpen((open) => !open)}
+          >
+            简介
+          </button>
+          {hasUnsavedEdits ? <span className="font-semibold text-amber-700">· 有未保存的修改</span> : null}
+        </p>
+        {infoOpen ? (
+          <label className="mt-2 block text-xs font-semibold">
+            简介
+            <textarea className="input mt-1 min-h-16" value={working.description} onChange={(e) => update({ description: e.target.value })} />
+          </label>
+        ) : null}
+
+        {pendingBlank ? (
+          <div role="alertdialog" aria-label="当前游戏有未保存的修改" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+            <p className="text-[12px] font-bold text-amber-900">当前游戏还有未保存的修改</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-amber-900">
+              新建会切换到一款空白游戏。请选择如何处理这些修改。
+            </p>
+            <div className="mt-2 grid grid-cols-3 gap-1.5">
+              <button type="button" className="btn btn-primary h-9 min-h-0 px-2 text-[11px]" onClick={saveThenBlank}>
+                保存并新建
+              </button>
+              <button type="button" className="btn btn-secondary h-9 min-h-0 px-2 text-[11px]" onClick={startBlankGame}>
+                放弃修改
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost h-9 min-h-0 px-2 text-[11px]"
+                onClick={() => {
+                  setPendingBlank(false);
+                  setBlankMessage(null);
+                }}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {blankMessage ? (
+          <p role="status" className="mt-3 rounded-xl bg-[var(--surface)] px-3 py-2 text-[11.5px] leading-relaxed">
+            {blankMessage}
+          </p>
         ) : null}
       </section>
 
@@ -828,7 +1009,8 @@ export default function DesignPage() {
               </p>
             ) : null}
 
-                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">路线顺序</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>\n\n<label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
+                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">路线顺序</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>
+            <label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">现场名称<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达后故事<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达提示<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
@@ -840,30 +1022,113 @@ export default function DesignPage() {
             </div>
 
             <div className="mt-4 rounded-xl bg-[var(--surface)] p-3">
-              <p className="text-xs font-semibold">挑战</p>
-              <label className="mt-2 block text-xs">问题<textarea className="input mt-1 min-h-16" value={selected.challenge?.question ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, question: e.target.value } : undefined })} /></label>
-              {selected.challenge?.type === "choice" ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold">挑战</p>
+                {challenge ? (
+                  <span className="chip bg-[var(--surface)] text-[10.5px]">{CHALLENGE_TYPE_LABEL[challenge.type]}</span>
+                ) : null}
+              </div>
+              {challenge ? (
                 <>
-                  <div className="mt-2 grid gap-2">
-                    {(selected.challenge.options ?? []).map((option, i) => (
-                      <input key={i} className="input" value={option} onChange={(e) => {
-                        const options = [...(selected.challenge?.options ?? [])];
-                        options[i] = e.target.value;
-                        updateScene(selected.id, { challenge: { ...selected.challenge!, options } });
-                      }} />
+                  <div className="mt-2 grid grid-cols-3 gap-1.5" role="group" aria-label="题型">
+                    {(["choice", "keyword", "text"] as const).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        aria-pressed={challenge.type === type}
+                        className={`rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
+                          challenge.type === type
+                            ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
+                            : "border-[var(--line)] text-[var(--muted)]"
+                        }`}
+                        onClick={() => {
+                          if (challenge.type === type) return;
+                          updateScene(selected.id, { challenge: changeChallengeType(challenge, type) });
+                        }}
+                      >
+                        {CHALLENGE_TYPE_LABEL[type]}
+                      </button>
                     ))}
                   </div>
-                  {selected.challenge?.reflective ? (
-                    <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
-                      这是<strong>反思型选择</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
+                  <label className="mt-2 block text-xs">问题<textarea className="input mt-1 min-h-16" value={challenge.question} onChange={(e) => updateScene(selected.id, { challenge: { ...challenge, question: e.target.value } })} /></label>
+                  {challenge.type === "choice" ? (
+                    <div className="mt-2">
+                      <div className="grid gap-1.5">
+                        {(challenge.options ?? []).map((option, i) => {
+                          const isCorrect = !challenge.reflective && challenge.answer === i;
+                          return (
+                            <div key={i} className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                role="radio"
+                                aria-checked={isCorrect}
+                                aria-label={`把选项 ${i + 1} 设为正确答案`}
+                                disabled={Boolean(challenge.reflective)}
+                                className={`h-7 w-7 shrink-0 rounded-full border text-[11px] font-bold ${
+                                  isCorrect
+                                    ? "border-[var(--accent)] bg-[var(--accent)] text-[#3a2400]"
+                                    : "border-[var(--line)] text-[var(--muted)]"
+                                }`}
+                                onClick={() => updateScene(selected.id, { challenge: setCorrectOption(challenge, i) })}
+                              >
+                                {isCorrect ? "✓" : String.fromCharCode(65 + i)}
+                              </button>
+                              <input
+                                className="input"
+                                aria-label={`选项 ${i + 1}`}
+                                value={option}
+                                onChange={(e) => updateScene(selected.id, { challenge: setChoiceOption(challenge, i, e.target.value) })}
+                              />
+                              <button
+                                type="button"
+                                aria-label={`删除选项 ${i + 1}`}
+                                disabled={(challenge.options?.length ?? 0) <= MIN_CHOICE_OPTIONS}
+                                className="shrink-0 px-1 text-[16px] leading-none text-[var(--muted)] disabled:opacity-30"
+                                onClick={() => updateScene(selected.id, { challenge: removeChoiceOption(challenge, i) })}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          className="text-[11.5px] font-semibold underline disabled:text-[var(--muted)] disabled:no-underline"
+                          disabled={(challenge.options?.length ?? 0) >= MAX_CHOICE_OPTIONS}
+                          onClick={() => updateScene(selected.id, { challenge: addChoiceOption(challenge) })}
+                        >
+                          ＋ 添加选项
+                        </button>
+                        <span className="text-[10.5px] text-[var(--muted)]">
+                          {challenge.reflective ? "反思型选择：无标准答案" : "点左侧字母设为正确答案"}
+                        </span>
+                      </div>
+                      {challenge.reflective ? (
+                        <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
+                          这是<strong>反思型选择</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
+                        </div>
+                      ) : null}
                     </div>
                   ) : (
-                    <label className="mt-2 block text-xs">正确答案<input className="input mt-1" type="number" min={0} max={Math.max(0, (selected.challenge.options?.length ?? 1) - 1)} value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : 0} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })} /></label>
+                    <label className="mt-2 block text-xs">可接受的答案（每行一个）<textarea className="input mt-1 min-h-16" value={answerLines(challenge)} onChange={(e) => updateScene(selected.id, { challenge: withAnswerLines(challenge, e.target.value) })} /></label>
                   )}
+                  <label className="mt-2 block text-xs">答案说明<textarea className="input mt-1 min-h-16" value={challenge.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: { ...challenge, explanation: e.target.value } })} /></label>
+                  <MediaEditor media={challenge.media} onChange={(media) => updateScene(selected.id, { challenge: { ...challenge, media } })} />
                 </>
-              ) : null}
-              <label className="mt-2 block text-xs">答案说明<textarea className="input mt-1 min-h-16" value={selected.challenge?.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
-              <MediaEditor media={selected.challenge?.media} onChange={(media) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, media } : undefined })} />
+              ) : (
+                <div className="mt-2">
+                  <p className="text-[11.5px] leading-relaxed text-[var(--muted)]">这一站还没有挑战，玩家到达后无法进入任务页。建议添加一个。</p>
+                  <button
+                    type="button"
+                    className="btn btn-secondary mt-2 h-9 min-h-0 px-3 text-xs"
+                    onClick={() => updateScene(selected.id, { challenge: createChallenge("choice") })}
+                  >
+                    ＋ 添加挑战
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 rounded-xl bg-[var(--surface)] p-3">
@@ -932,6 +1197,26 @@ export default function DesignPage() {
           <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
             游戏区域还没有画完（至少 {MIN_POLYGON_POINTS} 个边界点），完成或取消绘制后才能保存。
           </p>
+        ) : null}
+        {saveFailure ? (
+          <div
+            role="alert"
+            className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11.5px] leading-relaxed text-red-800"
+          >
+            <p className="font-semibold">{saveFailure.summary}</p>
+            {/* A single problem is already spelled out in the summary above. */}
+            {saveFailure.problems.length > 1 ? (
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                {saveFailure.problems.map((problem) => (
+                  <li key={problem.path}>
+                    <span className="font-semibold">{problem.label}</span>：{problem.message}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {saveFailure.hidden > 0 ? <p className="mt-1">还有 {saveFailure.hidden} 处未列出。</p> : null}
+            <p className="mt-1">本机上的旧存档没有被改动，修正后即可正常保存。</p>
+          </div>
         ) : null}
         <div className="mt-3 grid gap-2">
           <button
