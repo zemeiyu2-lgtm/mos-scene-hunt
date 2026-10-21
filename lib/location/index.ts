@@ -7,5 +7,6 @@
 
 export * from "./types";
 export * from "./geodesy";
+export * from "./heading";
 export * from "./provider";
 export * from "./simulator";

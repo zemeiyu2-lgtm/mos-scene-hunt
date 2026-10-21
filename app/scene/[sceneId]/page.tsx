@@ -8,7 +8,7 @@
  * statically, and a future AI story engine would populate the same fields.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 import { useHunt } from "@/components/hunt-provider";
@@ -16,6 +16,9 @@ import { Screen, StatusChip } from "@/components/ui";
 import { formatDistance } from "@/lib/location";
 import { playSound } from "@/components/sound";
 import { MediaGallery } from "@/components/media-gallery";
+
+/** 与地图页相同的「新鲜到达」窗口；仅对新跨入触发圈的到达自动打开问题。 */
+const FRESH_ARRIVAL_WINDOW_MS = 30_000;
 
 export default function ScenePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -36,6 +39,28 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
     // the discovery cue on every update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene?.id, progress?.status, state?.gameId]);
+
+  // ---- 问题 3：到达后自动显示问题 -------------------------------------
+  // 地图页在「新鲜到达」时带 ?auto=1 跳转到本页；这里检测到 auto=1 且状态仍
+  // 是 arrived（GPS 抖动把它翻回 locked 时不打开）且有挑战，就在解锁音播放后
+  // 自动进入挑战页。OPEN_CHALLENGE 幂等；ref 保证每次挂载只触发一次。
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenedRef.current) return;
+    if (typeof window === "undefined") return;
+    if (!new URLSearchParams(window.location.search).has("auto")) return;
+    if (!scene || !state || !scene.challenge) return;
+    if (progress?.status !== "arrived") return;
+    const arrivedAt = progress.arrivedAt ?? 0;
+    if (!arrivedAt || Date.now() - arrivedAt > FRESH_ARRIVAL_WINDOW_MS) return;
+    autoOpenedRef.current = true;
+    const id = window.setTimeout(() => {
+      enterScene(scene.id);
+      openChallenge(scene.id);
+      router.push(`/challenge/${scene.id}`);
+    }, 900);
+    return () => window.clearTimeout(id);
+  }, [scene?.id, progress?.status, enterScene, openChallenge, router]);
 
   if (!scene || !state) {
     return (
