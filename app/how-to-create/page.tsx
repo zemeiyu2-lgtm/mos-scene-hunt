@@ -32,7 +32,7 @@ const PROMPT = `你是 MOS Scene Hunt 的户外寻宝游戏设计助手。请帮
   }
 }
 所有游戏内容必须放在 game 对象里。每个 scene 包含唯一 id、title、story、briefing、location、nextSceneId、challenge、reward。location 格式为 { "lat": 0, "lng": 0, "radius": 15, "name": "现场地点名称" }。challenge 类型只能是 choice、text、keyword；choice 必须包含 question、options（2至4项）、answer（正确选项从0开始的数字下标）；text/keyword 必须包含 question、answer（可接受答案字符串或字符串数组）、hint。reward 至少包含 type、title、value；type 只能使用 keyword、item、badge、story 之一。nextSceneId 按路线连接，最后一站为 null，entrySceneId 指向第一站，所有 ID 唯一。媒体如有需要，使用 media 数组，格式为 { "id":"唯一编号", "kind":"image 或 document", "title":"资源名称", "url":"可访问的 https 地址", "description":"用途" }。不要编造图片链接；没有可靠地址时，说明设计者需要上传素材。
-不要编造真实 GPS 坐标：startLocation、huntArea.center 和每个 scene.location 的 lat、lng 一律填 0，作为待标定占位值。导入后必须在设计中心地图上逐站标定真实地点、设置游戏区域和触发距离，再进行现场试玩。请先问我最多三个关键问题；若我已经说明，直接设计。最后在 JSON 之外列出：现场需要确认的地点、需要准备的宝藏、需要上传的图片/文件，以及安全检查清单。`;
+不要编造真实 GPS 坐标：startLocation、huntArea.center 和每个 scene.location 的 lat、lng 一律填 0，作为待标定占位值。导入后必须在创作中心地图上逐站标定真实地点、设置游戏区域和触发距离，再进行现场试玩。请先问我最多三个关键问题；若我已经说明，直接设计。最后在 JSON 之外列出：现场需要确认的地点、需要准备的宝藏、需要上传的图片/文件，以及安全检查清单。`;
 
 export default function HowToCreatePage() {
   const [copied, setCopied] = useState(false);
@@ -54,7 +54,7 @@ export default function HowToCreatePage() {
           <li><b>2. 先选定一个“宝”，并设计兑现方式</b><p className="mt-1 text-[var(--muted)]">可以是小礼物、纪念卡、贴纸、徽章、合照或一项体验。提前决定由谁保管、玩家达到什么条件领取、在哪里领取。没有兑现安排的奖励不算完成设计。</p></li>
           <li><b>3. 选定安全区域和路线</b><p className="mt-1 text-[var(--muted)]">一个点也可以开始；多站游戏应使用 3 个以上的点。地图上的每个点都要与任务对应，按真实步行路线安排顺序，并检查开放时间、无障碍与 GPS 误差。</p></li>
           <li><b>4. 设计有变化的任务，并加入图片/文件</b><p className="mt-1 text-[var(--muted)]">不要每站都做选择题。交替使用现场观察、找特征、图片辨认、简单谜题、关键词收集、团队合作和创意任务。可在创作中心为站点添加图片、说明文件或任务配图；只使用自己有权使用的素材。</p></li>
-          <li><b>5. 导入、现场标点、试玩并兑现</b><p className="mt-1 text-[var(--muted)]">AI 输出统一采用 MOS Scene Hunt JSON 游戏包格式（format、formatVersion、game 三层结构）。可以保存为 UTF-8 编码的 .json 文件导入，也可以直接复制完整 JSON，粘贴到设计中心的“导入 AI 游戏包”框中，校验后立即进入设计器。导入后逐站标定真实坐标、设置游戏区域和触发距离，再检查任务、图片与最后的宝藏兑现流程并现场试玩。</p></li>
+          <li><b>5. 导入、现场标点、试玩并兑现</b><p className="mt-1 text-[var(--muted)]">AI 输出统一采用 MOS Scene Hunt JSON 游戏包格式（format、formatVersion、game 三层结构）。可以保存为 UTF-8 编码的 .json 文件导入，也可以直接复制完整 JSON，粘贴到创作中心的“导入 AI 游戏包”框中，校验后立即进入设计器。导入后逐站标定真实坐标、设置游戏区域和触发距离，再检查任务、图片与最后的宝藏兑现流程并现场试玩。</p></li>
         </ol>
       </section>
       <section className="card mt-3 p-5">

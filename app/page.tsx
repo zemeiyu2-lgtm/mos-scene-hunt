@@ -6,6 +6,7 @@ import { Screen } from "@/components/ui";
 import { useOnlineStatus } from "@/components/providers";
 import { MapView } from "@/components/map-view";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
+import { DEFAULT_GAME_ID } from "@/lib/content";
 import type { MapSceneEntry } from "@/components/game-map";
 import type { PositionFix } from "@/lib/location";
 
@@ -67,6 +68,21 @@ export default function HomePage() {
         ? `${progressPercent}% 已探索`
         : "等待你的第一步";
 
+  /**
+   * 演示地图只在「第一次来、且当前就是内置演示包」时出现。
+   *
+   * - `loading` 期间不判断：那时存档还没水合，任何基于进度的判断都会先错一次，
+   *   宁可暂时留白，也不闪出一张与玩家无关的地图。
+   * - `loadError` 时不出现：加载失败时更不该用别的地图占用首屏。
+   * - 有进度即隐藏；不是内置演示包（本机创作 / 分享进来的游戏）也隐藏——
+   *   固定演示图和玩家族的游戏无关，留着只会挤占首屏。
+   *
+   * 注意：演示图来自 RIZAL_PARK_TEMPLATE（id 为 rizal-park-discovery），与内置
+   * 游戏包 demo-hunt 不是同一个 id，不能用两者相等来判断。
+   */
+  const showDemoMap =
+    !loading && !loadError && !hasProgress && game?.id === DEFAULT_GAME_ID;
+
   return (
     <Screen
       title="MOS Scene Hunt"
@@ -87,11 +103,13 @@ export default function HomePage() {
               </span>
             </div>
           ) : null}
-          <div className="mt-3 overflow-hidden rounded-2xl border border-white/15 bg-[#f4ead4]">
-            <div className="relative h-[230px] w-full">
-              <MapView player={previewPlayer} entries={previewEntries} huntArea={previewGame.huntArea} tileProvider="osm" fitToHunt />
+          {showDemoMap ? (
+            <div className="mt-3 overflow-hidden rounded-2xl border border-white/15 bg-[#f4ead4]">
+              <div className="relative h-[230px] w-full">
+                <MapView player={previewPlayer} entries={previewEntries} huntArea={previewGame.huntArea} tileProvider="osm" fitToHunt />
+              </div>
             </div>
-          </div>
+          ) : null}
           <div className="mt-3 rounded-2xl bg-white p-2 text-[#173f3b] shadow-sm">
             {loadError ? (
               <button type="button" className="btn btn-primary w-full" onClick={() => reloadContent(true)}>
@@ -135,12 +153,13 @@ export default function HomePage() {
             <span aria-hidden="true" className="text-[14px]">◇</span>游戏中心
           </Link>
           <Link href="/design" className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--line)] bg-[var(--card)] px-3 py-2.5 text-[13px] font-semibold text-[var(--muted)] transition-colors active:bg-[var(--surface)]">
-            <span aria-hidden="true" className="text-[14px]">✦</span>设计中心
+            <span aria-hidden="true" className="text-[14px]">✦</span>创作中心
           </Link>
         </div>
         <div className="mt-2 flex items-center justify-between px-1">
           <Link href="/how-to-create" className="inline-flex items-center gap-1 py-2 text-xs font-medium text-[var(--muted)]">创作说明 <span aria-hidden="true">→</span></Link>
-          {hasProgress ? (
+          {/* 完成态的「查看探索成果」已经指向 /bag，这里不再重复同一入口。 */}
+          {hasProgress && !complete ? (
             <Link href="/bag" className="inline-flex items-center gap-1 py-2 text-xs font-medium text-[var(--muted)]">背包与线索 <span aria-hidden="true">→</span></Link>
           ) : null}
         </div>
