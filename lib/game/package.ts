@@ -50,7 +50,7 @@ export function validateSpatial(game: Game): ValidationIssue[] {
   for (const scene of game.scenes) {
     const radius = scene.location.radius ?? 15;
     if (!Number.isFinite(scene.location.lat) || !Number.isFinite(scene.location.lng)) issues.push({ path: `scenes.${scene.id}.location`, message: "缺少有效 GPS 坐标", severity: "error" });
-    if (scene.location.lat === 0 && scene.location.lng === 0) issues.push({ path: `scenes.${scene.id}.location`, message: "这是 AI 占位坐标 0,0；请在设计中心地图上标定真实地点后再发布", severity: "warning" });
+    if (scene.location.lat === 0 && scene.location.lng === 0) issues.push({ path: `scenes.${scene.id}.location`, message: "这是 AI 占位坐标 0,0；请在创作中心地图上标定真实地点后再发布", severity: "warning" });
     if (radius < 5 || radius > 200) issues.push({ path: `scenes.${scene.id}.location.radius`, message: `触发半径 ${radius}m 不在建议范围 5–200m 内`, severity: "warning" });
     if (game.huntArea) {
       if (game.huntArea.shape === "polygon" && (game.huntArea.points?.length ?? 0) >= 3) {
