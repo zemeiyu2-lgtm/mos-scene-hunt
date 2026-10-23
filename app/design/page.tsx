@@ -938,6 +938,7 @@ export default function DesignPage() {
             type="button"
             className="btn btn-primary btn-block"
             onClick={play}
+            disabled={areaIncomplete || drawingArea}
           >
             {saved ? "✓ 已保存，立即试玩" : "保存并立即试玩"}
           </button>
