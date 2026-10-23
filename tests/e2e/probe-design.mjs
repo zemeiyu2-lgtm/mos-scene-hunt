@@ -102,13 +102,19 @@ async function designState(page) {
   return page.evaluate(() => {
     const text = document.body.innerText;
     const poly = document.querySelectorAll(".area-vertex-label").length;
+    // 按钮文案已从「保存我的游戏」拆分为「保存并立即试玩」「仅保存到本机」，
+    // 两者都受 areaIncomplete || drawingArea 控制，此处分别断言。
     const save = Array.from(document.querySelectorAll("button")).find((b) =>
-      (b.textContent ?? "").includes("保存我的游戏"),
+      (b.textContent ?? "").includes("仅保存到本机"),
+    );
+    const play = Array.from(document.querySelectorAll("button")).find((b) =>
+      (b.textContent ?? "").includes("保存并立即试玩"),
     );
     return {
       text,
       vertexLabels: poly,
       saveDisabled: save ? save.disabled : null,
+      playDisabled: play ? play.disabled : null,
     };
   });
 }
@@ -175,9 +181,11 @@ try {
 
   await check("0 个点时完成与保存均不可用", async () => {
     const fin = await buttonState(page, "完成区域");
-    const save = await buttonState(page, "保存我的游戏");
+    const save = await buttonState(page, "仅保存到本机");
+    const play = await buttonState(page, "保存并立即试玩");
     assert(fin?.disabled === true, "0 点时「完成区域」应禁用");
-    assert(save?.disabled === true, "绘制会话中「保存我的游戏」应禁用");
+    assert(save?.disabled === true, "绘制会话中「仅保存到本机」应禁用");
+    assert(play?.disabled === true, "绘制会话中「保存并立即试玩」应禁用");
   });
 
   await page.screenshot({ path: path.join(ARTIFACTS, "design-02-drawing.png") });
@@ -224,8 +232,10 @@ try {
       text.includes("自定义区域") && /\d+ 个边界点/.test(text),
       "完成后应显示边界点汇总",
     );
-    const save = await buttonState(page, "保存我的游戏");
+    const save = await buttonState(page, "仅保存到本机");
+    const play = await buttonState(page, "保存并立即试玩");
     assert(save?.disabled === false, "区域完成后保存应可用");
+    assert(play?.disabled === false, "区域完成后「保存并立即试玩」应可用");
   });
 
   await check("完成后地图点击恢复为「添加场景」", async () => {

@@ -13,7 +13,6 @@
  */
 
 import puppeteer from "puppeteer-core";
-import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -252,12 +251,10 @@ try {
   });
 
   /* ---------- 7. 地图崩溃修复仍在 ---------- */
-  await check("B7 地图崩溃修复仍然在场（提交祖先关系 + teardown 顺序代码）", async () => {
-    const isAncestor = execSync(
-      'git merge-base --is-ancestor 90dac20c0e7f015cfeae1f08a6d8bb9c40755174 HEAD && echo YES || echo NO',
-      { cwd: process.cwd(), encoding: "utf8" },
-    ).trim();
-    assert(isAncestor === "YES", "90dac20 不是当前 HEAD 的祖先");
+  await check("B7 地图崩溃修复仍然在场（teardown 顺序代码）", async () => {
+    // 原断言要求 PR #65 的原始提交 90dac20 是 HEAD 祖先；master 采用
+    // squash merge（5efbb7e），等效修复内容已进入但 SHA 不同，该检查失效。
+    // 改为直接校验修复代码在场：detachLayer 定义与 teardown 顺序。
     const gm = readFileSync(path.join(process.cwd(), "components", "game-map.tsx"), "utf8");
     assert(gm.includes("function detachLayer"), "game-map.tsx 缺少 detachLayer");
     assert(gm.includes("map.stop()") && gm.indexOf("map.stop()") < gm.indexOf("map.remove()"), "teardown 应先 stop 再 remove");
