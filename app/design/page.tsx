@@ -830,9 +830,16 @@ export default function DesignPage() {
 
                         <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">路线顺序</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>\n\n<label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">现场名称<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
-            <label className="mt-3 block text-xs font-semibold">到达后故事<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
-            <label className="mt-3 block text-xs font-semibold">到达提示<textarea className="input mt-1 min-h-20" value={selected.briefing ?? ""} onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
-            <MediaEditor media={selected.media} onChange={(media) => updateScene(selected.id, { media })} />
+            <div className="mt-3 rounded-xl border border-[var(--line)] p-3">
+              <p className="text-xs font-bold">情景编辑</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">先让玩家看懂“这里发生了什么”，再告诉他要做什么。用短句即可，不需要写成长故事。</p>
+              <label className="mt-3 block text-xs font-semibold">到达后故事（玩家看到的情景）<textarea className="input mt-1 min-h-24" value={selected.story} placeholder="例如：你找到了一张神秘藏宝者留下的照片……" onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
+              <label className="mt-3 block text-xs font-semibold">前往地点时的提示<textarea className="input mt-1 min-h-16" value={selected.briefing ?? ""} placeholder="告诉玩家去哪里、注意什么，不要提前泄露答案。" onChange={(e) => updateScene(selected.id, { briefing: e.target.value })} /></label>
+              <label className="mt-3 block text-xs font-semibold">玩家任务指令<textarea className="input mt-1 min-h-16" value={selected.hint ?? ""} placeholder="例如：仔细看照片，找出建筑上的十字架。" onChange={(e) => updateScene(selected.id, { hint: e.target.value })} /></label>
+              <p className="mt-3 text-xs font-semibold">本关现场图片</p>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">上传真实地点照片，帮助玩家认出现场；若图片本身是谜题线索，也可以在题目图片区添加。</p>
+              <MediaEditor media={selected.media} onChange={(media) => updateScene(selected.id, { media })} />
+            </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2">
               <label className="text-xs font-semibold">纬度<input className="input mt-1" inputMode="decimal" value={selected.location.lat} onChange={(e) => updateLocation(selected.id, Number(e.target.value), selected.location.lng)} /></label>
@@ -840,8 +847,23 @@ export default function DesignPage() {
             </div>
 
             <div className="mt-4 rounded-xl bg-[var(--surface)] p-3">
-              <p className="text-xs font-semibold">挑战</p>
-              <label className="mt-2 block text-xs">问题<textarea className="input mt-1 min-h-16" value={selected.challenge?.question ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, question: e.target.value } : undefined })} /></label>
+              <p className="text-xs font-semibold">题目与验收</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">题目应和现场照片、实物或故事有关。选择适合玩家的题型，并预先写清正确答案。</p>
+              <label className="mt-2 block text-xs font-semibold">题型
+                <select className="input mt-1" value={selected.challenge?.type ?? "choice"} onChange={(e) => {
+                  const type = e.target.value as "choice" | "text" | "keyword";
+                  const current = selected.challenge;
+                  const challenge = type === "choice"
+                    ? { type, question: current?.question ?? "你发现了什么？", options: ["选项 A", "选项 B", "选项 C"], answer: 0, hint: current?.hint ?? "" }
+                    : { type, question: current?.question ?? "你发现了什么？", answer: "", hint: current?.hint ?? "" };
+                  updateScene(selected.id, { challenge });
+                }}>
+                  <option value="choice">选择题（适合快速上手）</option>
+                  <option value="text">文本答案题</option>
+                  <option value="keyword">关键词题</option>
+                </select>
+              </label>
+              <label className="mt-2 block text-xs">问题<textarea className="input mt-1 min-h-16" value={selected.challenge?.question ?? ""} placeholder="例如：这所神学院的英文简称是什么？" onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, question: e.target.value } : { type: "choice", question: e.target.value, options: ["选项 A", "选项 B"], answer: 0 } })} /></label>
               {selected.challenge?.type === "choice" ? (
                 <>
                   <div className="mt-2 grid gap-2">
@@ -861,8 +883,13 @@ export default function DesignPage() {
                     <label className="mt-2 block text-xs">正确答案<input className="input mt-1" type="number" min={0} max={Math.max(0, (selected.challenge.options?.length ?? 1) - 1)} value={typeof selected.challenge.answer === "number" ? selected.challenge.answer : 0} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: Number(e.target.value) } })} /></label>
                   )}
                 </>
+              ) : selected.challenge?.type === "text" || selected.challenge?.type === "keyword" ? (
+                <label className="mt-2 block text-xs">可接受的答案（每行一个）
+                  <textarea className="input mt-1 min-h-16" value={(Array.isArray(selected.challenge.answer) ? selected.challenge.answer : selected.challenge.answer === undefined ? [] : [String(selected.challenge.answer)]).join("\n")} placeholder={"BSOP\n菲圣"} onChange={(e) => updateScene(selected.id, { challenge: { ...selected.challenge!, answer: e.target.value.split("\n").map((v) => v.trim()).filter(Boolean) } })} />
+                </label>
               ) : null}
-              <label className="mt-2 block text-xs">答案说明<textarea className="input mt-1 min-h-16" value={selected.challenge?.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
+              <label className="mt-2 block text-xs">卡住时的提示<textarea className="input mt-1 min-h-14" value={selected.challenge?.hint ?? ""} placeholder="给一个帮助思考的提示，不要直接泄露答案。" onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, hint: e.target.value } : undefined })} /></label>
+              <label className="mt-2 block text-xs">答对后的故事反馈<textarea className="input mt-1 min-h-14" value={selected.challenge?.explanation ?? ""} placeholder="例如：你找到了藏宝者留下的第一段密码！" onChange={(e) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, explanation: e.target.value } : undefined })} /></label>
               <MediaEditor media={selected.challenge?.media} onChange={(media) => updateScene(selected.id, { challenge: selected.challenge ? { ...selected.challenge, media } : undefined })} />
             </div>
 
