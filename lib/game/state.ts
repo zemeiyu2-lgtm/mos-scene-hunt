@@ -129,36 +129,93 @@ export function rewardId(scene: Scene): string | null {
   return `${scene.id}:${type}:${value ?? title}`;
 }
 
+/** sceneId -> ids of scenes whose nextSceneId points at it. */
+function predecessorMap(game: Game): Map<string, string[]> {
+  const preds = new Map<string, string[]>();
+  for (const scene of game.scenes) {
+    if (!scene.nextSceneId) continue;
+    const list = preds.get(scene.nextSceneId);
+    if (list) list.push(scene.id);
+    else preds.set(scene.nextSceneId, [scene.id]);
+  }
+  return preds;
+}
+
 /**
- * Scenes the player is currently allowed to enter.
+ * Gate rule for one scene.
  *
- * A scene becomes available when its predecessor is completed. The entry scene
- * is available from the start. Because V0.1 is a linear chain, this walks the
- * chain rather than doing a general topological sort - but it is written as a
- * graph walk so branching content packs keep working when V0.2 adds them.
+ * A scene that declares `requires` opens only when every declared
+ * prerequisite is complete - the declared list replaces the implicit chain
+ * gate entirely, so branching authors take full control. Scenes without
+ * `requires` keep the V0.1 rule: the entry scene is open from the start and
+ * every other scene opens when its chain predecessor (nextSceneId) is
+ * complete.
+ *
+ * `completed` is the set of completions the engine actually honours (see
+ * `honouredCompletions`), so a hand-edited save cannot satisfy a gate.
+ */
+function sceneGateOpen(
+  scene: Scene,
+  entryId: string | undefined,
+  predecessors: Map<string, string[]>,
+  completed: Set<string>,
+): boolean {
+  if (scene.requires && scene.requires.length > 0) {
+    return scene.requires.every((id) => completed.has(id));
+  }
+  if (scene.id === entryId) return true;
+  return (predecessors.get(scene.id) ?? []).some((id) => completed.has(id));
+}
+
+/**
+ * Fixpoint over stored completions: a completion is honoured only when its
+ * dependency gate is satisfied by other *honoured* completions. Two passes of
+ * this keep linear chains identical to the old single walk from the entry
+ * scene, while also covering declared `requires` (which may unlock scenes
+ * outside the chain in any order).
+ */
+function honouredCompletions(
+  game: Game,
+  isCompleted: (sceneId: string) => boolean,
+): Set<string> {
+  const entryId = entryScene(game)?.id;
+  const predecessors = predecessorMap(game);
+  const honoured = new Set<string>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const scene of game.scenes) {
+      if (honoured.has(scene.id)) continue;
+      if (!isCompleted(scene.id)) continue;
+      if (sceneGateOpen(scene, entryId, predecessors, honoured)) {
+        honoured.add(scene.id);
+        changed = true;
+      }
+    }
+  }
+  return honoured;
+}
+
+/**
+ * Scenes the player is currently allowed to enter (the unlocked frontier).
+ *
+ * The result keeps the V0.1 shape: scenes already completed are not listed,
+ * so a linear hunt yields exactly the current target and a finished hunt
+ * yields nothing. Scenes gated by declared `requires` join the frontier as
+ * soon as their prerequisites are complete, in sceneOrder order.
  */
 export function availableSceneIds(game: Game, state: GameState): string[] {
-  const entry = entryScene(game);
-  if (!entry) return [];
-  const byId = new Map(game.scenes.map((s) => [s.id, s]));
-  const available: string[] = [];
+  const honoured = honouredCompletions(game, (id) => state.scenes[id]?.status === "completed");
+  const entryId = entryScene(game)?.id;
+  const predecessors = predecessorMap(game);
 
-  const walk = (sceneId: string) => {
-    const scene = byId.get(sceneId);
-    if (!scene) return;
-    const progress = state.scenes[scene.id];
-    const done = progress?.status === "completed";
-    if (!done) {
-      // Reaching a scene that is not complete stops the walk: everything past it
-      // stays locked.
-      available.push(scene.id);
-      return;
-    }
-    if (scene.nextSceneId) walk(scene.nextSceneId);
-  };
-
-  walk(entry.id);
-  return available;
+  return sceneOrder(game)
+    .filter(
+      (scene) =>
+        !honoured.has(scene.id) &&
+        sceneGateOpen(scene, entryId, predecessors, honoured),
+    )
+    .map((scene) => scene.id);
 }
 
 /** The scene the player should be heading to right now. */
@@ -296,13 +353,14 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
   }
 
   // Re-derive legitimacy so a tampered save file cannot unlock future scenes.
-  // A scene may only stay `completed` if the whole chain leading to it is also
-  // completed - otherwise a hand-edited localStorage entry would skip the hunt.
-  const chain = sceneOrder(game);
-  let gateOpen = true;
-  for (const scene of chain) {
+  // A scene may only stay `completed` if its dependency gate is satisfied by
+  // other honoured completions - the chain prefix for classic packs, the
+  // declared `requires` list for dependency-gated scenes. Otherwise a
+  // hand-edited localStorage entry would skip the hunt.
+  const honoured = honouredCompletions(game, (id) => scenes[id]?.status === "completed");
+  for (const scene of game.scenes) {
     const progress = scenes[scene.id];
-    if (!gateOpen && progress.status === "completed") {
+    if (progress.status === "completed" && !honoured.has(scene.id)) {
       // Unreachable but completed: strip it back to the baseline.
       scenes[scene.id] = {
         ...progress,
@@ -310,9 +368,7 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
         completedAt: undefined,
         grantedRewardIds: [],
       };
-      continue;
     }
-    if (progress.status !== "completed") gateOpen = false;
   }
   // The current scene must always be one the player can actually be on.
   const allowed = new Set(

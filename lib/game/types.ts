@@ -108,6 +108,14 @@ export interface Scene {
   };
   /** Progression graph. `null` means "this is the final scene". */
   nextSceneId: string | null;
+  /**
+   * Declared prerequisite scene ids. When present and non-empty, the scene
+   * opens only after ALL of them are completed - the declared list replaces
+   * the implicit nextSceneId chain gate entirely. Omit it (or leave it empty)
+   * to keep the classic linear-chain behaviour, so existing packs are
+   * unaffected.
+   */
+  requires?: string[];
   challenge?: Challenge;
   reward?: Reward;
   /** Optional visual/resource material shown after arrival. */
@@ -339,6 +347,14 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
         }
       }
 
+      if (scene.requires !== undefined) {
+        if (!Array.isArray(scene.requires) || scene.requires.some((r) => typeof r !== "string" || !r)) {
+          err(`${base}.requires`, "必须是场景 id 字符串数组");
+        } else if (sid && scene.requires.includes(sid)) {
+          err(`${base}.requires`, `场景不能依赖自身：${sid}`);
+        }
+      }
+
       if (scene.challenge) {
         validateChallenge(scene.challenge, `${base}.challenge`, err, warn);
       }
@@ -361,7 +377,16 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
       if (scene?.nextSceneId && !ids.has(scene.nextSceneId)) {
         err(`$.scenes[${i}].nextSceneId`, `指向不存在的场景：${scene.nextSceneId}`);
       }
+      if (Array.isArray(scene?.requires)) {
+        for (const r of scene.requires) {
+          if (!ids.has(r)) {
+            err(`$.scenes[${i}].requires`, `指向不存在的场景：${r}`);
+          }
+        }
+      }
     });
+
+    detectRequiresCycles(g.scenes, issues);
 
     const entry = g.entrySceneId ?? g.scenes[0]?.id;
     if (entry && !ids.has(entry)) {
@@ -469,16 +494,54 @@ function detectCycle(entryId: string, scenes: Scene[], issues: ValidationIssue[]
   visit(entryId, []);
 }
 
+/**
+ * Declared `requires` edges must form a directed acyclic graph: a dependency
+ * cycle would leave every member permanently locked with no diagnostic.
+ */
+function detectRequiresCycles(scenes: Scene[], issues: ValidationIssue[]): void {
+  const byId = new Map(scenes.map((s) => [s.id, s]));
+  const state = new Map<string, 0 | 1 | 2>();
+
+  const visit = (id: string, trail: string[]): void => {
+    const status = state.get(id);
+    if (status === 1) {
+      issues.push({
+        path: `$.scenes[${id}]`,
+        message: `前置依赖存在环：${[...trail, id].join(" -> ")}`,
+        severity: "error",
+      });
+      return;
+    }
+    if (status === 2) return;
+    state.set(id, 1);
+    for (const r of byId.get(id)?.requires ?? []) visit(r, [...trail, id]);
+    state.set(id, 2);
+  };
+  for (const scene of scenes) if (scene?.id) visit(scene.id, []);
+}
+
 function collectReachable(entryId: string, scenes: Scene[]): Set<string> {
   const byId = new Map(scenes.map((s) => [s.id, s]));
+  // Reverse adjacency of declared prerequisites: r -> [scenes that require r].
+  const dependents = new Map<string, string[]>();
+  for (const s of scenes) {
+    for (const r of s.requires ?? []) {
+      const list = dependents.get(r);
+      if (list) list.push(s.id);
+      else dependents.set(r, [s.id]);
+    }
+  }
   const seen = new Set<string>();
   const stack = [entryId];
   while (stack.length) {
     const id = stack.pop()!;
     if (seen.has(id)) continue;
     seen.add(id);
-    const next = byId.get(id)?.nextSceneId;
-    if (next) stack.push(next);
+    const scene = byId.get(id);
+    // Chain edges flow forward; declared prerequisites count too, so a scene
+    // reachable only through `requires` is not an orphan.
+    if (scene?.nextSceneId) stack.push(scene.nextSceneId);
+    for (const dependent of dependents.get(id) ?? []) stack.push(dependent);
   }
   return seen;
 }
