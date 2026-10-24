@@ -192,6 +192,34 @@ async function simulateAt(page, chipNeedle) {
   await sleep(600);
 }
 
+/** 从地图展开任务面板并进入指定场景的故事页。
+ *  到达后场景可能处于 arrived（面板给「解锁情境」）或 challenging
+ *  （自动链路已开挑战，面板给「查看任务详情」→ 任务列表），两条路径都要能走通。 */
+async function openSceneStoryFromMap(page, sceneTitle) {
+  await page.evaluate(() => {
+    const b = document.querySelector('button[aria-label="展开任务详情"]');
+    if (b) b.click();
+  });
+  await sleep(500);
+  const unlock = await page.evaluate(() => {
+    const b = Array.from(document.querySelectorAll("button")).find((n) =>
+      (n.textContent ?? "").includes("解锁情境"),
+    );
+    if (b) { b.click(); return true; }
+    return false;
+  });
+  if (unlock) {
+    await until(async () => (await page.url()).includes("/scene/"), 10000);
+  } else {
+    await clickByText(page, "a", "查看任务详情");
+    await until(async () => (await page.url()).includes("/quest"), 10000);
+    await sleep(800);
+    await clickByText(page, "a", sceneTitle);
+    await until(async () => (await page.url()).includes("/scene/"), 10000);
+  }
+  await sleep(1200);
+}
+
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 430, height: 950, deviceScaleFactor: 2 });
@@ -201,10 +229,10 @@ try {
   log("— A. 创建游戏 —");
 
   let gameId = null;
-  await check("A1 从创作中心进入设计器并新建空白游戏", async () => {
+  await check("A1 从创作库进入设计器并新建空白游戏", async () => {
     await page.goto(`${BASE}/create`, { waitUntil: "networkidle2" });
     await sleep(1000);
-    assert((await bodyText(page)).includes("创作中心"), "创作中心未渲染");
+    assert((await bodyText(page)).includes("创作库"), "创作库未渲染");
     await clickByText(page, "a", "进入设计器");
     await until(async () => (await page.url()).includes("/design"), 10000);
     await sleep(1500);
@@ -362,30 +390,27 @@ try {
     await sleep(1500);
   });
 
-  await check("C2 地图页标注模拟定位且场景可见", async () => {
+  await check("C2 传送抵达：自动进入情境→挑战链路", async () => {
     await simulateAt(page, "1. 钟楼");
-    const text = await bodyText(page);
-    assert(text.includes("模拟定位中"), "页面没有标明这是模拟定位");
-    assert(text.includes("钟楼"), "地图页看不到场景");
+    // 25461eb/a1cfc29 起：地图在「新鲜到达」时自动跳情境页（?auto=1），
+    // 情境页 900ms 后自动进入挑战页。旧断言假设到达后停留在地图页并出现
+    // 「解锁情境」按钮，已不匹配；改为验收自动链路把玩家送到场景内容。
+    await until(async () => /\/(scene|challenge)\//.test(page.url()), 12000);
+    await sleep(1300);
+    assert((await bodyText(page)).includes("钟楼"), "情境/挑战页看不到场景内容");
   });
 
-  await check("C3 抵达→解锁情境→故事页", async () => {
-    const btn = await until(
-      async () => {
-        const ok = await page.evaluate(() => {
-          const b = Array.from(document.querySelectorAll("button")).find((n) =>
-            (n.textContent ?? "").includes("解锁情境"),
-          );
-          if (b) b.click();
-          return Boolean(b);
-        });
-        return ok;
-      },
-      15000,
-    );
-    assert(btn, "抵达后没有出现「解锁情境」按钮");
-    await until(async () => (await page.url()).includes("/scene/"), 10000);
+  await check("C2b 返回地图后仍标注模拟定位", async () => {
+    // 模拟定位徽标是安全标注：模拟 fix 生效期间回到地图必须可见，
+    // 不得因自动跳转丢失 simulated 标志。
+    await clickByText(page, "button", "回到地图");
+    await until(async () => (await page.url()).replace(/\/$/, "").endsWith("/map"), 10000);
     await sleep(1200);
+    assert((await bodyText(page)).includes("模拟定位中"), "地图页没有标注模拟定位");
+  });
+
+  await check("C3 展开任务面板→进入情境故事页", async () => {
+    await openSceneStoryFromMap(page, "钟楼广场");
     const text = await bodyText(page);
     assert(text.includes("JOURNEY-STORY-1"), "故事一未显示");
     assert(text.includes("钟楼广场"), "场景标题不符");
@@ -410,22 +435,15 @@ try {
     await sleep(1200);
   });
 
-  await check("C6 第二站：关键词题→完成", async () => {
+  await check("C6 第二站：自动抵达→故事二→关键词题→完成", async () => {
     await simulateAt(page, "2. 喷泉");
-    const btn = await until(
-      async () =>
-        page.evaluate(() => {
-          const b = Array.from(document.querySelectorAll("button")).find((n) =>
-            (n.textContent ?? "").includes("解锁情境"),
-          );
-          if (b) b.click();
-          return Boolean(b);
-        }),
-      15000,
-    );
-    assert(btn, "第二站未触发抵达");
-    await until(async () => (await page.url()).includes("/scene/"), 10000);
-    await sleep(1200);
+    await until(async () => /\/(scene|challenge)\//.test(page.url()), 12000);
+    await sleep(1300);
+    // 自动链路已把情境页推进到挑战页；回地图后经任务面板验收故事二。
+    await clickByText(page, "button", "回到地图");
+    await until(async () => (await page.url()).replace(/\/$/, "").endsWith("/map"), 10000);
+    await sleep(1000);
+    await openSceneStoryFromMap(page, "喷泉步道");
     assert((await bodyText(page)).includes("JOURNEY-STORY-2"), "故事二未显示");
     await clickByText(page, "button", "开始任务");
     await until(async () => (await page.url()).includes("/challenge/"), 10000);

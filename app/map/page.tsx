@@ -25,6 +25,10 @@ import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
 const GPS_COURSE_MIN_SPEED_MPS = 1;
 /** Only a *fresh* arrival (recently crossed into the ring) auto-opens the scene. */
 const FRESH_ARRIVAL_WINDOW_MS = 30_000;
+/** 同一场景自动展开情境页的冷却：跨页面导航重挂载仍然生效。 */
+const AUTO_OPEN_COOLDOWN_MS = 60_000;
+/** 模块级判重表：客户端导航重挂载后依然保留（useRef 做不到）。 */
+const autoOpenedAt = new Map<string, number>();
 
 export default function MapPage() {
   const router = useRouter();
@@ -170,15 +174,25 @@ export default function MapPage() {
 
   // ---- 问题 3：到达当前目标后自动显示情境/问题 ------------------------
   // 只对「新鲜到达」触发（30 秒内跨入触发圈），避免老进度或站在圈内反复打开。
-  // 每个场景一次（ref 去重）；OPEN_CHALLENGE 在状态机里幂等，GPS 抖动不会重复
-  // 解锁或重复发奖。离开范围后挑战状态由状态机保留（challenging 不回退），
-  // 已填写的答案不会丢失。
+  // OPEN_CHALLENGE 在状态机里幂等，GPS 抖动不会重复解锁或重复发奖。离开范围后
+  // 挑战状态由状态机保留（challenging 不回退），已填写的答案不会丢失。
+  //
+  // 去重有两个坑：
+  //  1. useRef 挡不住客户端导航重挂载——挑战页「回到地图」→ 地图重挂载，会在
+  //     30 秒窗口内再次自动跳转，玩家被弹回情境页回不到地图；
+  //  2. arrivedAt 不能作为去重键——到达循环里状态机会刷新它（locked→arrived
+  //     会写入新时间戳），同一个到达会出现多个 arrivedAt。
+  // 因此用模块级「同场景 60 秒冷却」：跨重挂载保留，与 arrivedAt 解耦；
+  // 冷却大于 30 秒新鲜窗口，真离开再回来会得到新的到达，不会被误挡。
   const autoOpenedSceneRef = useRef<string | null>(null);
   useEffect(() => {
     if (!current || !arrivedScene || arrivedScene.id !== current.id) return;
     if (autoOpenedSceneRef.current === arrivedScene.id) return;
     const arrivedAt = state?.scenes[current.id]?.arrivedAt ?? 0;
     if (!arrivedAt || Date.now() - arrivedAt > FRESH_ARRIVAL_WINDOW_MS) return;
+    const lastOpenedAt = autoOpenedAt.get(arrivedScene.id) ?? 0;
+    if (Date.now() - lastOpenedAt < AUTO_OPEN_COOLDOWN_MS) return;
+    autoOpenedAt.set(arrivedScene.id, Date.now());
     autoOpenedSceneRef.current = arrivedScene.id;
     router.push(`/scene/${arrivedScene.id}?auto=1`);
   }, [arrivedScene?.id, current?.id, state, router]);
