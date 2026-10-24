@@ -10,6 +10,7 @@ import {
 } from "../game/types";
 import { readSharedGameFromUrl } from "./share";
 import { unwrapGamePackage, validateGamePackage } from "../game/package";
+import { getSharedGameLibraryState } from "./shared-save";
 import {
   cacheGameContent,
   clearCurrentAuthoredGameId,
@@ -432,17 +433,91 @@ export interface ImportedGamePackage {
   issues: ValidationIssue[];
 }
 
-/** Install a designer-exported game package after validation. */
-export function importGamePackage(text: string): ImportedGamePackage {
+/**
+ * Outcome of a conflict-aware package import.
+ *
+ * - `imported`: a NEW game id was validated, written and read back.
+ * - `already-exists`: same id, identical content (key-order insensitive) -
+ *   nothing was written, no duplicate record.
+ * - `conflict`: same id, different content (or an unreadable local record) -
+ *   the local game and its player progress are left byte-for-byte intact.
+ *   Re-importing a legitimately updated pack requires the batch-3+ decision
+ *   flow; there is deliberately no force-overwrite.
+ * - `error`: the package itself or the storage write failed; no partial
+ *   record is left behind.
+ */
+export type ImportPackageOutcome =
+  | { status: "imported"; game: Game; issues: ValidationIssue[] }
+  | { status: "already-exists"; game: Game }
+  | { status: "conflict"; game: Game }
+  | { status: "error"; message: string };
+
+/**
+ * Install a designer-exported game package with same-id conflict protection.
+ *
+ * Content identity reuses the batch-1 mechanism (`canonicalGameJson` via
+ * `getSharedGameLibraryState`): the full validated game object is compared
+ * with key order normalized, so an ID match alone never counts as "same" and
+ * irrelevant JSON formatting never counts as "different". Success requires a
+ * checked write AND a byte-exact readback, mirroring `saveSharedGameToLibrary`.
+ */
+export function importGamePackageChecked(text: string): ImportPackageOutcome {
   let raw: unknown;
-  try { raw = JSON.parse(text); } catch { throw new Error("游戏包不是有效的 JSON 文件"); }
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { status: "error", message: "游戏包不是有效的 JSON 文件" };
+  }
   const report = validateGamePackage(raw);
-  if (!report.game) throw new Error("游戏包校验失败：" + (report.issues[0]?.message ?? "无法读取游戏数据"));
+  if (!report.game) {
+    return {
+      status: "error",
+      message: "游戏包校验失败：" + (report.issues[0]?.message ?? "无法读取游戏数据"),
+    };
+  }
   const errors = report.issues.filter((issue) => issue.severity === "error");
-  if (errors.length > 0) throw new Error("游戏包校验失败：" + errors[0].message);
-  if (!saveAuthoredGame(report.game)) throw new Error("游戏包无法保存到本机，请检查浏览器存储权限");
-  markCurrentAuthoredGame(report.game.id);
-  return { game: report.game, issues: report.issues };
+  if (errors.length > 0) {
+    return { status: "error", message: "游戏包校验失败：" + errors[0].message };
+  }
+  const game = report.game;
+
+  const localState = getSharedGameLibraryState(game);
+  if (localState === "saved") return { status: "already-exists", game };
+  if (localState === "conflict") return { status: "conflict", game };
+
+  const saveResult = saveAuthoredGameChecked(game);
+  if (!saveResult.ok) {
+    return {
+      status: "error",
+      message:
+        saveResult.errors[0]?.message ?? "游戏包无法保存到本机，请检查浏览器存储权限",
+    };
+  }
+  // Read-back verification: only the exact bytes prove the write succeeded.
+  if (readAuthoredGameRaw(game.id) !== JSON.stringify(game)) {
+    return {
+      status: "error",
+      message: "保存后读回校验未通过，不能确认已保存。请重试；若反复失败，请检查浏览器存储空间。",
+    };
+  }
+  markCurrentAuthoredGame(game.id);
+  return { status: "imported", game, issues: report.issues };
+}
+
+/**
+ * Legacy throwing wrapper kept for compatibility.
+ *
+ * Callers that need to distinguish "already exists" from "imported" (or show
+ * a conflict) should use {@link importGamePackageChecked} instead.
+ */
+export function importGamePackage(text: string): ImportedGamePackage {
+  const outcome = importGamePackageChecked(text);
+  if (outcome.status === "error") throw new Error(outcome.message);
+  if (outcome.status === "conflict") {
+    throw new Error("本机已有一个同 ID 但内容不同的游戏，为避免覆盖你的游戏和进度，未导入。");
+  }
+  if (outcome.status === "already-exists") return { game: outcome.game, issues: [] };
+  return { game: outcome.game, issues: outcome.issues };
 }
 
 

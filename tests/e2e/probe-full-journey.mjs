@@ -494,9 +494,9 @@ try {
     assert(pack.game.scenes[0].challenge.options.join("|") === "三盏|四盏|五盏", "导出选项不符");
   });
 
-  await check("D2 导入游戏包：同 ID 按覆盖安装语义，内容以包为准", async () => {
-    // 先本地改名保存，再导入旧导出文件：同 ID 导入会覆盖同槽位（安装语义），
-    // 标题恢复为包内标题 —— 证明导入写的是包自己的 ID，不是随机新 ID。
+  await check("D2 导入游戏包：同 ID 不同内容拒绝覆盖（第二批冲突保护）", async () => {
+    // 先本地改名保存，再导入旧导出文件：同 ID 不同内容必须拒绝导入，
+    // 本机游戏原样保留（覆盖安装语义已在第二批移除，改为显式冲突提示）。
     await setFieldValue(page, "游戏名称", "验收·本地改名");
     await clickByText(page, "button", "保存到本机");
     await sleep(400);
@@ -520,9 +520,39 @@ try {
     assert(ok, "找不到导入文本框");
     await clickByText(page, "button", "校验并导入");
     await sleep(700);
-    assert((await bodyText(page)).includes("已导入「验收·全流程A线」"), "导入提示异常");
+    const text = await bodyText(page);
+    assert(text.includes("未导入"), "同 ID 不同内容未被拒绝导入");
+    assert(text.includes("内容不同"), "冲突提示缺少原因说明");
     raw = await page.evaluate((k) => window.localStorage.getItem(k), `${PREFIX}${gameId}`);
-    assert(raw && JSON.parse(raw).title === "验收·全流程A线", "导入后存档未按包内容恢复");
+    assert(raw && JSON.parse(raw).title === "验收·本地改名", "本机同 ID 游戏被覆盖");
+
+    // 用作者自己的保存路径把标题改回，后续 D3/E 段继续使用该游戏。
+    await setFieldValue(page, "游戏名称", "验收·全流程A线");
+    await clickByText(page, "button", "保存到本机");
+    await sleep(400);
+    raw = await page.evaluate((k) => window.localStorage.getItem(k), `${PREFIX}${gameId}`);
+    assert(JSON.parse(raw).title === "验收·全流程A线", "恢复标题失败");
+  });
+
+  await check("D2b 导入游戏包：新 ID 按包内 ID 写入，不产生随机 ID", async () => {
+    const packObj = JSON.parse(readFileSync(downloadFile, "utf8"));
+    packObj.game.id = `${gameId}-imported`;
+    const ok = await page.evaluate((text) => {
+      const ta = document.querySelector("#package-import textarea");
+      if (!ta) return false;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(ta, text);
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      return true;
+    }, JSON.stringify(packObj));
+    assert(ok, "找不到导入文本框");
+    await clickByText(page, "button", "校验并导入");
+    await sleep(700);
+    assert((await bodyText(page)).includes("已导入「验收·全流程A线」"), "新 ID 导入提示异常");
+    const raw = await page.evaluate(
+      (k) => window.localStorage.getItem(k),
+      `${PREFIX}${gameId}-imported`,
+    );
+    assert(raw && JSON.parse(raw).id === `${gameId}-imported`, "导入未按包内 ID 写入");
   });
 
   await check("D3 导入后的游戏可从玩家端进入", async () => {

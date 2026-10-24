@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Screen, LoadingState } from "@/components/ui";
-import { importGamePackage, listAuthoredGames, markCurrentAuthoredGame } from "@/lib/content";
+import { importGamePackageChecked, listAuthoredGames, markCurrentAuthoredGame } from "@/lib/content";
 import type { Game } from "@/lib/game/types";
 import { loadCloudCatalog, packUrl, publishedGames, type CloudGameEntry } from "@/lib/cloud";
 import { MapView } from "@/components/map-view";
@@ -47,12 +47,28 @@ export default function GamesPage() {
     try {
       const response = await fetch(packUrl(entry), { cache: "no-cache" });
       if (!response.ok) throw new Error("游戏包下载失败（HTTP " + response.status + "）");
-      const result = importGamePackage(await response.text());
+      const outcome = importGamePackageChecked(await response.text());
+      if (outcome.status === "error") {
+        setMessage(outcome.message);
+        return;
+      }
+      if (outcome.status === "conflict") {
+        setMessage(
+          "云端游戏与你本机的同名游戏内容不同。为保护你的本机游戏和进度，未覆盖；如需更新，请先在创作中心处理本机游戏。",
+        );
+        return;
+      }
       refreshLocal();
-      const warningCount = result.issues.filter((issue) => issue.severity === "warning").length;
+      if (outcome.status === "already-exists") {
+        setMessage(
+          "云端游戏与本机已安装的「" + outcome.game.title + "」内容相同，未重复写入，可直接开始。",
+        );
+        return;
+      }
+      const warningCount = outcome.issues.filter((issue) => issue.severity === "warning").length;
       setMessage(warningCount
-        ? "已下载并保存「" + result.game.title + "」；有 " + warningCount + " 项提醒，请在创作中心检查。"
-        : "已下载并保存「" + result.game.title + "」，可在上方本机游戏中直接开始。");
+        ? "已下载并保存「" + outcome.game.title + "」；有 " + warningCount + " 项提醒，请在创作中心检查。"
+        : "已下载并保存「" + outcome.game.title + "」，可在上方本机游戏中直接开始。");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "游戏下载失败");
     } finally {

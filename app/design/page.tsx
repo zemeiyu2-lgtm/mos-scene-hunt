@@ -32,7 +32,7 @@ import {
   listAuthoredGameIds,
   markCurrentAuthoredGame,
   saveAuthoredGameChecked,
-  importGamePackage,
+  importGamePackageChecked,
   readAuthoredGame,
 } from "@/lib/content";
 import type { Game, HuntArea, Scene } from "@/lib/game/types";
@@ -500,23 +500,37 @@ export default function DesignPage() {
   };
 
   const importPackageText = (text: string) => {
-    try {
-      const result = importGamePackage(text);
-      setDraft(result.game);
-      setSelectedId(result.game.scenes[0]?.id ?? null);
-      setSaved(true);
-      setDrawingArea(false);
-      setPlacingCircle(false);
-      setAreaSnapshot(undefined);
-      setShareUrl(null);
-      setShareMessage(null);
-      const warningCount = result.issues.filter((issue) => issue.severity === "warning").length;
-      setImportMessage(warningCount
-        ? `已导入「${result.game.title}」，发现 ${warningCount} 项提醒。请在地图上核对真实坐标与安全路线。`
-        : `已导入「${result.game.title}」，已保存到本机游戏库。`);
-    } catch (error) {
-      setImportMessage(error instanceof Error ? error.message : "导入失败，请检查 JSON 格式。");
+    const outcome = importGamePackageChecked(text);
+    if (outcome.status === "error") {
+      setImportMessage(outcome.message);
+      return;
     }
+    if (outcome.status === "conflict") {
+      // 同 ID 不同内容：绝不覆盖本机游戏，编辑器中的当前草稿也保持原样。
+      setImportMessage(
+        `本机已有一个同 ID（${outcome.game.id}）但内容不同的游戏，为避免覆盖你的游戏和进度，未导入。` +
+          "如需导入这份包，请先修改包内的游戏 ID，或确认后删除本机同名游戏再试。",
+      );
+      return;
+    }
+    const game = outcome.game;
+    setDraft(game);
+    setSelectedId(game.scenes[0]?.id ?? null);
+    setSaved(true);
+    setDrawingArea(false);
+    setPlacingCircle(false);
+    setAreaSnapshot(undefined);
+    setShareUrl(null);
+    setShareMessage(null);
+    if (outcome.status === "already-exists") {
+      // 内容完全相同：不重复写入，但把已存版本载入编辑器继续编辑是安全的。
+      setImportMessage(`本机已有内容相同的「${game.title}」，未重复写入；已载入编辑器。`);
+      return;
+    }
+    const warningCount = outcome.issues.filter((issue) => issue.severity === "warning").length;
+    setImportMessage(warningCount
+      ? `已导入「${game.title}」，发现 ${warningCount} 项提醒。请在地图上核对真实坐标与安全路线。`
+      : `已导入「${game.title}」，已保存到本机游戏库。`);
   };
 
   const importPackageFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
