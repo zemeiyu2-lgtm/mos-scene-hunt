@@ -381,9 +381,13 @@ body {
 .hero-explore {
   position: relative;
   overflow: hidden;
+  /* Aligned with the brand hero family (homepage/games/tutorial use the
+     same --hero-teal -> --hero-teal-mid -> --hero-gold ramp; batch C of
+     the 2026-10-24 visual work). The gold endpoint sits past 100% so it
+     only tints the far corner and white text keeps its contrast. */
   background:
     radial-gradient(circle at 85% 12%, rgba(245, 165, 36, 0.22), transparent 34%),
-    linear-gradient(135deg, #15233d 0%, #243b5d 55%, #3f6a68 100%);
+    linear-gradient(135deg, var(--hero-teal) 0%, var(--hero-teal-mid) 55%, var(--hero-gold) 140%);
   color: white;
 }
 .hero-explore::after {

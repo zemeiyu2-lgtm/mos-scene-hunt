@@ -124,4 +124,19 @@ describe("brand tokens (batch B)", () => {
     expect(globalsCss).toContain(".bsop-key");
     expect(globalsCss).toContain(".scene-observation");
   });
+
+  it("select hero joined the brand teal x gold family (batch C)", () => {
+    const rule = ruleForLike(globalsCss, ".hero-explore");
+    expect(rule).toContain("var(--hero-teal)");
+    expect(rule).toContain("var(--hero-gold)");
+    expect(rule).not.toContain("#15233d");
+  });
 });
+
+/** Matches a selector's rule body even when a later selector shares the prefix. */
+function ruleForLike(css: string, selector: string): string {
+  const idx = css.indexOf(selector + " {");
+  if (idx === -1) throw new Error(`selector not found: ${selector}`);
+  const end = css.indexOf("}", idx);
+  return css.slice(idx, end);
+}
