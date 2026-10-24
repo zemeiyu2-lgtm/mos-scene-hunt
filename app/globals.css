@@ -25,6 +25,16 @@
      3.37:1 to 5.02:1. */
   --accent-deep: #b45309;
   --ok: #2ec27e;
+  /* Map marker fills (batch D of the 2026-10-24 visual work). Deepened
+     status hues dedicated to the 34px map markers: their 14px-bold white
+     glyphs need 4.5:1 (normal text) and the fill needs 3:1 against both
+     the white border and light raster tiles. --ok / --nav-blue keep their
+     original values for non-marker roles (chips, completion hero, player
+     dot); the arrived marker reuses --nav-blue-deep (#2563eb, 5.17:1) so
+     no third blue is introduced. Computed in
+     tests/content/map-marker-contrast.test.ts. */
+  --marker-locked: #5f6b7a;
+  --marker-ok: #177245;
 
   /* Brand hero palette (teal x gold) — single source for the homepage,
      games and tutorial heroes. Mirrored for Leaflet (which needs plain
@@ -279,8 +289,12 @@ body {
 }
 
 .scene-marker--locked {
-  background: #98a1b3;
-  opacity: 0.85;
+  /* Batch D: the old #98a1b3 + whole-marker opacity 0.85 composited the
+     white glyph down to ~2.3-2.5:1 over light tiles (opacity dimmed the
+     text too, not just the fill). A solid deep slate keeps the "grey =
+     locked" convention and clears 4.5:1 on every light raster provider
+     without depending on the tile underneath. */
+  background: var(--marker-locked);
 }
 
 .scene-marker--available {
@@ -294,11 +308,17 @@ body {
 
 .scene-marker--arrived,
 .scene-marker--challenging {
-  background: var(--nav-blue);
+  /* Batch D: nav-blue's brightness twin. #1d7ff0 only reached 3.93:1 for
+     the white glyph; the documented deep variant (#2563eb) reaches
+     5.17:1 and keeps the blue "you are here / heading" family. */
+  background: var(--nav-blue-deep);
 }
 
 .scene-marker--completed {
-  background: var(--ok);
+  /* Batch D: dedicated deep green. White on the shared --ok (#2ec27e)
+     measured 2.30:1; --marker-ok keeps --ok untouched for chips and the
+     completion hero while the marker glyph reaches 5.95:1. */
+  background: var(--marker-ok);
 }
 
 .scene-marker--active {

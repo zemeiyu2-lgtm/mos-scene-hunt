@@ -31,7 +31,7 @@ import type { HuntArea, Scene } from "@/lib/game/types";
 import type { PositionFix } from "@/lib/location";
 
 import { TILE_PROVIDERS, type TileProviderId } from "@/lib/map/tiles";
-import { NAV_BLUE } from "@/lib/visual-tokens";
+import { MARKER_LOCKED, MARKER_OK, NAV_BLUE } from "@/lib/visual-tokens";
 
 export type { TileProviderId };
 
@@ -373,20 +373,23 @@ export default function GameMap({
         entry.scene.location.lng,
       ];
       const radius = resolveRadius(entry.scene.location);
+      // Ring strokes follow the batch-D marker fills so a status keeps one
+      // color across marker and ring (locked/complete; available/arrived
+      // rings keep the gold family, unchanged this batch).
       const style: L.PathOptions = {
         color:
           entry.status === "completed"
-            ? "#2ec27e"
+            ? MARKER_OK
             : entry.status === "locked"
-              ? "#98a1b3"
+              ? MARKER_LOCKED
               : "#f5a524",
         weight: entry.isActive ? 2.5 : 1.5,
         opacity: entry.status === "locked" ? 0.45 : 0.85,
         fillColor:
           entry.status === "completed"
-            ? "#2ec27e"
+            ? MARKER_OK
             : entry.status === "locked"
-              ? "#98a1b3"
+              ? MARKER_LOCKED
               : "#f5a524",
         fillOpacity: entry.inRange ? 0.22 : 0.1,
         dashArray: entry.status === "locked" ? "4 6" : undefined,
