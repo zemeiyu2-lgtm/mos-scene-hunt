@@ -94,7 +94,7 @@ export default function QuestPage() {
                       isDone
                         ? "bg-emerald-500 text-white"
                         : row.isActive
-                          ? "bg-[var(--accent)] text-[#3a2400]"
+                          ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
                           : "bg-[var(--line)] text-[var(--muted)]"
                     }`}
                   >

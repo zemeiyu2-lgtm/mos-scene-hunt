@@ -31,6 +31,7 @@ import type { HuntArea, Scene } from "@/lib/game/types";
 import type { PositionFix } from "@/lib/location";
 
 import { TILE_PROVIDERS, type TileProviderId } from "@/lib/map/tiles";
+import { NAV_BLUE } from "@/lib/visual-tokens";
 
 export type { TileProviderId };
 
@@ -646,10 +647,10 @@ export default function GameMap({
 
       const haloRadius = Math.max(5, player.accuracy);
       const haloStyle: L.PathOptions = {
-        color: simulated ? "#a855f7" : "#1d7ff0",
+        color: simulated ? "#a855f7" : NAV_BLUE,
         weight: 1,
         opacity: 0.5,
-        fillColor: simulated ? "#a855f7" : "#1d7ff0",
+        fillColor: simulated ? "#a855f7" : NAV_BLUE,
         fillOpacity: 0.12,
       };
       if (!playerHaloRef.current) {

@@ -94,9 +94,9 @@ export default function GamesPage() {
   return (
     <Screen title="游戏中心">
       <section className="card overflow-hidden">
-        <div className="relative h-[190px] bg-[#f4ead4]">
+        <div className="relative h-[190px] bg-[var(--gold-chalk)]">
           <MapView player={demoPlayer} entries={demoEntries} huntArea={demoGame.huntArea} tileProvider="osm" fitToHunt />
-          <span className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[#173f3b]/90 px-3 py-1 text-[10px] font-semibold text-white shadow">玩法示范 · 模拟位置</span>
+          <span className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[var(--hero-teal-veil)] px-3 py-1 text-[10px] font-semibold text-white shadow">玩法示范 · 模拟位置</span>
         </div>
         <div className="p-4">
           <div className="flex items-start justify-between gap-3">

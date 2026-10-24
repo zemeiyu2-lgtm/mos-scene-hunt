@@ -31,9 +31,9 @@ export default function TutorialPage() {
   return (
     <Screen title="玩法演示" headerRight={<Link href="/games" className="btn btn-ghost h-9 min-h-0 px-2 text-xs">返回游戏中心</Link>}>
       <section className="card overflow-hidden">
-        <div className="relative h-[280px] w-full bg-[#f4ead4]">
+        <div className="relative h-[280px] w-full bg-[var(--gold-chalk)]">
           <MapView player={demoPlayer} entries={entries} huntArea={demoGame.huntArea} tileProvider="osm" fitToHunt />
-          <div className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[#173f3b]/90 px-3 py-1 text-[10px] font-semibold text-white shadow">演示地图 · 模拟位置</div>
+          <div className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[var(--hero-teal-veil)] px-3 py-1 text-[10px] font-semibold text-white shadow">演示地图 · 模拟位置</div>
         </div>
         <div className="p-4">
           <div className="flex items-center justify-between gap-3">

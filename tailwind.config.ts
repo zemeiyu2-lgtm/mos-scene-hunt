@@ -8,24 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        // MOS Scene Hunt palette - deep indigo night + amber field-signal accent.
-        ink: {
-          900: "#0b1020",
-          800: "#141a30",
-          700: "#1d2542",
-          600: "#2a3459",
-        },
-        signal: {
-          DEFAULT: "#f5a524",
-          soft: "#ffd08a",
-          deep: "#c47c0a",
-        },
-        moss: {
-          DEFAULT: "#2ec27e",
-          deep: "#1c7d51",
-        },
-      },
+      // Brand colors live in app/globals.css :root custom properties and are
+      // referenced via arbitrary values (e.g. text-[var(--hero-teal)]); the
+      // unused ink/signal/moss Tailwind palette was removed in the 2026-10-24
+      // token unification after a full-reference search found zero usages.
       fontFamily: {
         sans: [
           "system-ui",

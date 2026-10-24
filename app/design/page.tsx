@@ -984,7 +984,7 @@ export default function DesignPage() {
                     <button
                       key={radius}
                       type="button"
-                      className={`chip ${Math.round(area?.radiusMeters ?? 100) === radius ? "bg-[var(--accent)] text-[#3a2400]" : "bg-[var(--surface)]"}`}
+                      className={`chip ${Math.round(area?.radiusMeters ?? 100) === radius ? "bg-[var(--accent)] text-[var(--accent-contrast)]" : "bg-[var(--surface)]"}`}
                       onClick={() => setHuntAreaRadius(radius)}
                     >
                       {radius}m
@@ -1046,7 +1046,7 @@ export default function DesignPage() {
             <button
               key={scene.id}
               type="button"
-              className={`chip shrink-0 ${scene.id === selected?.id ? "bg-[var(--accent)] text-[#3a2400]" : "bg-[var(--surface)]"}`}
+              className={`chip shrink-0 ${scene.id === selected?.id ? "bg-[var(--accent)] text-[var(--accent-contrast)]" : "bg-[var(--surface)]"}`}
               onClick={() => setSelectedId(scene.id)}
             >
               {i + 1}. {scene.title}
@@ -1119,7 +1119,7 @@ export default function DesignPage() {
                                 disabled={Boolean(challenge.reflective)}
                                 className={`h-7 w-7 shrink-0 rounded-full border text-[11px] font-bold ${
                                   isCorrect
-                                    ? "border-[var(--accent)] bg-[var(--accent)] text-[#3a2400]"
+                                    ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)]"
                                     : "border-[var(--line)] text-[var(--muted)]"
                                 }`}
                                 onClick={() => updateScene(selected.id, { challenge: setCorrectOption(challenge, i) })}

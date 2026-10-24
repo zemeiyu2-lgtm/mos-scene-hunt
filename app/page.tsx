@@ -94,7 +94,7 @@ export default function HomePage() {
     >
       {/* 首屏重点：地图演示 + 主操作 */}
       <section className="card overflow-hidden">
-        <div className="relative overflow-hidden bg-[linear-gradient(145deg,#173f3b_0%,#27665c_55%,#d6ad67_140%)] px-4 pb-4 pt-4 text-white">
+        <div className="relative overflow-hidden bg-[linear-gradient(145deg,var(--hero-teal)_0%,var(--hero-teal-mid)_55%,var(--hero-gold)_140%)] px-4 pb-4 pt-4 text-white">
           {game ? (
             <div className="flex items-center justify-between gap-3 text-[12px]">
               <span className="truncate font-semibold">{game.title}</span>
@@ -104,13 +104,13 @@ export default function HomePage() {
             </div>
           ) : null}
           {showDemoMap ? (
-            <div className="mt-3 overflow-hidden rounded-2xl border border-white/15 bg-[#f4ead4]">
+            <div className="mt-3 overflow-hidden rounded-2xl border border-white/15 bg-[var(--gold-chalk)]">
               <div className="relative h-[230px] w-full">
                 <MapView player={previewPlayer} entries={previewEntries} huntArea={previewGame.huntArea} tileProvider="osm" fitToHunt />
               </div>
             </div>
           ) : null}
-          <div className="mt-3 rounded-2xl bg-white p-2 text-[#173f3b] shadow-sm">
+          <div className="mt-3 rounded-2xl bg-white p-2 text-[var(--hero-teal)] shadow-sm">
             {loadError ? (
               <button type="button" className="btn btn-primary w-full" onClick={() => reloadContent(true)}>
                 重新加载游戏
@@ -123,7 +123,7 @@ export default function HomePage() {
           </div>
           {hasProgress && !complete ? (
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/20">
-              <div className="h-full rounded-full bg-[#f5c26b] transition-all" style={{ width: `${progressPercent}%` }} />
+              <div className="h-full rounded-full bg-[var(--gold-bright)] transition-all" style={{ width: `${progressPercent}%` }} />
             </div>
           ) : null}
         </div>

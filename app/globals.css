@@ -25,6 +25,28 @@
      3.37:1 to 5.02:1. */
   --accent-deep: #b45309;
   --ok: #2ec27e;
+
+  /* Brand hero palette (teal x gold) — single source for the homepage,
+     games and tutorial heroes. Mirrored for Leaflet (which needs plain
+     color strings, not CSS vars) in lib/visual-tokens.ts; a unit test
+     keeps the two in lockstep. */
+  --hero-teal: #173f3b;
+  --hero-teal-mid: #27665c;
+  --hero-teal-veil: rgba(23, 63, 59, 0.9);
+  --hero-gold: #d6ad67;
+  --gold-chalk: #f4ead4;
+  --gold-bright: #f5c26b;
+
+  /* Navigation blues: the player dot (#1d7ff0) and the target pointer
+     (#2563eb) are documented brightness variants of one semantic color;
+     --nav-blue-soft is the pointer's translucent halo tone. */
+  --nav-blue: #1d7ff0;
+  --nav-blue-deep: #2563eb;
+  --nav-blue-soft: #60a5fa;
+  --nav-blue-ring: rgba(29, 127, 240, 0.55);
+
+  /* Text/icon color on gold accent surfaces. */
+  --accent-contrast: #3a2400;
 }
 
 html,
@@ -221,7 +243,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: 999px;
-  background: #1d7ff0;
+  background: var(--nav-blue);
   border: 3px solid #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
@@ -230,7 +252,7 @@ body {
   position: absolute;
   inset: -8px;
   border-radius: 999px;
-  border: 2px solid rgba(29, 127, 240, 0.55);
+  border: 2px solid var(--nav-blue-ring);
   animation: pulse-ring 2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
 }
 
@@ -272,7 +294,7 @@ body {
 
 .scene-marker--arrived,
 .scene-marker--challenging {
-  background: #1d7ff0;
+  background: var(--nav-blue);
 }
 
 .scene-marker--completed {
@@ -289,7 +311,7 @@ body {
   background: transparent;
   border: none;
   box-shadow: none;
-  color: #3a2400;
+  color: var(--accent-contrast);
   font-size: 11px;
   font-weight: 700;
   padding: 0;
@@ -500,53 +522,9 @@ body {
 /* ------------------------------------------------------------------ */
 /* V0.5-B polish: BSOP reference experience                           */
 /* ------------------------------------------------------------------ */
-.bsop-reference__cover {
-  position: relative;
-  aspect-ratio: 16 / 7;
-  overflow: hidden;
-  background: #15233d;
-}
-.bsop-reference__image {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  opacity: .9;
-}
-.bsop-reference__overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 12px;
-  background: linear-gradient(180deg, rgba(10,18,35,.52), transparent 55%, rgba(10,18,35,.18));
-}
-.bsop-key-rail {
-  border: 1px solid #f1d18f;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #fff8e8, #fffdf7);
-  padding: 12px;
-}
-.bsop-key-rail__item {
-  min-width: 62px;
-  padding: 8px 7px;
-  border-radius: 12px;
-  background: rgba(255,255,255,.86);
-  border: 1px solid #f1e2bd;
-  text-align: center;
-}
-.bsop-key-rail__item span {
-  display: block;
-  font-size: 10px;
-  color: #c47c0a;
-}
-.bsop-key-rail__item b {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  white-space: nowrap;
-}
+/* The unused BSOP reference-cover and key-rail blocks were removed
+   in the 2026-10-24 token unification (zero references across app/ and
+   components/). */
 .scene-observation {
   display: flex;
   align-items: flex-start;
@@ -564,7 +542,7 @@ body {
   place-items: center;
   border-radius: 10px;
   background: #f5a524;
-  color: #3a2400;
+  color: var(--accent-contrast);
   font-size: 12px;
   font-weight: 800;
 }
@@ -617,7 +595,6 @@ body {
   background: linear-gradient(135deg, #fffaf0, #ffffff);
 }
 @media (max-width: 390px) {
-  .bsop-key-rail__item { min-width: 56px; padding-inline: 5px; }
   .bsop-key { min-height: 46px; font-size: 10px; }
 }
 
@@ -669,10 +646,6 @@ body {
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
-}
-.map-bottom-sheet {
-  border-color: rgba(245,165,36,.28);
-  box-shadow: 0 12px 34px -18px rgba(15,23,42,.32);
 }
 .scene-marker-wrap {
   position: relative;

@@ -389,9 +389,9 @@ export default function MapPage() {
                       role="img"
                       aria-label={targetBearing === null ? "目标方向暂不可用" : "目标方向指示"}
                     >
-                      <path d="M20 4 C25 11 29 17 29 23 A9 9 0 0 1 11 23 C11 17 15 11 20 4Z" fill="#60A5FA" opacity="0.35" />
-                      <path d="M20 3 L27 24 L20 20 L13 24 Z" fill="#2563EB" stroke="#FFFFFF" strokeWidth="1.4" strokeLinejoin="round" />
-                      <circle cx="20" cy="21" r="3.2" fill="#FFFFFF" stroke="#2563EB" strokeWidth="1.5" />
+                      <path d="M20 4 C25 11 29 17 29 23 A9 9 0 0 1 11 23 C11 17 15 11 20 4Z" style={{ fill: "var(--nav-blue-soft)" }} opacity="0.35" />
+                      <path d="M20 3 L27 24 L20 20 L13 24 Z" style={{ fill: "var(--nav-blue-deep)" }} stroke="#FFFFFF" strokeWidth="1.4" strokeLinejoin="round" />
+                      <circle cx="20" cy="21" r="3.2" fill="#FFFFFF" style={{ stroke: "var(--nav-blue-deep)" }} strokeWidth="1.5" />
                     </svg>
                   </div>
                   <div className="min-w-0 flex-1">
