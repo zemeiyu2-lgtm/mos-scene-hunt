@@ -227,6 +227,23 @@ export function readAuthoredGame(gameId: string): Game | null {
   }
 }
 
+/**
+ * Raw stored JSON for an authored pack, for byte-level verification.
+ *
+ * `hasAuthoredGame` only proves a key exists and `readAuthoredGame` proves the
+ * content is valid; neither proves the bytes just written are the bytes
+ * intended. Callers that must not report success on a hunch compare this
+ * against exactly what they wrote.
+ */
+export function readAuthoredGameRaw(gameId: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(authoringKey(gameId));
+  } catch {
+    return null;
+  }
+}
+
 export interface LoadedGame {
   game: Game;
   /** Non-fatal authoring problems worth surfacing in the dev panel. */

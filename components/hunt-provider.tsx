@@ -68,6 +68,14 @@ interface HuntContextValue {
   /** Non-fatal authoring warnings from validation. */
   contentIssues: LoadedGame["issues"];
   contentSource: "network" | "cache" | "local" | null;
+  /**
+   * True when the active pack came from a share link's #hunt= payload.
+   *
+   * `contentSource` deliberately reports "network" for shared packs (callers
+   * above only care about cache/local badges); the /select save flow needs the
+   * real origin, so it is exposed separately instead of re-purposing that field.
+   */
+  isSharedFromLink: boolean;
   loadProgress?: number;
 
   /** The scene the player should be heading to. */
@@ -155,7 +163,12 @@ export function HuntProvider({
 
         // Hydrate from storage and reconcile against the pack. Reconciliation is
         // what makes a content-pack edit safe mid-playthrough.
-        const persisted = loadGameState(gameId);
+        // Key hydration on the pack actually being played, not the provider's
+        // resolved prop id: a share link carries its own game id (the prop
+        // usually stays demo-hunt), and hydrating by the prop id made every
+        // share-link open treat the player's existing save for that game as a
+        // mismatch and re-persist a fresh state over it - silent progress loss.
+        const persisted = loadGameState(result.game.id);
         const hydrated = reconcileState(result.game, persisted);
         dispatch({ type: "HYDRATE", state: hydrated, __game: result.game } as never);
       } catch (err) {
@@ -374,6 +387,7 @@ export function HuntProvider({
       loadError,
       contentIssues: loaded?.issues ?? [],
       contentSource: loaded?.source === "shared" ? "network" : loaded?.source ?? null,
+      isSharedFromLink: loaded?.source === "shared",
       current: derived.current,
       distances: derived.distances,
       available: derived.available,

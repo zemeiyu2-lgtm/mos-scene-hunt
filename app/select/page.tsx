@@ -15,12 +15,26 @@ import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
 import { findManifestEntry } from "@/lib/content";
 import { readSharedGameOutcome } from "@/lib/content/share";
+import {
+  getSharedGameLibraryState,
+  saveSharedGameToLibrary,
+  type SharedGameLibraryState,
+} from "@/lib/content/shared-save";
 import { ErrorState, Screen } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 
 export default function SelectPage() {
   const router = useRouter();
-  const { game, loadError, reloadContent, state, statuses, startHunt, contentSource } = useHunt();
+  const {
+    game,
+    loadError,
+    reloadContent,
+    state,
+    statuses,
+    startHunt,
+    contentSource,
+    isSharedFromLink,
+  } = useHunt();
   const { start, status, permission } = useGps();
 
   // 分享链接诊断：URL 带 #hunt= 载荷却没能还原出游戏时，必须告诉接收者原因。
@@ -35,6 +49,43 @@ export default function SelectPage() {
       cancelled = true;
     };
   }, []);
+
+  /**
+   * 分享游戏的入库状态。初始值一律从本机存储重推（getSharedGameLibraryState），
+   * 而不是信任内存标记——刷新页面后也能正确显示「已保存」。
+   * 保存本身永远不会自动发生：只有玩家点击按钮才调用 saveSharedGameToLibrary。
+   */
+  const [saveState, setSaveState] = useState<SharedGameLibraryState>("not-saved");
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const sharedGameId = isSharedFromLink ? game?.id ?? null : null;
+  useEffect(() => {
+    if (!game || !sharedGameId) {
+      setSaveState("not-saved");
+      return;
+    }
+    setSaveState(getSharedGameLibraryState(game));
+  }, [game, sharedGameId]);
+
+  const saveSharedGame = () => {
+    if (!game || !sharedGameId || saveBusy) return;
+    setSaveBusy(true);
+    setSaveError(null);
+    // 让「正在保存…」先渲染一帧，再执行同步写入。
+    window.setTimeout(() => {
+      const outcome = saveSharedGameToLibrary(game);
+      if (outcome.status === "saved" || outcome.status === "already-saved") {
+        setSaveState("saved");
+      } else if (outcome.status === "conflict") {
+        setSaveState("conflict");
+      } else {
+        setSaveState("not-saved");
+        setSaveError(outcome.message);
+      }
+      setSaveBusy(false);
+    }, 30);
+  };
+
   const begin = () => {
     // Kick off GPS and the hunt together: the permission prompt appears while
     // the map is already loading, so the player is not staring at a blank screen.
@@ -92,8 +143,14 @@ export default function SelectPage() {
       <section className="card story-card overflow-hidden">
         <div className="hero-explore px-5 py-6">
           <p className="game-kicker">
-            {isAuthored ? "本机创作" : manifest?.difficulty === "easy" ? "入门" : "进阶"} ·{" "}
-            {game.language}
+            {isAuthored
+              ? "本机创作"
+              : isSharedFromLink
+                ? "朋友分享"
+                : manifest?.difficulty === "easy"
+                  ? "入门"
+                  : "进阶"}{" "}
+            · {game.language}
           </p>
           <h2 className="mt-2 text-[24px] font-bold leading-tight">{game.title}</h2>
           <div className="game-route mt-4"><span>探索</span><i>→</i><span>选择</span><i>→</i><span>行动</span><i>→</i><span>反思</span></div>
@@ -158,6 +215,50 @@ export default function SelectPage() {
           </div>
         </div>
       </section>
+
+      {isSharedFromLink && game ? (
+        <div className="card mt-4 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold">朋友分享的游戏 · 临时试玩中</p>
+              <p className="mt-0.5 text-[12px] leading-snug text-[var(--muted)]">
+                可以先直接游玩；保存后才会进入本机游戏库，之后可从「创作库」随时打开。
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary shrink-0"
+              disabled={saveBusy || saveState === "saved" || saveState === "conflict"}
+              onClick={saveSharedGame}
+            >
+              {saveState === "saved"
+                ? "已保存"
+                : saveBusy
+                  ? "正在保存…"
+                  : saveState === "conflict"
+                    ? "未保存"
+                    : saveError
+                      ? "重试保存"
+                      : "保存到我的游戏"}
+            </button>
+          </div>
+          {saveState === "saved" ? (
+            <p className="mt-2 rounded-xl bg-green-50 px-3 py-2 text-[12px] leading-snug text-green-800">
+              已保存到本机游戏库，可在「创作库」中随时找到并打开。
+            </p>
+          ) : null}
+          {saveState === "conflict" ? (
+            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[12px] leading-snug text-amber-900">
+              本机已有一个同名但内容不同的游戏。为避免覆盖你已有的游戏和进度，这次没有保存。
+            </p>
+          ) : null}
+          {saveError ? (
+            <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[12px] leading-snug text-red-700">
+              保存失败：{saveError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {hasProgress ? (
         <div className="card mt-4 p-4">
