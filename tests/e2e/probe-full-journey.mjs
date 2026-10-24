@@ -406,6 +406,10 @@ try {
     await clickByText(page, "button", "回到地图");
     await until(async () => (await page.url()).replace(/\/$/, "").endsWith("/map"), 10000);
     await sleep(1200);
+    // 983f260 修复的回归防护：到达仍在新鲜窗口内（<30s）、自动展开冷却
+    // （60s）尚未过期时，回到地图不允许被再次弹回情境页。1200ms 大于
+    // 情境页 900ms 自动进挑战链路，若弹回 URL 必然已变化。
+    assert((await page.url()).replace(/\/$/, "").endsWith("/map"), "回到地图后被自动弹回情境页（冷却判重失效）");
     assert((await bodyText(page)).includes("模拟定位中"), "地图页没有标注模拟定位");
   });
 

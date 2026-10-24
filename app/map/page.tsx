@@ -30,6 +30,11 @@ const AUTO_OPEN_COOLDOWN_MS = 60_000;
 /** 模块级判重表：客户端导航重挂载后依然保留（useRef 做不到）。 */
 const autoOpenedAt = new Map<string, number>();
 
+/** 冷却键包含游戏 id：场景 id 由设计者输入派生，不同游戏可能出现相同场景 id，
+ * 只按场景 id 判重会在切换游戏后的 60 秒内误挡另一个游戏的自动展开。 */
+const autoOpenKey = (gameId: string | undefined, sceneId: string) =>
+  `${gameId ?? "?"}/${sceneId}`;
+
 export default function MapPage() {
   const router = useRouter();
   const { settings, update } = useSettings();
@@ -190,9 +195,10 @@ export default function MapPage() {
     if (autoOpenedSceneRef.current === arrivedScene.id) return;
     const arrivedAt = state?.scenes[current.id]?.arrivedAt ?? 0;
     if (!arrivedAt || Date.now() - arrivedAt > FRESH_ARRIVAL_WINDOW_MS) return;
-    const lastOpenedAt = autoOpenedAt.get(arrivedScene.id) ?? 0;
+    const key = autoOpenKey(game?.id, arrivedScene.id);
+    const lastOpenedAt = autoOpenedAt.get(key) ?? 0;
     if (Date.now() - lastOpenedAt < AUTO_OPEN_COOLDOWN_MS) return;
-    autoOpenedAt.set(arrivedScene.id, Date.now());
+    autoOpenedAt.set(key, Date.now());
     autoOpenedSceneRef.current = arrivedScene.id;
     router.push(`/scene/${arrivedScene.id}?auto=1`);
   }, [arrivedScene?.id, current?.id, state, router]);
@@ -318,6 +324,17 @@ export default function MapPage() {
               </div>
             ) : null}
 
+            {status === "requesting" && !fix ? (
+              // 首次定位等待中：此前这里完全空白，弱 GPS（室内/高楼间）可能
+              // 长时间停在 requesting，玩家得不到任何反馈（雷达探针 N0 防的
+              // 就是这种空白等待态）。
+              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-[12.5px] leading-snug text-amber-900">
+                  正在获取定位……首次定位可能需要几秒钟，请在开阔位置稍候。
+                </p>
+              </div>
+            ) : null}
+
             {isSimulated ? (
               <div className="pointer-events-auto mt-2">
                 <span className="chip bg-purple-100 text-purple-700">
@@ -397,7 +414,7 @@ export default function MapPage() {
                     <p className="mt-2 text-[13px] leading-snug">
                       {targetBearing === null
                         ? "暂时无法确定目标方向。请确认定位权限，并移动到 GPS 信号较好的开阔位置。"
-                        : "蓝色方向指示指向当前目标。请同时观察地图和现场环境；方向会随定位更新，不显示可能不准确的距离数字。"}
+                        : "蓝色方向指示指向当前目标。请同时观察地图和现场环境；方向会随定位更新，卡片上的距离为 GPS 估算值，仅供参考。"}
                     </p>
                     {fixQuality?.message && !currentDistance?.inRange ? (
                       <p className="mt-2 text-[11.5px] leading-snug text-amber-700">{fixQuality.message}</p>
