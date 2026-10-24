@@ -43,7 +43,7 @@ export default function HowToCreatePage() {
   return (
     <Screen title="创作说明">
       <section className="card p-5">
-        <p className="game-kicker">MOS SCENE HUNT · 创作指南</p>
+        <p className="game-kicker game-kicker--light">MOS SCENE HUNT · 创作指南</p>
         <h2 className="mt-2 text-2xl font-bold">从一个想法，到一场真正能玩的寻宝</h2>
         <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">先想好玩家要经历什么，再把故事、地图、任务和奖励连起来。无需编程，AI 可以帮你起草，真实地点和宝藏兑现仍由设计者负责。</p>
       </section>

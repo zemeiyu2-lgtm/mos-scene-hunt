@@ -20,7 +20,10 @@
   --text: #101527;
   --muted: #5f6779;
   --accent: #f5a524;
-  --accent-deep: #c47c0a;
+  /* Deepened from #c47c0a (018a81a7's value) so white text reaches 5.02:1
+     (AA) instead of 3.37:1; as a text color on white it also rises from
+     3.37:1 to 5.02:1. */
+  --accent-deep: #b45309;
   --ok: #2ec27e;
 }
 
@@ -110,7 +113,10 @@ body {
 }
 
 .btn-primary:active:not(:disabled) {
+  /* White on the deepened accent-deep keeps 5.02:1 (the previous dark-brown
+     text on the darkened pressed background would have dropped to 3.34:1). */
   background: var(--accent-deep);
+  color: #ffffff;
 }
 
 .btn-secondary {
@@ -256,8 +262,12 @@ body {
 }
 
 .scene-marker--available {
-  background: var(--accent);
-  color: #3a2400;
+  /* 018a81a7's intent (deep accent + white, matching the other marker
+     states) adopted with a compliant value: #b45309 + white = 5.02:1 AA.
+     The pre-fix gold+brown pairing measured 7.18:1; the original commit's
+     #c47c0a pairing only reached 3.37:1 and is not adoptable verbatim. */
+  background: var(--accent-deep);
+  color: #ffffff;
 }
 
 .scene-marker--arrived,
@@ -372,6 +382,12 @@ body {
   letter-spacing: .2em;
   text-transform: uppercase;
   color: rgba(255,255,255,.62);
+}
+/* Variant for white cards: the base class is tuned for dark heroes
+   (62% white) and is nearly invisible on --card. Deep accent on white
+   measures 5.02:1. */
+.game-kicker--light {
+  color: var(--accent-deep);
 }
 .game-route {
   display: flex;

@@ -24,7 +24,7 @@ export default function CreatePage() {
   // 「创作中心」专指 /design（首页入口同名）。本页是本机游戏库管理（切换/重命名/
   // 删除/导出），历史上与 /design 同名造成两个「创作中心」并存的入口混淆。
   return <Screen title="创作库">
-    <section className="card p-5"><p className="game-kicker">MOS SCENE HUNT V0.6</p><h2 className="mt-2 text-2xl font-bold">创作、试玩、分享</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">地图、点位、故事、任务和奖励属于同一个游戏包。手机可以完成基础设计，电脑适合精细编辑。</p>
+    <section className="card p-5"><p className="game-kicker game-kicker--light">MOS SCENE HUNT V0.6</p><h2 className="mt-2 text-2xl font-bold">创作、试玩、分享</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">地图、点位、故事、任务和奖励属于同一个游戏包。手机可以完成基础设计，电脑适合精细编辑。</p>
       <div className="mt-4 grid grid-cols-2 gap-2"><Link href={working ? `/design?game=${encodeURIComponent(working.id)}` : "/design"} className="btn btn-primary text-center">进入设计器</Link><Link href="/design#package-import" className="btn btn-secondary text-center">导入 AI / 游戏包</Link></div>
       <Link href="/how-to-create" className="mt-3 inline-flex px-1 py-1 text-xs font-medium text-[var(--muted)]">第一次创作？查看创作说明 →</Link></section>
     <section className="card mt-4 p-5">
