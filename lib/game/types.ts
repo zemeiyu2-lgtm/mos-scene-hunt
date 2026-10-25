@@ -448,6 +448,10 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
           warn(`$.scenes[${i}].id`, `场景 "${scene.id}" 无法从入口到达（孤立场景）`);
         }
       });
+      // Liveness: a scene that IS reachable but can never open is a deadlock -
+      // e.g. a chain scene gated on an item whose only producer sits behind it
+      // (task edges and item edges forming a cycle no per-edge check can see).
+      detectUnopenableScenes(entry, g.scenes, itemProducers, reachable, issues);
     }
   }
 
@@ -600,6 +604,68 @@ function collectReachable(entryId: string, scenes: Scene[]): Set<string> {
     for (const dependent of dependents.get(id) ?? []) stack.push(dependent);
   }
   return seen;
+}
+
+/**
+ * Fixpoint over which scenes can EVER open, mirroring the engine's gate rule
+ * (`sceneGateOpen` in state.ts): task gates need openable completions, item
+ * gates need kinds minted by openable scenes, and an off-chain scene with no
+ * task-gate source may declare `requiresItems` as its only gate. A scene left
+ * outside the fixpoint can never start - with both task and item edges this
+ * covers cross-type deadlocks (e.g. B needs an item only C behind B can mint)
+ * that single-edge cycle detection cannot see. Unreachable scenes keep the
+ * pre-existing orphan warning and are not escalated here.
+ */
+function detectUnopenableScenes(
+  entryId: string,
+  scenes: Scene[],
+  itemProducers: Map<string, string[]>,
+  reachable: Set<string>,
+  issues: ValidationIssue[],
+): void {
+  const preds = new Map<string, string[]>();
+  for (const s of scenes) {
+    if (!s?.nextSceneId) continue;
+    const list = preds.get(s.nextSceneId);
+    if (list) list.push(s.id);
+    else preds.set(s.nextSceneId, [s.id]);
+  }
+
+  const openable = new Set<string>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const scene of scenes) {
+      if (!scene?.id || openable.has(scene.id)) continue;
+      const declared = scene.requires && scene.requires.length > 0;
+      const taskGate = declared
+        ? scene.requires!.every((id) => openable.has(id))
+        : scene.id === entryId || (preds.get(scene.id) ?? []).some((id) => openable.has(id));
+      const required = scene.requiresItems;
+      const itemGate =
+        !required ||
+        required.length === 0 ||
+        required.every((kind) =>
+          (itemProducers.get(kind) ?? []).some((producer) => openable.has(producer)),
+        );
+      const hasTaskSource =
+        !!declared || scene.id === entryId || (preds.get(scene.id) ?? []).length > 0;
+      if ((hasTaskSource ? taskGate : true) && itemGate) {
+        openable.add(scene.id);
+        changed = true;
+      }
+    }
+  }
+
+  scenes.forEach((scene, i) => {
+    if (scene?.id && reachable.has(scene.id) && !openable.has(scene.id)) {
+      issues.push({
+        path: `$.scenes[${i}]`,
+        message: `场景 "${scene.id}" 可从入口到达，但其任务依赖与物品依赖的组合永远无法满足（死锁）`,
+        severity: "error",
+      });
+    }
+  });
 }
 
 /** Total number of scenes in a hunt, for progress display. */
