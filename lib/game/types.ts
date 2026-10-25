@@ -116,6 +116,15 @@ export interface Scene {
    * unaffected.
    */
   requires?: string[];
+  /**
+   * Declared required item kinds. Every entry is an item-kind id that some
+   * scene's `item` reward produces (its `value ?? title`). When present and
+   * non-empty, the player must hold ALL of them before the scene opens - on
+   * top of whatever task gate (`requires` or the implicit chain) applies.
+   * Omit it (or leave it empty) for scenes with no item requirement, so
+   * existing packs are unaffected.
+   */
+  requiresItems?: string[];
   challenge?: Challenge;
   reward?: Reward;
   /** Optional visual/resource material shown after arrival. */
@@ -355,6 +364,15 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
         }
       }
 
+      if (scene.requiresItems !== undefined) {
+        if (
+          !Array.isArray(scene.requiresItems) ||
+          scene.requiresItems.some((r) => typeof r !== "string" || !r)
+        ) {
+          err(`${base}.requiresItems`, "必须是物品 id 字符串数组");
+        }
+      }
+
       if (scene.challenge) {
         validateChallenge(scene.challenge, `${base}.challenge`, err, warn);
       }
@@ -373,6 +391,19 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
 
     // Cross-reference + cycle detection over the scene graph.
     const ids = new Set(g.scenes.map((s) => s?.id).filter(Boolean) as string[]);
+    // Item kinds the pack can actually produce, with their producer scenes.
+    // Kind identity is the item reward's `value ?? title` - the same key the
+    // engine uses when minting and matching inventory records. Multiple scenes
+    // may produce the same kind; that is allowed, not an error.
+    const itemProducers = new Map<string, string[]>();
+    g.scenes.forEach((scene) => {
+      if (scene?.reward?.type !== "item") return;
+      const kind = scene.reward.value ?? scene.reward.title;
+      if (!kind) return;
+      const list = itemProducers.get(kind);
+      if (list) list.push(scene.id);
+      else itemProducers.set(kind, [scene.id]);
+    });
     g.scenes.forEach((scene, i) => {
       if (scene?.nextSceneId && !ids.has(scene.nextSceneId)) {
         err(`$.scenes[${i}].nextSceneId`, `指向不存在的场景：${scene.nextSceneId}`);
@@ -381,6 +412,22 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
         for (const r of scene.requires) {
           if (!ids.has(r)) {
             err(`$.scenes[${i}].requires`, `指向不存在的场景：${r}`);
+          }
+        }
+      }
+      if (Array.isArray(scene?.requiresItems)) {
+        for (const kind of scene.requiresItems) {
+          const producers = itemProducers.get(kind);
+          if (!producers) {
+            err(
+              `$.scenes[${i}].requiresItems`,
+              `物品 "${kind}" 无法由本游戏包中的任何物品奖励产出`,
+            );
+          } else if (producers.every((producer) => producer === scene.id)) {
+            err(
+              `$.scenes[${i}].requiresItems`,
+              `物品 "${kind}" 只能由本场景自己产出，场景将永远无法开始`,
+            );
           }
         }
       }
@@ -522,13 +569,24 @@ function detectRequiresCycles(scenes: Scene[], issues: ValidationIssue[]): void 
 
 function collectReachable(entryId: string, scenes: Scene[]): Set<string> {
   const byId = new Map(scenes.map((s) => [s.id, s]));
-  // Reverse adjacency of declared prerequisites: r -> [scenes that require r].
+  // Reverse adjacency: requires edges (r -> dependents) and item-kind edges
+  // (producer scene -> scenes that require its item kind), so a scene
+  // reachable only through declared gates is not an orphan.
   const dependents = new Map<string, string[]>();
+  const pushDependent = (from: string, to: string) => {
+    const list = dependents.get(from);
+    if (list) list.push(to);
+    else dependents.set(from, [to]);
+  };
   for (const s of scenes) {
-    for (const r of s.requires ?? []) {
-      const list = dependents.get(r);
-      if (list) list.push(s.id);
-      else dependents.set(r, [s.id]);
+    for (const r of s.requires ?? []) pushDependent(r, s.id);
+    if (s.reward?.type === "item") {
+      const kind = s.reward.value ?? s.reward.title;
+      if (kind) {
+        for (const other of scenes) {
+          if (other.requiresItems?.includes(kind)) pushDependent(s.id, other.id);
+        }
+      }
     }
   }
   const seen = new Set<string>();
@@ -538,8 +596,6 @@ function collectReachable(entryId: string, scenes: Scene[]): Set<string> {
     if (seen.has(id)) continue;
     seen.add(id);
     const scene = byId.get(id);
-    // Chain edges flow forward; declared prerequisites count too, so a scene
-    // reachable only through `requires` is not an orphan.
     if (scene?.nextSceneId) stack.push(scene.nextSceneId);
     for (const dependent of dependents.get(id) ?? []) stack.push(dependent);
   }

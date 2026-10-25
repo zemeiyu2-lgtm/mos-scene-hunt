@@ -118,7 +118,12 @@ export function gameToMarkdown(game: Game): string {
       `- 答案：${Array.isArray(challenge?.answer) ? challenge.answer.join(" | ") : challenge?.answer ?? ""}`,
       `- 答案说明：${challenge?.explanation ?? ""}`,
       `- 奖励类型：${reward?.type ?? "keyword"}`, `- 奖励名称：${reward?.title ?? ""}`,
-      `- 奖励内容：${reward?.value ?? ""}`, ""
+      `- 奖励内容：${reward?.value ?? ""}`,
+      // Progression gates survive the round trip: an empty list round-trips as
+      // an empty string and parses back to undefined, so legacy docs are
+      // unaffected and new fields are never silently dropped.
+      `- 前置任务：${scene.requires?.join(" | ") ?? ""}`,
+      `- 需求物品：${scene.requiresItems?.join(" | ") ?? ""}`, ""
     );
   });
   return lines.join("\n");
@@ -177,11 +182,19 @@ export function markdownToGame(markdown: string): unknown {
       title: rewardTitle,
       value: fields["奖励内容"] || rewardTitle,
     };
+    const parseIdList = (value?: string): string[] | undefined => {
+      const list = value?.split("|").map((v) => v.trim()).filter(Boolean) ?? [];
+      return list.length ? list : undefined;
+    };
+    const requires = parseIdList(fields["前置任务"]);
+    const requiresItems = parseIdList(fields["需求物品"]);
     return {
       id: fields["ID"] || `scene-${String(index + 1).padStart(2, "0")}`,
       title: block.title,
       story: fields["故事"] || "",
       ...(fields["到达提示"] ? { briefing: fields["到达提示"] } : {}),
+      ...(requires ? { requires } : {}),
+      ...(requiresItems ? { requiresItems } : {}),
       location: { ...coords, radius: parseNumber(fields["触发半径"]) ?? 15, ...(fields["地点"] ? { name: fields["地点"] } : {}) },
       nextSceneId: null,
       challenge,

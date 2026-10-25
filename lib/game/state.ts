@@ -142,58 +142,112 @@ function predecessorMap(game: Game): Map<string, string[]> {
 }
 
 /**
+ * Item-kind id an inventory record carries, or null for non-item records.
+ *
+ * This is the KIND identity ("the player holds a bronze key"), deliberately
+ * distinct from the reward RECORD id (`rewardId()`, "scene a granted its
+ * bronze key"). Gating must compare kinds: two different scenes may both
+ * grant the same kind, and either record proves the player holds it.
+ */
+function itemKindOfItem(item: InventoryItem): string | null {
+  if (item.type !== "item") return null;
+  return item.value ?? item.title;
+}
+
+/** Item kind a scene's item reward produces, or null. */
+function itemKindOfReward(scene: Scene): string | null {
+  if (!scene.reward || scene.reward.type !== "item") return null;
+  return scene.reward.value ?? scene.reward.title;
+}
+
+/**
  * Gate rule for one scene.
  *
- * A scene that declares `requires` opens only when every declared
- * prerequisite is complete - the declared list replaces the implicit chain
- * gate entirely, so branching authors take full control. Scenes without
- * `requires` keep the V0.1 rule: the entry scene is open from the start and
- * every other scene opens when its chain predecessor (nextSceneId) is
- * complete.
+ * Two independent gates must both open:
+ *  1. Task gate - a scene that declares `requires` opens only when every
+ *     declared prerequisite is complete (the list replaces the implicit chain
+ *     gate entirely); scenes without `requires` keep the V0.1 rule (entry
+ *     always open, others open when their chain predecessor is complete).
+ *  2. Item gate - a scene that declares `requiresItems` opens only when the
+ *     player holds ALL the listed item kinds. This is independent of the task
+ *     gate: completing tasks can never satisfy an item requirement.
  *
- * `completed` is the set of completions the engine actually honours (see
- * `honouredCompletions`), so a hand-edited save cannot satisfy a gate.
+ * `completed` / `heldItems` are the sets the engine actually honours (see
+ * `legitimateProgress`), so a hand-edited save cannot satisfy a gate.
  */
 function sceneGateOpen(
   scene: Scene,
   entryId: string | undefined,
   predecessors: Map<string, string[]>,
   completed: Set<string>,
+  heldItems: Set<string>,
 ): boolean {
+  const requiredItems = scene.requiresItems;
+  const hasItems = !!requiredItems && requiredItems.length > 0;
+  const itemGate = !hasItems || requiredItems!.every((kind) => heldItems.has(kind));
+  if (!itemGate) return false;
+
   if (scene.requires && scene.requires.length > 0) {
+    // Declared task gate replaces the implicit chain rule; the item gate above
+    // still applies on top of it.
     return scene.requires.every((id) => completed.has(id));
   }
-  if (scene.id === entryId) return true;
-  return (predecessors.get(scene.id) ?? []).some((id) => completed.has(id));
+  const onTaskChain =
+    scene.id === entryId || (predecessors.get(scene.id) ?? []).some((id) => completed.has(id));
+  if (onTaskChain) return true;
+  // A scene with no task-gate source at all (not the entry, no chain edge in,
+  // no declared `requires`) is unreachable under the classic rule. If it
+  // declares `requiresItems`, the item condition acts as its gate - there is
+  // no chain here to prematurely advance, so this cannot skip the linear hunt.
+  return hasItems;
 }
 
 /**
- * Fixpoint over stored completions: a completion is honoured only when its
- * dependency gate is satisfied by other *honoured* completions. Two passes of
- * this keep linear chains identical to the old single walk from the entry
- * scene, while also covering declared `requires` (which may unlock scenes
- * outside the chain in any order).
+ * Co-fixpoint over stored completions and inventory records: a completion is
+ * honoured only when its dependency gate is satisfied by other *honoured*
+ * completions and *legitimate* items; an item kind is legitimate only when a
+ * record from an honoured scene carries it (and matches what that scene's
+ * reward actually produces). The two sets feed each other, so they are grown
+ * together until stable - deterministic and monotone, hence terminating.
+ *
+ * This keeps linear chains identical to the old single walk from the entry
+ * scene while covering declared `requires` and `requiresItems` gates.
  */
-function honouredCompletions(
+function legitimateProgress(
   game: Game,
   isCompleted: (sceneId: string) => boolean,
-): Set<string> {
+  inventory: InventoryItem[],
+): { completed: Set<string>; heldItems: Set<string> } {
   const entryId = entryScene(game)?.id;
   const predecessors = predecessorMap(game);
-  const honoured = new Set<string>();
+  const byId = new Map(game.scenes.map((s) => [s.id, s]));
+
+  const completed = new Set<string>();
+  const heldItems = new Set<string>();
   let changed = true;
   while (changed) {
     changed = false;
+    for (const item of inventory) {
+      const kind = itemKindOfItem(item);
+      if (!kind || heldItems.has(kind)) continue;
+      if (!completed.has(item.sceneId)) continue;
+      const source = byId.get(item.sceneId);
+      // Kind-forgery guard: the record must be the kind its source scene
+      // actually mints, not merely pointed at a completed scene.
+      if (!source || itemKindOfReward(source) !== kind) continue;
+      heldItems.add(kind);
+      changed = true;
+    }
     for (const scene of game.scenes) {
-      if (honoured.has(scene.id)) continue;
+      if (completed.has(scene.id)) continue;
       if (!isCompleted(scene.id)) continue;
-      if (sceneGateOpen(scene, entryId, predecessors, honoured)) {
-        honoured.add(scene.id);
+      if (sceneGateOpen(scene, entryId, predecessors, completed, heldItems)) {
+        completed.add(scene.id);
         changed = true;
       }
     }
   }
-  return honoured;
+  return { completed, heldItems };
 }
 
 /**
@@ -201,19 +255,23 @@ function honouredCompletions(
  *
  * The result keeps the V0.1 shape: scenes already completed are not listed,
  * so a linear hunt yields exactly the current target and a finished hunt
- * yields nothing. Scenes gated by declared `requires` join the frontier as
- * soon as their prerequisites are complete, in sceneOrder order.
+ * yields nothing. Scenes gated by declared `requires` or `requiresItems` join
+ * the frontier as soon as their conditions are met, in sceneOrder order.
  */
 export function availableSceneIds(game: Game, state: GameState): string[] {
-  const honoured = honouredCompletions(game, (id) => state.scenes[id]?.status === "completed");
+  const { completed, heldItems } = legitimateProgress(
+    game,
+    (id) => state.scenes[id]?.status === "completed",
+    state.inventory,
+  );
   const entryId = entryScene(game)?.id;
   const predecessors = predecessorMap(game);
 
   return sceneOrder(game)
     .filter(
       (scene) =>
-        !honoured.has(scene.id) &&
-        sceneGateOpen(scene, entryId, predecessors, honoured),
+        !completed.has(scene.id) &&
+        sceneGateOpen(scene, entryId, predecessors, completed, heldItems),
     )
     .map((scene) => scene.id);
 }
@@ -353,11 +411,17 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
   }
 
   // Re-derive legitimacy so a tampered save file cannot unlock future scenes.
-  // A scene may only stay `completed` if its dependency gate is satisfied by
-  // other honoured completions - the chain prefix for classic packs, the
-  // declared `requires` list for dependency-gated scenes. Otherwise a
-  // hand-edited localStorage entry would skip the hunt.
-  const honoured = honouredCompletions(game, (id) => scenes[id]?.status === "completed");
+  // Completions and items are legitimate only together: a completion needs its
+  // dependency gate (task gate + item gate) satisfied, an item kind needs a
+  // record from a legitimate scene producing exactly that kind. The co-fixpoint
+  // avoids any circular dependency between the two derivations - otherwise a
+  // hand-edited localStorage entry could forge an item to legitimize a
+  // combine-scene completion (or vice versa).
+  const { completed: honoured } = legitimateProgress(
+    game,
+    (id) => scenes[id]?.status === "completed",
+    Array.isArray(raw.inventory) ? (raw.inventory as InventoryItem[]) : [],
+  );
   for (const scene of game.scenes) {
     const progress = scenes[scene.id];
     if (progress.status === "completed" && !honoured.has(scene.id)) {
@@ -378,15 +442,19 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
   );
 
   const inventory = Array.isArray(raw.inventory)
-    ? raw.inventory.filter(
-        (item): item is InventoryItem =>
-          !!item &&
-          typeof item.id === "string" &&
-          typeof item.title === "string" &&
-          !!byId.has(item.sceneId as string) &&
-          // An item whose scene is no longer completed is a stale reward.
-          scenes[item.sceneId as string]?.status === "completed",
-      )
+    ? raw.inventory.filter((item): item is InventoryItem => {
+        if (!item || typeof item.id !== "string" || typeof item.title !== "string") return false;
+        if (!byId.has(item.sceneId as string)) return false;
+        // An item whose scene is not legitimately completed is a stale reward.
+        if (!honoured.has(item.sceneId as string)) return false;
+        const source = byId.get(item.sceneId as string)!;
+        if (item.type === "item") {
+          // Kind-forgery guard: the record must carry exactly the kind its
+          // source reward mints, not merely point at a completed scene.
+          return itemKindOfReward(source) === itemKindOfItem(item);
+        }
+        return true;
+      })
     : [];
 
   // Keywords are re-derived from the surviving inventory rather than trusted
