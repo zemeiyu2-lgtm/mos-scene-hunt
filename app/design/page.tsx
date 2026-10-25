@@ -58,7 +58,7 @@ import {
 import type { MapSceneEntry } from "@/components/game-map";
 import type { TileProviderId } from "@/lib/map/tiles";
 import { useHunt } from "@/components/hunt-provider";
-import { createGameShareUrl } from "@/lib/content/share";
+import { createGameShareUrl, createPublishedGameUrl } from "@/lib/content/share";
 import { MediaEditor } from "@/components/media-gallery";
 import { exportGameJson, summarizeSpatial, validateGamePackage } from "@/lib/game/package";
 import { describeSaveErrors, type SaveFailureText } from "@/lib/game/save-errors";
@@ -395,32 +395,39 @@ export default function DesignPage() {
 
   /* ---------------------------------------------------------------- ④ 保存 */
 
+  /** Pre-flight checks shared by both share paths (self-contained, online). */
+  const ensureShareable = (): Game => {
+    if (!working) throw new Error("游戏尚未加载");
+    if (!packageReport?.canPlaytest) {
+      const firstError = packageReport?.issues.find((issue) => issue.severity === "error");
+      throw new Error(firstError ? `请先修复游戏问题：${firstError.message}` : "请先完成游戏校验");
+    }
+    const configured = (point: { lat: number; lng: number } | undefined) =>
+      Boolean(point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && !(point.lat === 0 && point.lng === 0));
+    const missing: string[] = [];
+    if (!configured(working.startLocation)) missing.push("真实起点");
+    if (!working.huntArea) {
+      missing.push("游戏区域");
+    } else if (working.huntArea.shape === "polygon") {
+      if ((working.huntArea.points?.length ?? 0) < MIN_POLYGON_POINTS) missing.push("完整的游戏区域边界");
+      else if (working.huntArea.points?.some((point) => !configured(point))) missing.push("游戏区域边界上的真实坐标");
+    } else if (!configured(working.huntArea.center)) {
+      missing.push("游戏区域中心");
+    }
+    if (working.scenes.some((scene) => !configured(scene.location))) missing.push("所有站点的真实 GPS 坐标");
+    if (missing.length) throw new Error("暂不能发布，请先设置：" + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。");
+    if (!save()) throw new Error("游戏未能保存到本机，请先修正下方提示的问题后再发布。");
+    return working;
+  };
+
   const share = async () => {
     if (!working || areaIncomplete || drawingArea) return;
     setShareBusy(true);
     setShareMessage(null);
     setShareUrl(null);
     try {
-      if (!packageReport?.canPlaytest) {
-        const firstError = packageReport?.issues.find((issue) => issue.severity === "error");
-        throw new Error(firstError ? `请先修复游戏问题：${firstError.message}` : "请先完成游戏校验");
-      }
-      const configured = (point: { lat: number; lng: number } | undefined) =>
-        Boolean(point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && !(point.lat === 0 && point.lng === 0));
-      const missing: string[] = [];
-      if (!configured(working.startLocation)) missing.push("真实起点");
-      if (!working.huntArea) {
-        missing.push("游戏区域");
-      } else if (working.huntArea.shape === "polygon") {
-        if ((working.huntArea.points?.length ?? 0) < MIN_POLYGON_POINTS) missing.push("完整的游戏区域边界");
-        else if (working.huntArea.points?.some((point) => !configured(point))) missing.push("游戏区域边界上的真实坐标");
-      } else if (!configured(working.huntArea.center)) {
-        missing.push("游戏区域中心");
-      }
-      if (working.scenes.some((scene) => !configured(scene.location))) missing.push("所有站点的真实 GPS 坐标");
-      if (missing.length) throw new Error("暂不能发布，请先设置：" + [...new Set(missing)].join("、") + "。0,0 是占位值，不是真实地点。");
-      if (!save()) throw new Error("游戏未能保存到本机，请先修正下方提示的问题后再发布。");
-      const url = await createGameShareUrl(working);
+      const game = ensureShareable();
+      const url = await createGameShareUrl(game);
       setShareUrl(url);
       if (navigator.share) {
         try {
@@ -448,6 +455,44 @@ export default function DesignPage() {
       }
     } catch (error) {
       setShareMessage(error instanceof Error ? error.message : "生成分享链接失败");
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  /**
+   * Publish the game to the server and share the short hosted link. The pack
+   * is validated again server-side; identical re-publishes are idempotent and
+   * every version gets an immutable versionId. The resulting short URL goes
+   * through the same link/QR/share UI as the self-contained link.
+   */
+  const publishOnline = async () => {
+    if (!working || areaIncomplete || drawingArea) return;
+    setShareBusy(true);
+    setShareMessage(null);
+    setShareUrl(null);
+    try {
+      const game = ensureShareable();
+      const response = await fetch("/api/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(game),
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { gameId?: string; versionId?: string; created?: boolean; playPath?: string; message?: string; detail?: string }
+        | null;
+      if (!response.ok || !body?.playPath) {
+        throw new Error(body?.detail || body?.message || `发布失败（HTTP ${response.status}）`);
+      }
+      const url = createPublishedGameUrl(body.gameId!, body.versionId!);
+      setShareUrl(url);
+      setShareMessage(
+        body.created
+          ? `已发布到线上（版本 ${body.versionId}）。链接和二维码已生成，可复制或扫码分享。`
+          : `内容未变化，线上已是该版本（${body.versionId}），无需重复发布。`,
+      );
+    } catch (error) {
+      setShareMessage(error instanceof Error ? error.message : "发布到线上失败");
     } finally {
       setShareBusy(false);
     }
@@ -1290,7 +1335,10 @@ export default function DesignPage() {
             {saved ? "✓ 已保存到本机" : "仅保存到本机"}
           </button>
           <button type="button" className="btn btn-primary btn-block" onClick={share} disabled={areaIncomplete || drawingArea || shareBusy}>
-            {shareBusy ? "正在生成分享链接…" : "🔗 发布并分享给朋友"}
+            {shareBusy ? "正在生成分享链接…" : "🔗 生成分享链接（本机直传）"}
+          </button>
+          <button type="button" className="btn btn-secondary btn-block" onClick={publishOnline} disabled={areaIncomplete || drawingArea || shareBusy}>
+            {shareBusy ? "正在发布…" : "☁️ 发布到线上（生成可分享链接）"}
           </button>
           {shareUrl ? (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">

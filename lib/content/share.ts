@@ -1,7 +1,9 @@
 import type { Game } from "@/lib/game/types";
 import { validateGame } from "@/lib/game/types";
+import { isValidGameId, isValidVersionId } from "@/lib/publish/version";
 
 const PREFIX = "#hunt=";
+const CLOUD_PREFIX = "#cloud=";
 
 function toBase64Url(bytes: Uint8Array): string {
   let binary = "";
@@ -52,6 +54,41 @@ export async function createGameShareUrl(game: Game): Promise<string> {
 }
 
 /**
+ * Link to a published game version hosted by the server (serverization batch
+ * 1). The fragment only carries `<gameId>.<versionId>` - tiny, so the QR code
+ * stays easily scannable even for large packs - while the pack itself is
+ * fetched from `/api/games/<gameId>?v=<versionId>` and validated on arrival
+ * with the same `validateGame` used everywhere else.
+ */
+export function createPublishedGameUrl(gameId: string, versionId: string): string {
+  if (typeof window === "undefined") throw new Error("发布链接只能在浏览器中生成");
+  if (!isValidGameId(gameId) || !isValidVersionId(versionId)) {
+    throw new Error("游戏或版本标识不合法，无法生成发布链接");
+  }
+  return window.location.origin + "/select" + CLOUD_PREFIX + `${gameId}.${versionId}`;
+}
+
+/** True when the current URL points at a published server-hosted game. */
+export function hasCloudGamePayload(): boolean {
+  if (typeof window === "undefined") return false;
+  const hash = window.location?.hash;
+  return typeof hash === "string" && hash.startsWith(CLOUD_PREFIX);
+}
+
+/** Reads a `#cloud=` fragment into its game and version ids, or null. */
+function readCloudPayload(): { gameId: string; versionId: string } | null {
+  const hash = window.location?.hash ?? "";
+  if (!hash.startsWith(CLOUD_PREFIX)) return null;
+  const payload = hash.slice(CLOUD_PREFIX.length);
+  const dot = payload.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const gameId = payload.slice(0, dot);
+  const versionId = payload.slice(dot + 1);
+  if (!isValidGameId(gameId) || !isValidVersionId(versionId)) return null;
+  return { gameId, versionId };
+}
+
+/**
  * Reads a self-contained shared game from the current URL, if present.
  * Convenience wrapper around {@link readSharedGameOutcome} for callers that
  * only need the game (or null).
@@ -65,13 +102,44 @@ export async function readSharedGameFromUrl(): Promise<Game | null> {
 export function hasSharePayload(): boolean {
   if (typeof window === "undefined") return false;
   const hash = window.location?.hash;
-  return typeof hash === "string" && hash.startsWith(PREFIX);
+  return (
+    (typeof hash === "string" && hash.startsWith(PREFIX)) || hasCloudGamePayload()
+  );
 }
 
 export type SharedGameOutcome =
   | { status: "ok"; game: Game }
   | { status: "absent" }
   | { status: "broken"; reason: string };
+
+/**
+ * Reads a published game from the server. The fragment carries only ids; the
+ * pack is fetched and then validated with the same validator as every other
+ * content path, so a corrupted or tampered store response cannot reach play.
+ */
+async function readPublishedGameOutcome(): Promise<SharedGameOutcome> {
+  const payload = readCloudPayload();
+  if (!payload) {
+    return { status: "broken", reason: "链接中的游戏标识不完整（可能在复制或转发时被截断）。" };
+  }
+  const { gameId, versionId } = payload;
+  try {
+    const response = await fetch(`/api/games/${encodeURIComponent(gameId)}?v=${versionId}`, {
+      cache: "no-cache",
+      headers: { Accept: "application/json" },
+    });
+    if (response.status === 404) {
+      return { status: "broken", reason: "链接指向的游戏不存在或已被下架，请向分享者确认。" };
+    }
+    if (!response.ok) {
+      return { status: "broken", reason: `线上游戏读取失败（HTTP ${response.status}），请稍后重试。` };
+    }
+    const game = validateGame(await response.json()).game;
+    return { status: "ok", game };
+  } catch {
+    return { status: "broken", reason: "线上游戏读取失败，请检查网络后重新打开链接。" };
+  }
+}
 
 /**
  * Reads the share payload and reports WHY it failed when it does.
@@ -87,7 +155,9 @@ export async function readSharedGameOutcome(): Promise<SharedGameOutcome> {
   // Test harnesses, embedded webviews, or restricted browser contexts may expose
   // a partial window object without a location. That means there is no shared URL.
   const hash = window.location?.hash;
-  if (typeof hash !== "string" || !hash.startsWith(PREFIX)) return { status: "absent" };
+  if (typeof hash !== "string") return { status: "absent" };
+  if (hash.startsWith(CLOUD_PREFIX)) return readPublishedGameOutcome();
+  if (!hash.startsWith(PREFIX)) return { status: "absent" };
   try {
     const payload = hash.slice(PREFIX.length);
     const dot = payload.indexOf(".");
