@@ -48,6 +48,7 @@ import {
   setChoiceOption,
   setCorrectOption,
   setOptionBranch,
+  canOptionBranch,
   withAnswerLines,
 } from "@/lib/game/challenge-edit";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
@@ -1217,7 +1218,7 @@ export default function DesignPage() {
                                 ×
                               </button>
                               </div>
-                              {branchTargets.length ? (
+                              {canOptionBranch(challenge, i) && branchTargets.length ? (
                                 <label className="mt-1 flex items-center gap-1.5 pl-8">
                                   <span className="shrink-0 text-[10.5px] text-[var(--muted)]">完成后去</span>
                                   <select
@@ -1232,6 +1233,8 @@ export default function DesignPage() {
                                     ))}
                                   </select>
                                 </label>
+                              ) : !challenge.reflective && !isCorrect && branchTargets.length ? (
+                                <p className="mt-1 pl-8 text-[10.5px] text-[var(--muted)]">普通选择题只有正确答案可配置后续场景</p>
                               ) : null}
                             </div>
                           );

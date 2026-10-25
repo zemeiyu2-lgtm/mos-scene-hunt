@@ -687,17 +687,26 @@ export function gameReducer(game: Game, state: GameState, action: GameAction): G
         });
       }
 
-      const next = completeScene(game, state, scene, action.now);
-      // Record the route a successful choice took. Only the declared branch of
-      // the actually-submitted option is recorded, and only together with the
-      // completion (which the guards above enforce) - opening the question,
-      // arriving at the scene, or tapping an option never writes a route.
+      // Determine the route this successful submission takes BEFORE completing
+      // the scene. The ending check inside completeScene derives each scene's
+      // onward edge from `routes`; running it against a state that still lacks
+      // the just-taken route would misjudge a reflective choice whose static
+      // nextSceneId is null but whose branch points onward as an ending and
+      // set finishedAt prematurely.
       const branches = scene.challenge.type === "choice" ? scene.challenge.branches : undefined;
-      const target = branches && typeof action.selectedIndex === "number"
-        ? branches[String(action.selectedIndex)]
-        : undefined;
-      if (!target) return next;
-      return { ...next, routes: { ...(next.routes ?? {}), [scene.id]: target } };
+      const target =
+        branches && typeof action.selectedIndex === "number"
+          ? branches[String(action.selectedIndex)]
+          : undefined;
+      // Only a declared branch of the actually-submitted option is recorded,
+      // and only together with the completion (which the guards above enforce)
+      // - opening the question, arriving at the scene, or tapping an option
+      // never writes a route. Wrong answers return above and undeclared
+      // options produce no target, so neither can influence the finish state.
+      const routed: GameState = target
+        ? { ...state, routes: { ...(state.routes ?? {}), [scene.id]: target } }
+        : state;
+      return completeScene(game, routed, scene, action.now);
     }
 
     case "ADVANCE":

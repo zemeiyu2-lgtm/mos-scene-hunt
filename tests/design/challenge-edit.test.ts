@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   addChoiceOption,
   answerLines,
+  canOptionBranch,
   changeChallengeType,
   createChallenge,
   MAX_CHOICE_OPTIONS,
@@ -19,6 +20,7 @@ import {
   removeChoiceOption,
   setChoiceOption,
   setCorrectOption,
+  setOptionBranch,
   withAnswerLines,
 } from "@/lib/game/challenge-edit";
 import type { Challenge, ChallengeType, Game } from "@/lib/game/types";
@@ -209,5 +211,120 @@ describe("accepted answers as text", () => {
   it("round-trips through answerLines", () => {
     const source: Challenge = { type: "text", question: "？", answer: ["甲", "乙"] };
     expect(answerLines(withAnswerLines(source, answerLines(source)))).toBe("甲\n乙");
+  });
+});
+
+describe("branch configuration consistency", () => {
+  /** Graded choice, answer = 0, branch declared on the correct option only. */
+  const GRADED: Challenge = {
+    type: "choice",
+    question: "门上的数字是几？",
+    options: ["一", "二", "三"],
+    answer: 0,
+    branches: { "0": "s3" },
+  };
+
+  function branchGameWith(challenge: Challenge): Game {
+    const location = { lat: 14.58, lng: 120.97, radius: 20 };
+    return {
+      id: "branch-probe",
+      language: "zh-CN",
+      title: "分支探针",
+      description: "分支探针游戏",
+      version: "0.1.0",
+      startLocation: { lat: 14.58, lng: 120.97 },
+      entrySceneId: "s1",
+      scenes: [
+        { id: "s1", title: "第一站", story: "故事", location, nextSceneId: "s2", challenge },
+        { id: "s2", title: "第二站", story: "故事", location, nextSceneId: "s3" },
+        { id: "s3", title: "第三站", story: "故事", location, nextSceneId: null },
+      ],
+    };
+  }
+
+  it("only the correct option of a graded choice may configure a branch", () => {
+    expect(canOptionBranch(GRADED, 0)).toBe(true);
+    expect(canOptionBranch(GRADED, 1)).toBe(false);
+    expect(canOptionBranch(GRADED, 2)).toBe(false);
+  });
+
+  it("every option of a reflective choice may configure a branch", () => {
+    const reflective: Challenge = { ...GRADED, reflective: true };
+    for (let i = 0; i < reflective.options!.length; i++) {
+      expect(canOptionBranch(reflective, i)).toBe(true);
+    }
+  });
+
+  it("setOptionBranch ignores wrong options of a graded choice", () => {
+    const next = setOptionBranch(GRADED, 1, "s3");
+    expect(next).toBe(GRADED);
+    const cleared = setOptionBranch(GRADED, 1, null);
+    expect(cleared).toBe(GRADED);
+  });
+
+  it("setOptionBranch lets any reflective option take a route and stays valid", () => {
+    const reflective: Challenge = { ...GRADED, reflective: true };
+    const next = setOptionBranch(reflective, 1, "s3");
+    expect(next.branches).toEqual({ "0": "s3", "1": "s3" });
+    expect(() => validateGame(branchGameWith(next))).not.toThrow();
+  });
+
+  it("setOptionBranch still works on the graded correct option", () => {
+    const next = setOptionBranch(GRADED, 0, "s2");
+    expect(next.branches).toEqual({ "0": "s2" });
+    expect(() => validateGame(branchGameWith(next))).not.toThrow();
+  });
+
+  it("moving the correct answer re-keys the branch onto the new answer", () => {
+    const next = setCorrectOption(GRADED, 1);
+    expect(next.answer).toBe(1);
+    expect(next.branches).toEqual({ "1": "s3" });
+    expect(() => validateGame(branchGameWith(next))).not.toThrow();
+  });
+
+  it("moving the correct answer drops stale branches on other options", () => {
+    // Imported data may carry an invalid branch on a wrong option; re-keying
+    // must not leave it behind (the validator would reject the pack).
+    const stale: Challenge = { ...GRADED, branches: { "0": "s3", "2": "s2" } };
+    const next = setCorrectOption(stale, 2);
+    expect(next.answer).toBe(2);
+    expect(next.branches).toEqual({ "2": "s2" });
+    expect(() => validateGame(branchGameWith(next))).not.toThrow();
+  });
+
+  it("keeps reflective branches untouched when the answer moves", () => {
+    const reflective: Challenge = {
+      ...GRADED,
+      reflective: true,
+      branches: { "0": "s3", "2": "s2" },
+    };
+    const next = setCorrectOption(reflective, 1);
+    expect(next.answer).toBe(1);
+    expect(next.branches).toEqual({ "0": "s3", "2": "s2" });
+  });
+
+  it("removing an option shifts branch keys with the options and stays valid", () => {
+    const next = removeChoiceOption(GRADED, 1);
+    expect(next.options).toEqual(["一", "三"]);
+    expect(next.answer).toBe(0);
+    expect(next.branches).toEqual({ "0": "s3" });
+    expect(() => validateGame(branchGameWith(next))).not.toThrow();
+  });
+
+  it("switching away from a choice drops branches entirely", () => {
+    const keyword = changeChallengeType(GRADED, "keyword");
+    expect(keyword.branches).toBeUndefined();
+    expectValid(keyword);
+    const text = changeChallengeType(GRADED, "text");
+    expect(text.branches).toBeUndefined();
+    expectValid(text);
+  });
+
+  it("a graded branch pack survives save / JSON export / re-import", () => {
+    const game = branchGameWith(GRADED);
+    const json = JSON.stringify(game);
+    const { game: imported, issues } = validateGame(JSON.parse(json));
+    expect(issues.filter((i) => i.severity === "error")).toEqual([]);
+    expect(imported.scenes[0].challenge?.branches).toEqual({ "0": "s3" });
   });
 });

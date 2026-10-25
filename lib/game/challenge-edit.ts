@@ -129,9 +129,28 @@ export function addChoiceOption(challenge: Challenge): Challenge {
 }
 
 /**
+ * Whether the designer may configure a branch route on this option.
+ *
+ * Graded (non-reflective) choices only ever complete through the correct
+ * answer, so the validator accepts a branch on that option alone - offering a
+ * dropdown elsewhere would let the author build a pack that is silently
+ * dropped on reload. Reflective choices complete through any deliberate
+ * option, so every option may route.
+ */
+export function canOptionBranch(challenge: Challenge, optionIndex: number): boolean {
+  if (challenge.type !== "choice") return false;
+  if (challenge.reflective) return true;
+  return challenge.answer === optionIndex;
+}
+
+/**
  * Point one option at a follow-up scene (branch routing). Pass `null` to
  * clear the route so the option falls back to the scene's `nextSceneId`.
  * Keys are the stringified option indexes the pack format uses.
+ *
+ * A graded (non-reflective) choice may only branch from its correct answer -
+ * the validator rejects anything else - so calls for other options are
+ * ignored instead of writing an entry the pack could not save.
  */
 export function setOptionBranch(
   challenge: Challenge,
@@ -139,6 +158,7 @@ export function setOptionBranch(
   targetSceneId: string | null,
 ): Challenge {
   if (challenge.type !== "choice") return challenge;
+  if (!canOptionBranch(challenge, optionIndex)) return challenge;
   const branches: Record<string, string> = { ...(challenge.branches ?? {}) };
   if (targetSceneId) branches[String(optionIndex)] = targetSceneId;
   else delete branches[String(optionIndex)];
@@ -191,5 +211,29 @@ export function setChoiceOption(challenge: Challenge, index: number, text: strin
 export function setCorrectOption(challenge: Challenge, index: number): Challenge {
   const count = challenge.options?.length ?? 0;
   if (count === 0) return challenge;
-  return { ...challenge, answer: Math.min(Math.max(index, 0), count - 1) };
+  const answer = Math.min(Math.max(index, 0), count - 1);
+  if (challenge.reflective || !challenge.branches || answer === challenge.answer) {
+    return { ...challenge, answer };
+  }
+  // Graded choices may only branch from the correct answer (the validator
+  // enforces it). Moving the correct answer therefore re-keys the route from
+  // the old correct option onto the new one - and drops any stale entries on
+  // other options - so the edited pack stays valid instead of being dropped
+  // on reload.
+  const branches: Record<string, string> = { ...challenge.branches };
+  const oldKey = String(challenge.answer);
+  const newKey = String(answer);
+  if (branches[oldKey] !== undefined && branches[newKey] === undefined) {
+    branches[newKey] = branches[oldKey];
+  }
+  delete branches[oldKey];
+  for (const key of Object.keys(branches)) {
+    if (key !== newKey) delete branches[key];
+  }
+  const remaining = Object.keys(branches).length;
+  return {
+    ...challenge,
+    answer,
+    branches: remaining > 0 ? branches : undefined,
+  };
 }

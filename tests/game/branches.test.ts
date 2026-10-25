@@ -354,3 +354,94 @@ describe("compatibility and validation", () => {
     expect(() => validateGame(badIndex)).toThrowError(/不是有效的选项下标/);
   });
 });
+
+describe("submit-time ending determination", () => {
+  /**
+   * Regression for the batch-3 completion-order bug: completeScene used to
+   * run BEFORE the route was written, so a choice scene with a static
+   * nextSceneId of null (but a branch pointing onward) was misjudged as an
+   * ending and finished the hunt at its very submit.
+   */
+  const midGame: Game = {
+    ...branchGame,
+    id: "mid-hunt",
+    entrySceneId: "m",
+    scenes: [
+      scene("m", {
+        nextSceneId: null,
+        challenge: choice({ reflective: true, branches: { "0": "m1" } }),
+      }),
+      scene("m1", { nextSceneId: "end-m" }),
+      scene("end-m", {}),
+    ],
+  };
+
+  it("does not finish the hunt when a mid-chain reflective choice completes", () => {
+    const s = submit(midGame, fresh(midGame), "m", { selectedIndex: 0 });
+    expect(s.routes?.m).toBe("m1");
+    expect(s.scenes.m.status).toBe("completed");
+    expect(isGameComplete(midGame, s)).toBe(false);
+    expect(s.finishedAt).toBeUndefined();
+    expect(availableSceneIds(midGame, s)).toEqual(["m1"]);
+  });
+
+  it("finishes only once the branch target chain reaches a real ending", () => {
+    let s = submit(midGame, fresh(midGame), "m", { selectedIndex: 0 });
+    s = solveText(midGame, s, "m1", T + 1);
+    expect(isGameComplete(midGame, s)).toBe(false);
+    expect(s.finishedAt).toBeUndefined();
+    s = solveText(midGame, s, "end-m", T + 2);
+    expect(isGameComplete(midGame, s)).toBe(true);
+    expect(s.finishedAt).toBe(T + 2);
+  });
+
+  it("restores a finish state consistent with the recorded route", () => {
+    const played = submit(midGame, fresh(midGame), "m", { selectedIndex: 0 });
+    const restoredMid = reconcileState(midGame, played, T + 5);
+    expect(isGameComplete(midGame, restoredMid)).toBe(false);
+    expect(restoredMid.finishedAt).toBeUndefined();
+
+    const done = solveText(midGame, solveText(midGame, played, "m1", T + 1), "end-m", T + 2);
+    const restoredDone = reconcileState(midGame, done, T + 5);
+    expect(isGameComplete(midGame, restoredDone)).toBe(true);
+    expect(restoredDone.finishedAt).toBe(T + 2);
+  });
+
+  it("graded choice with null nextSceneId does not finish early either", () => {
+    const gradedMid: Game = {
+      ...midGame,
+      id: "graded-mid-hunt",
+      scenes: [
+        scene("m", {
+          nextSceneId: null,
+          challenge: choice({ answer: 0, branches: { "0": "m1" } }),
+        }),
+        ...midGame.scenes.slice(1),
+      ],
+    };
+    const s = submit(gradedMid, fresh(gradedMid), "m", { selectedIndex: 0 });
+    expect(s.routes?.m).toBe("m1");
+    expect(s.scenes.m.status).toBe("completed");
+    expect(isGameComplete(gradedMid, s)).toBe(false);
+    expect(s.finishedAt).toBeUndefined();
+  });
+
+  it("a wrong answer never records a route nor touches the finish state", () => {
+    const gradedMid: Game = {
+      ...midGame,
+      id: "graded-mid-hunt-2",
+      scenes: [
+        scene("m", {
+          nextSceneId: null,
+          challenge: choice({ answer: 0, branches: { "0": "m1" } }),
+        }),
+        ...midGame.scenes.slice(1),
+      ],
+    };
+    const s = submit(gradedMid, fresh(gradedMid), "m", { selectedIndex: 1 });
+    expect(s.scenes.m.status).toBe("challenging");
+    expect(s.routes?.m).toBeUndefined();
+    expect(s.finishedAt).toBeUndefined();
+    expect(isGameComplete(gradedMid, s)).toBe(false);
+  });
+});
