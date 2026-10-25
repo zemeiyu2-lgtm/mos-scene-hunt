@@ -55,9 +55,11 @@ export function createVercelBlobStore(options: VercelBlobStoreOptions = {}): Pub
   const metaPath = (gameId: string) => `${prefix}/${gameId}/meta.json`;
 
   /** Downloads one blob as text; null when it does not exist. */
-  const readText = async (pathname: string): Promise<string | null> => {
+  const readText = async (pathname: string, fresh = false): Promise<string | null> => {
     try {
-      const result = await get(pathname, { access: "private" });
+      const result = fresh
+        ? await get(pathname, { access: "private", useCache: false })
+        : await get(pathname, { access: "private" });
       if (!result || result.statusCode !== 200) return null;
       return await new Response(result.stream).text();
     } catch (error) {
@@ -103,18 +105,39 @@ export function createVercelBlobStore(options: VercelBlobStoreOptions = {}): Pub
       }
 
       const versionKey = versionPath(input.gameId, input.versionId);
-      const existing = await readText(versionKey);
-      if (existing !== null && existing !== input.packJson) {
-        throw new VersionConflictError(input.gameId, input.versionId);
+      let existedBefore = (await readText(versionKey)) !== null;
+      if (existedBefore) {
+        const stored = await readText(versionKey, true);
+        if (stored !== null && stored !== input.packJson) {
+          throw new VersionConflictError(input.gameId, input.versionId);
+        }
       }
-      if (existing === null) {
-        // Content-addressed: once written, never rewritten (409 guards this).
-        await put(versionKey, input.packJson, {
-          access: "private",
-          addRandomSuffix: false,
-          contentType: "application/json; charset=utf-8",
-          cacheControlMaxAge: 31536000,
-        });
+      if (!existedBefore) {
+        // Content-addressed: once written, never rewritten. Vercel Blob itself
+        // refuses overwrites of an existing pathname, which gives the
+        // immutability contract platform-level enforcement; a raced identical
+        // write is folded into the idempotent path below.
+        try {
+          await put(versionKey, input.packJson, {
+            access: "private",
+            addRandomSuffix: false,
+            contentType: "application/json; charset=utf-8",
+            cacheControlMaxAge: 31536000,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (!/already exists/i.test(message)) throw error;
+          // Another instance wrote this content-addressed object first.
+          // Compare against fresh origin content: identical means the raced
+          // publish was the same version (idempotent), anything else is a
+          // genuine immutability conflict.
+          const stored = await readText(versionKey, true);
+          if (stored === input.packJson) {
+            existedBefore = true;
+          } else {
+            throw new VersionConflictError(input.gameId, input.versionId);
+          }
+        }
       }
 
       const meta = (await readMeta(input.gameId)) ?? {
@@ -136,13 +159,17 @@ export function createVercelBlobStore(options: VercelBlobStoreOptions = {}): Pub
       // (entries are appended in publish order).
       const newest = meta.versions.reduce((a, b) => (b.publishedAt >= a.publishedAt ? b : a));
       meta.latestVersionId = newest.versionId;
+      // The meta object is a mergeable pointer, not an immutable version
+      // object: it is rewritten on every publish, so it must allow overwrite.
+      // Last-write-wins applies across instances (see the module note).
       await put(metaPath(input.gameId), JSON.stringify(meta, null, 2), {
         access: "private",
         addRandomSuffix: false,
         contentType: "application/json; charset=utf-8",
         cacheControlMaxAge: 0,
+        allowOverwrite: true,
       });
-      return { created: existing === null, meta };
+      return { created: !existedBefore, meta };
     },
 
     async readVersion(gameId: string, versionId: string): Promise<string | null> {

@@ -16,15 +16,25 @@ const blobState = vi.hoisted(
     blobs: Map<string, string>;
     versionPutCounts: Map<string, number>;
     failNextGet: Error | null;
+    race: "identical" | "different" | null;
     FakeBlobNotFoundError: new (message: string) => Error;
   } => {
     const blobs = new Map<string, string>();
     const versionPutCounts = new Map<string, number>();
     let failNextGet: Error | null = null;
+    let race: "identical" | "different" | null = null;
     class FakeBlobNotFoundError extends Error {
       name = "BlobNotFoundError";
     }
-    return { blobs, versionPutCounts, get failNextGet() { return failNextGet; }, set failNextGet(v: Error | null) { failNextGet = v; }, FakeBlobNotFoundError };
+    return {
+      blobs,
+      versionPutCounts,
+      get failNextGet() { return failNextGet; },
+      set failNextGet(v: Error | null) { failNextGet = v; },
+      get race() { return race; },
+      set race(v: "identical" | "different" | null) { race = v; },
+      FakeBlobNotFoundError,
+    };
   },
 );
 
@@ -40,7 +50,25 @@ vi.mock("@vercel/blob", () => {
   }
   return {
     BlobNotFoundError: blobState.FakeBlobNotFoundError,
-    put: vi.fn(async (pathname: string, body: string) => {
+    put: vi.fn(async (pathname: string, body: string, options?: { allowOverwrite?: boolean }) => {
+      const isVersion = pathname.includes("/versions/");
+      // Simulate a raced write from another instance: the platform refuses
+      // our put because someone else wrote this pathname first.
+      if (blobState.race && isVersion && !blobState.blobs.has(pathname)) {
+        const winner = blobState.race === "identical" ? body : "theirs";
+        blobState.blobs.set(pathname, winner);
+        blobState.race = null;
+        throw new Error(
+          "Vercel Blob: This blob already exists, use `allowOverwrite: true` if you want to overwrite it.",
+        );
+      }
+      // Enforce the real platform rule: an existing pathname refuses put
+      // unless allowOverwrite is set (caught a real cloud failure).
+      if (blobState.blobs.has(pathname) && !options?.allowOverwrite) {
+        throw new Error(
+          "Vercel Blob: This blob already exists, use `allowOverwrite: true` if you want to overwrite it.",
+        );
+      }
       blobState.blobs.set(pathname, body);
       if (pathname.includes("/versions/")) {
         blobState.versionPutCounts.set(pathname, (blobState.versionPutCounts.get(pathname) ?? 0) + 1);
@@ -77,6 +105,7 @@ beforeEach(() => {
   blobState.blobs.clear();
   blobState.versionPutCounts.clear();
   blobState.failNextGet = null;
+  blobState.race = null;
   store = createVercelBlobStore({ prefix: "test-published-games" });
 });
 
@@ -170,6 +199,36 @@ describe("vercel blob store", () => {
     );
     blobState.failNextGet = new Error("read failed");
     await expect(store.readVersion("demo", "0123456789abcdef")).rejects.toThrow(/read failed/);
+  });
+
+  it("republishes onto an existing game without overwriting the meta blob illegally", async () => {
+    // Regression: the second publish rewrites meta.json, which Vercel Blob
+    // refuses without allowOverwrite - this failed 500 in real cloud use.
+    await store.publish(input("0123456789abcdef", "v1"));
+    const second = await store.publish(input("2222222222222222", "v2"));
+    expect(second.created).toBe(true);
+    expect(second.meta.latestVersionId).toBe("2222222222222222");
+    const third = await store.publish(input("2222222222222222", "v2"));
+    expect(third.created).toBe(false);
+    expect(third.meta.versions).toHaveLength(2);
+  });
+
+  it("folds a raced identical write into the idempotent path", async () => {
+    // Simulate another instance winning the write between our existence
+    // check and our put: put refuses, but origin content is identical.
+    blobState.race = "identical";
+    const result = await store.publish(input("0123456789abcdef", '{"id":"demo"}'));
+    expect(result.created).toBe(false);
+    expect(result.meta.versions).toHaveLength(1);
+  });
+
+  it("turns a raced different-content write into an immutability conflict", async () => {
+    blobState.race = "different";
+    await expect(store.publish(input("0123456789abcdef", "ours"))).rejects.toBeInstanceOf(
+      VersionConflictError,
+    );
+    // The winner's content is untouched.
+    await expect(store.readVersion("demo", "0123456789abcdef")).resolves.toBe("theirs");
   });
 });
 
