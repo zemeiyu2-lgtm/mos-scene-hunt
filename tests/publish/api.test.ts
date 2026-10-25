@@ -219,8 +219,8 @@ describe("GET /api/games/[gameId] - phase 1 hardening", () => {
     };
 
     const latest = await getLatest("demo-hunt");
-    expect(latest.headers.get("cache-control")).toContain("max-age=60");
-    expect(latest.headers.get("cache-control")).toContain("stale-while-revalidate");
+    expect(latest.headers.get("cache-control")).toContain("max-age=10");
+    expect(latest.headers.get("cache-control")).toContain("stale-while-revalidate=30");
 
     // A second publish must not change what the first version serves.
     await POST(post(JSON.stringify(game("demo-hunt", { title: "Second Edition" }))));

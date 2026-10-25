@@ -64,7 +64,13 @@ export async function GET(
         "Content-Type": "application/json; charset=utf-8",
         "Cache-Control": immutable
           ? "public, max-age=31536000, immutable"
-          : "public, max-age=60, stale-while-revalidate=600",
+          : // Bounded staleness: real cloud acceptance showed Vercel's edge
+            // honours stale-while-revalidate to the letter, so a wide SWR
+            // window kept a bare "latest" URL up to ~11 min behind a new
+            // publish. 10s fresh + 30s SWR keeps propagation under a minute
+            // while still absorbing read bursts. Version-specific reads
+            // (?v=) are immutable and unaffected.
+            "public, max-age=10, stale-while-revalidate=30",
         "X-Game-Version": versionId,
       },
     });
