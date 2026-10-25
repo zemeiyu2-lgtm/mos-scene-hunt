@@ -1,5 +1,5 @@
 import { GameDataError, validateGame } from "@/lib/game/types";
-import { deriveVersionId, isValidGameId } from "@/lib/publish/version";
+import { canonicalJson, deriveVersionId, isValidGameId } from "@/lib/publish/version";
 import { getStore, VersionConflictError } from "@/lib/publish/storage";
 
 /**
@@ -48,7 +48,10 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return json(400, { error: "unreadable_body", message: "无法读取请求内容。" });
   }
-  if (raw.length > MAX_PACK_BYTES) {
+  if (Buffer.byteLength(raw, "utf8") > MAX_PACK_BYTES) {
+    // Byte-accurate: `raw.length` counts UTF-16 code units and would
+    // undercount multibyte content; it also catches missing or forged
+    // Content-Length headers that slipped past the declared-size check.
     return json(413, { error: "pack_too_large", message: `游戏包超过 ${MAX_PACK_BYTES} 字节上限。` });
   }
 
@@ -78,7 +81,10 @@ export async function POST(request: Request): Promise<Response> {
       versionId,
       title: game.title,
       sceneCount: game.scenes.length,
-      packJson: JSON.stringify(game),
+      // Canonical form: identical content serialises identically regardless
+      // of the client's key order, so re-publishing the same game after a
+      // re-import cannot collide with its own version object.
+      packJson: canonicalJson(game),
     });
     return json(result.created ? 201 : 200, {
       gameId: game.id,
@@ -94,10 +100,9 @@ export async function POST(request: Request): Promise<Response> {
     if (error instanceof GameDataError) {
       return json(400, { error: "invalid_pack", message: "游戏包校验未通过。", detail: error.message });
     }
-    return json(500, {
-      error: "publish_failed",
-      message: "发布失败，请稍后重试。",
-      detail: error instanceof Error ? error.message : String(error),
-    });
+    // Never echo raw error text to the client: storage-layer messages can
+    // contain local paths or host internals. Log server-side instead.
+    console.error("[publish] 发布失败", error);
+    return json(500, { error: "publish_failed", message: "发布失败，请稍后重试。" });
   }
 }

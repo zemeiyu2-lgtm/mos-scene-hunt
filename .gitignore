@@ -37,6 +37,8 @@ vitest.config.*.timestamp-*
 
 .vercel
 .env*
+# 模板文件需要提交（只含变量名与用途说明，不含任何密钥值）
+!.env.example
 
 # 已发布游戏的本机存储（serverization batch 1）
 /.published-games/

@@ -17,6 +17,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { GAME_ID_PATTERN, VERSION_ID_PATTERN } from "./version";
+import { createVercelBlobStore } from "./blob-store";
 
 export interface PublishedVersionMeta {
   versionId: string;
@@ -68,6 +69,30 @@ function assertSafeIds(gameId: string, versionId: string): void {
 }
 
 /**
+ * Serialises publishes per (store root, gameId) within this process.
+ *
+ * The meta update is a read-modify-write cycle; two concurrent publishes of
+ * the same game could otherwise overwrite each other's meta and drop a valid
+ * version entry. `getStore()` builds a fresh adapter per request, so the lock
+ * must be keyed module-level, not per adapter instance. Cross-process /
+ * cross-instance writes are still last-write-wins on the filesystem - the
+ * blob adapter carries the same limitation, which is why version objects
+ * themselves are content-addressed and can never be lost by a meta race.
+ */
+const publishLocks = new Map<string, Promise<unknown>>();
+
+function withPublishLock<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const previous = publishLocks.get(key) ?? Promise.resolve();
+  const run = previous.then(task, task);
+  const settled = run.catch(() => undefined);
+  publishLocks.set(key, settled);
+  void settled.then(() => {
+    if (publishLocks.get(key) === settled) publishLocks.delete(key);
+  });
+  return run;
+}
+
+/**
  * Filesystem adapter. Layout under `root`:
  *   <gameId>/meta.json            - PublishedGameMeta
  *   <gameId>/versions/<vId>.json  - the pack text
@@ -101,45 +126,10 @@ export function createFilesystemStore(root: string): PublishedGameStore {
   };
 
   return {
-    async publish(input) {
-      assertSafeIds(input.gameId, input.versionId);
-      const versionFile = versionPath(input.gameId, input.versionId);
-      let existing: string | null = null;
-      try {
-        existing = await readFile(versionFile, "utf8");
-      } catch {
-        existing = null;
-      }
-      if (existing !== null && existing !== input.packJson) {
-        throw new VersionConflictError(input.gameId, input.versionId);
-      }
-
-      const meta = (await readMeta(input.gameId)) ?? {
-        gameId: input.gameId,
-        latestVersionId: input.versionId,
-        versions: [],
-      };
-      const created = existing === null;
-      if (created) {
-        // Atomic write: a reader never observes a half-written version file.
-        await mkdir(path.dirname(versionFile), { recursive: true });
-        const tmp = `${versionFile}.tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        await writeFile(tmp, input.packJson, "utf8");
-        await rename(tmp, versionFile);
-      }
-      if (!meta.versions.some((v) => v.versionId === input.versionId)) {
-        meta.versions.push({
-          versionId: input.versionId,
-          title: input.title,
-          sceneCount: input.sceneCount,
-          publishedAt: new Date().toISOString(),
-        });
-      }
-      // Latest always moves forward to the just-published version; the
-      // version objects themselves stay immutable.
-      meta.latestVersionId = input.versionId;
-      await writeMetaAtomic(meta);
-      return { created, meta };
+    publish(input) {
+      // One write at a time per game: the whole check-write-update-meta cycle
+      // runs inside the lock so concurrent publishes cannot interleave.
+      return withPublishLock(`${root}::${input.gameId}`, () => publishLocked(input));
     },
 
     async readVersion(gameId, versionId) {
@@ -153,14 +143,71 @@ export function createFilesystemStore(root: string): PublishedGameStore {
 
     readMeta,
   };
+
+  async function publishLocked(input: PublishInput): Promise<PublishResult> {
+    assertSafeIds(input.gameId, input.versionId);
+    const versionFile = versionPath(input.gameId, input.versionId);
+    let existing: string | null = null;
+    try {
+      existing = await readFile(versionFile, "utf8");
+    } catch {
+      existing = null;
+    }
+    if (existing !== null && existing !== input.packJson) {
+      throw new VersionConflictError(input.gameId, input.versionId);
+    }
+
+    // Read meta fresh inside the lock: a previous publish in this process may
+    // have advanced it after the caller's snapshot was taken.
+    const meta = (await readMeta(input.gameId)) ?? {
+      gameId: input.gameId,
+      latestVersionId: input.versionId,
+      versions: [],
+    };
+    const created = existing === null;
+    if (created) {
+      // Atomic write: a reader never observes a half-written version file.
+      await mkdir(path.dirname(versionFile), { recursive: true });
+      const tmp = `${versionFile}.tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      await writeFile(tmp, input.packJson, "utf8");
+      await rename(tmp, versionFile);
+    }
+    if (!meta.versions.some((v) => v.versionId === input.versionId)) {
+      meta.versions.push({
+        versionId: input.versionId,
+        title: input.title,
+        sceneCount: input.sceneCount,
+        publishedAt: new Date().toISOString(),
+      });
+    }
+    // Latest points at the newest publish by timestamp; an idempotent
+    // re-publish of an older version keeps its original entry timestamp and
+    // cannot drag the latest pointer backwards. `>=` breaks same-millisecond
+    // ties in favour of the later publish (entries are in publish order).
+    const newest = meta.versions.reduce((a, b) => (b.publishedAt >= a.publishedAt ? b : a));
+    meta.latestVersionId = newest.versionId;
+    await writeMetaAtomic(meta);
+    return { created, meta };
+  }
 }
 
 /**
- * Store selected for the current host. `PUBLISHED_GAMES_DIR` overrides the
- * location (a path, not a credential); the default lives inside the project
- * and is git-ignored.
+ * Store selected for the current host.
+ *
+ * - `PUBLISHED_GAMES_STORE=blob` selects the Vercel Blob adapter, the only
+ *   option that survives redeploys and is shared across serverless instances.
+ *   It requires `BLOB_READ_WRITE_TOKEN` to be configured in the deployment
+ *   environment (never in source control).
+ * - Everything else uses the filesystem adapter below `PUBLISHED_GAMES_DIR`
+ *   (a path, not a credential; default `.published-games` inside the project,
+ *   git-ignored). Fine for local development and single Node hosts, but data
+ *   is ephemeral on serverless platforms.
  */
 export function getStore(): PublishedGameStore {
+  const storeKind = process.env.PUBLISHED_GAMES_STORE?.trim().toLowerCase();
+  if (storeKind === "blob") {
+    return createVercelBlobStore();
+  }
   const dir = process.env.PUBLISHED_GAMES_DIR?.trim() || path.join(process.cwd(), ".published-games");
   return createFilesystemStore(dir);
 }

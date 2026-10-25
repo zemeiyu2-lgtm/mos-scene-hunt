@@ -69,10 +69,12 @@ export async function GET(
       },
     });
   } catch (error) {
+    // Never echo raw error text to the client: storage-layer messages can
+    // contain local paths or host internals. Log server-side instead.
+    console.error("[games] 读取失败", error);
     return json(500, {
       error: "read_failed",
       message: "读取已发布游戏失败，请稍后重试。",
-      detail: error instanceof Error ? error.message : String(error),
     });
   }
 }

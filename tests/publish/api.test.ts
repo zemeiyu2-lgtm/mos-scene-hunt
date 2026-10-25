@@ -7,7 +7,7 @@
  * real without a running server.
  */
 
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -145,5 +145,92 @@ describe("GET /api/games/[gameId]", () => {
   it("rejects malformed ids with 400", async () => {
     expect((await getLatest("../escape")).status).toBe(400);
     expect((await getVersion("demo-hunt", "nothex")).status).toBe(400);
+  });
+});
+
+describe("POST /api/publish - phase 1 hardening", () => {
+  it("is idempotent when the same content arrives with a different key order", async () => {
+    const source = game("demo-hunt");
+    const first = await POST(post(JSON.stringify(source)));
+    expect(first.status).toBe(201);
+    // Same content, top-level keys reversed: the old JSON.stringify-based
+    // pack made this collide with its own version object (false 409).
+    const reordered = Object.fromEntries(Object.entries(source).reverse());
+    const repeat = await POST(post(JSON.stringify(reordered)));
+    expect(repeat.status).toBe(200);
+    const repeatBody = (await repeat.json()) as { created: boolean; versionId: string };
+    expect(repeatBody.created).toBe(false);
+    expect(repeatBody.versionId).toBe(((await first.json()) as { versionId: string }).versionId);
+  });
+
+  it("enforces the size cap by byte length, even with a forged Content-Length", async () => {
+    // ~90k CJK characters are ~270 KB of UTF-8 but well under the 256 KiB
+    // UTF-16 code-unit count that the old char-length check measured.
+    const oversized = JSON.stringify(game("demo-hunt", { description: "包".repeat(90 * 1024) }));
+    const forged = new Request("https://host.test/api/publish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Content-Length": "1" },
+      body: oversized,
+    });
+    const response = await POST(forged);
+    expect(response.status).toBe(413);
+  });
+
+  it("refuses to overwrite a tampered version object with 409", async () => {
+    const published = (await (await POST(post(JSON.stringify(game("demo-hunt"))))).json()) as {
+      versionId: string;
+    };
+    const versionFile = path.join(storeDir, "demo-hunt", "versions", `${published.versionId}.json`);
+    await writeFile(versionFile, '{"id":"demo-hunt","tampered":true}', "utf8");
+    const republish = await POST(post(JSON.stringify(game("demo-hunt"))));
+    expect(republish.status).toBe(409);
+    const body = (await republish.json()) as { error: string };
+    expect(body.error).toBe("version_conflict");
+    // The tampered object is still what the read API serves - never silently
+    // replaced by the new upload.
+    const read = await getVersion("demo-hunt", published.versionId);
+    expect(((await read.json()) as { tampered: boolean }).tampered).toBe(true);
+  });
+
+  it("returns a generic 500 without internal details when storage fails", async () => {
+    // Point the store root at a regular file: mkdir/write must fail there.
+    const blocker = path.join(storeDir, "storage-root-is-a-file");
+    await writeFile(blocker, "not a directory", "utf8");
+    const previous = process.env.PUBLISHED_GAMES_DIR;
+    process.env.PUBLISHED_GAMES_DIR = blocker;
+    try {
+      const response = await POST(post(JSON.stringify(game("demo-hunt"))));
+      expect(response.status).toBe(500);
+      const body = (await response.json()) as { error: string; detail?: string };
+      expect(body.error).toBe("publish_failed");
+      expect(body.detail).toBeUndefined();
+      // No local path may leak into the response body.
+      expect(JSON.stringify(body)).not.toContain(storeDir);
+    } finally {
+      process.env.PUBLISHED_GAMES_DIR = previous;
+    }
+  });
+});
+
+describe("GET /api/games/[gameId] - phase 1 hardening", () => {
+  it("caches latest briefly and serves history immutably across new publishes", async () => {
+    const first = (await (await POST(post(JSON.stringify(game("demo-hunt"))))).json()) as {
+      versionId: string;
+    };
+
+    const latest = await getLatest("demo-hunt");
+    expect(latest.headers.get("cache-control")).toContain("max-age=60");
+    expect(latest.headers.get("cache-control")).toContain("stale-while-revalidate");
+
+    // A second publish must not change what the first version serves.
+    await POST(post(JSON.stringify(game("demo-hunt", { title: "Second Edition" }))));
+    const history = await getVersion("demo-hunt", first.versionId);
+    expect(history.status).toBe(200);
+    expect(((await history.json()) as Game).title).toBe("Published Hunt");
+    expect(history.headers.get("cache-control")).toContain("immutable");
+
+    // ...while "latest" now resolves to the new version.
+    const latestAfter = await getLatest("demo-hunt");
+    expect(((await latestAfter.json()) as Game).title).toBe("Second Edition");
   });
 });

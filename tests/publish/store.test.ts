@@ -93,4 +93,49 @@ describe("filesystem store", () => {
     expect(republished.created).toBe(false);
     expect(republished.meta.versions.map((v) => v.versionId)).toContain("0123456789abcdef");
   });
+
+  it("keeps every version entry when publishes of the same game race", async () => {
+    // getStore() builds a fresh adapter per request, so concurrent publishes
+    // in production share only the module-level lock; this races through it.
+    const inputs = [
+      input("1111111111111111", "content-one"),
+      input("2222222222222222", "content-two"),
+      input("3333333333333333", "content-three"),
+      input("4444444444444444", "content-four"),
+      input("5555555555555555", "content-five"),
+    ];
+    await Promise.all(inputs.map((i) => store.publish(i)));
+    const meta = await store.readMeta("demo");
+    expect(meta?.versions.map((v) => v.versionId).sort()).toEqual(
+      inputs.map((i) => i.versionId).sort(),
+    );
+    for (const i of inputs) {
+      await expect(store.readVersion("demo", i.versionId)).resolves.toBe(i.packJson);
+    }
+    expect(inputs.map((i) => i.versionId)).toContain(meta?.latestVersionId);
+  });
+
+  it("treats racing identical publishes as one created version", async () => {
+    const results = await Promise.all([
+      store.publish(input("0123456789abcdef", "same")),
+      store.publish(input("0123456789abcdef", "same")),
+      store.publish(input("0123456789abcdef", "same")),
+    ]);
+    expect(results.filter((r) => r.created)).toHaveLength(1);
+    const meta = await store.readMeta("demo");
+    expect(meta?.versions).toHaveLength(1);
+  });
+
+  it("does not move latest backwards on an idempotent re-publish of an old version", async () => {
+    await store.publish(input("1111111111111111", "v1"));
+    // Ensure v2 carries a strictly later timestamp.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await store.publish(input("2222222222222222", "v2"));
+    const republish = await store.publish(input("1111111111111111", "v1"));
+    expect(republish.created).toBe(false);
+    expect(republish.meta.latestVersionId).toBe("2222222222222222");
+    await expect(store.readMeta("demo")).resolves.toMatchObject({
+      latestVersionId: "2222222222222222",
+    });
+  });
 });
