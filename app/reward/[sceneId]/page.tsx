@@ -15,6 +15,7 @@ import { useGps } from "@/components/gps-provider";
 import { ProgressBar, Screen } from "@/components/ui";
 import { formatDistance } from "@/lib/location";
 import { playSound } from "@/components/sound";
+import { nextSceneIdOf } from "@/lib/game/state";
 
 export default function RewardPage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -27,9 +28,9 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
   const progress = state?.scenes[sceneId] ?? null;
   const reward = scene?.reward ?? null;
 
-  const nextScene = scene?.nextSceneId
-    ? game?.scenes.find((s) => s.id === scene.nextSceneId) ?? null
-    : null;
+  // Route-aware next stop: a branching choice decides which scene follows.
+  const nextId = game && state && scene ? nextSceneIdOf(game, state, scene.id) : null;
+  const nextScene = nextId ? game?.scenes.find((s) => s.id === nextId) ?? null : null;
   const nextDistance = nextScene ? distances[nextScene.id] ?? null : null;
 
   const totalCollected = state?.inventory.length ?? 0;

@@ -118,7 +118,10 @@ describe("brand tokens (batch B)", () => {
         .join("\n");
       expect(hits).toBe("");
     }
-  });
+    // The four child `grep` processes above are slow to spawn when the whole
+    // suite runs in parallel; give this filesystem scan room without touching
+    // the assertions.
+  }, 20_000);
 
   it("kept the live BSOP classes that reward/scene pages still use", () => {
     expect(globalsCss).toContain(".bsop-key");

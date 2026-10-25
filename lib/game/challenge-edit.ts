@@ -129,8 +129,29 @@ export function addChoiceOption(challenge: Challenge): Challenge {
 }
 
 /**
+ * Point one option at a follow-up scene (branch routing). Pass `null` to
+ * clear the route so the option falls back to the scene's `nextSceneId`.
+ * Keys are the stringified option indexes the pack format uses.
+ */
+export function setOptionBranch(
+  challenge: Challenge,
+  optionIndex: number,
+  targetSceneId: string | null,
+): Challenge {
+  if (challenge.type !== "choice") return challenge;
+  const branches: Record<string, string> = { ...(challenge.branches ?? {}) };
+  if (targetSceneId) branches[String(optionIndex)] = targetSceneId;
+  else delete branches[String(optionIndex)];
+  if (Object.keys(branches).length === 0) {
+    return { ...challenge, branches: undefined };
+  }
+  return { ...challenge, branches };
+}
+
+/**
  * Delete one option. Refuses to go below two (the validator requires two), and
  * keeps the correct-answer index pointing at the same option afterwards.
+ * Branch routes keyed by option index shift with the option.
  */
 export function removeChoiceOption(challenge: Challenge, index: number): Challenge {
   const options = [...(challenge.options ?? [])];
@@ -139,10 +160,23 @@ export function removeChoiceOption(challenge: Challenge, index: number): Challen
   options.splice(index, 1);
   const current = answerIndex(challenge);
   const answer = current === index ? 0 : current > index ? current - 1 : current;
+  // Branch routes are keyed by option index: shift the surviving entries with
+  // their options and drop the removed option's route.
+  let branches: Record<string, string> | undefined;
+  if (challenge.branches) {
+    branches = {};
+    for (const [key, target] of Object.entries(challenge.branches)) {
+      const i = Number(key);
+      if (i === index) continue;
+      branches[String(i > index ? i - 1 : i)] = target;
+    }
+    if (Object.keys(branches).length === 0) branches = undefined;
+  }
   return {
     ...challenge,
     options,
     answer: Math.min(Math.max(answer, 0), options.length - 1),
+    ...(branches ? { branches } : {}),
   };
 }
 

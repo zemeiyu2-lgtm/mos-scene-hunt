@@ -17,6 +17,7 @@ import { Screen, StatusChip } from "@/components/ui";
 import { matchTextAnswer } from "@/lib/game/answers";
 import { playSound } from "@/components/sound";
 import { MediaGallery } from "@/components/media-gallery";
+import { nextSceneIdOf } from "@/lib/game/state";
 
 export default function ChallengePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -62,6 +63,8 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
   }
 
   if (alreadyComplete && !solved) {
+    // Route-aware: a branching choice decides which scene follows.
+    const nextId = game && state ? nextSceneIdOf(game, state, scene.id) : null;
     return (
       <Screen title={scene.title} subtitle="已完成">
         <div className="card p-5 text-center">
@@ -75,9 +78,9 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
           <button
             type="button"
             className="btn btn-primary btn-block mt-4"
-            onClick={() => router.push(scene.nextSceneId ? `/scene/${scene.nextSceneId}` : "/quest")}
+            onClick={() => router.push(nextId ? `/scene/${nextId}` : "/quest")}
           >
-            {scene.nextSceneId ? "前往下一个地点" : "查看收获"}
+            {nextId ? "前往下一个地点" : "查看收获"}
           </button>
         </div>
       </Screen>

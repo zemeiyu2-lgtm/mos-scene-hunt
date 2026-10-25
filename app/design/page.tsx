@@ -47,6 +47,7 @@ import {
   removeChoiceOption,
   setChoiceOption,
   setCorrectOption,
+  setOptionBranch,
   withAnswerLines,
 } from "@/lib/game/challenge-edit";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
@@ -1107,7 +1108,33 @@ export default function DesignPage() {
               </p>
             ) : null}
 
-                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">路线顺序</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>
+                        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-[var(--surface)] p-3"><div><p className="text-[11px] text-[var(--muted)]">路线顺序</p><p className="text-[13px] font-bold">第 {working.scenes.findIndex((s) => s.id === selected.id) + 1} / {working.scenes.length} 站{selected.nextSceneId === null ? " · 终点" : ""}</p></div><div className="flex gap-1"><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[0]?.id === selected.id} onClick={() => moveScene(selected.id, -1)}>← 上移</button><button type="button" className="btn btn-ghost h-8 min-h-0 px-2 text-xs" disabled={working.scenes[working.scenes.length - 1]?.id === selected.id} onClick={() => moveScene(selected.id, 1)}>下移 →</button></div></div>
+                        {(() => {
+                          const idx = working.scenes.findIndex((s) => s.id === selected.id);
+                          const chainNext = working.scenes[idx + 1]?.id ?? null;
+                          if (selected.nextSceneId === null) {
+                            return chainNext ? (
+                              <button
+                                type="button"
+                                className="mb-3 w-full rounded-xl border border-[var(--line)] px-3 py-2 text-left text-[11.5px] text-[var(--muted)]"
+                                onClick={() => updateScene(selected.id, { nextSceneId: chainNext })}
+                              >
+                                🏁 此站是<strong>结局</strong>（完成后游戏结束）。点击恢复连接「{working.scenes[idx + 1]?.title}」。
+                              </button>
+                            ) : (
+                              <p className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">🏁 此站是<strong>结局</strong>：完成后游戏即结束。多个结局 = 把多个站点都设为终点，再用选项路线分别指向它们。</p>
+                            );
+                          }
+                          return (
+                            <button
+                              type="button"
+                              className="mb-3 w-full rounded-xl border border-[var(--line)] px-3 py-2 text-left text-[11.5px] text-[var(--muted)]"
+                              onClick={() => updateScene(selected.id, { nextSceneId: null })}
+                            >
+                              🏁 把此站设为<strong>结局</strong>（完成后游戏结束，不再连接下一站）
+                            </button>
+                          );
+                        })()}
             <label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">现场名称<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达后故事<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
@@ -1154,8 +1181,11 @@ export default function DesignPage() {
                       <div className="grid gap-1.5">
                         {(challenge.options ?? []).map((option, i) => {
                           const isCorrect = !challenge.reflective && challenge.answer === i;
+                          const branchTargets = working.scenes.filter((s) => s.id !== selected.id);
+                          const branchValue = challenge.branches?.[String(i)] ?? "";
                           return (
-                            <div key={i} className="flex items-center gap-1.5">
+                            <div key={i} className="rounded-lg border border-[var(--line)] p-1.5">
+                              <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
                                 role="radio"
@@ -1186,6 +1216,23 @@ export default function DesignPage() {
                               >
                                 ×
                               </button>
+                              </div>
+                              {branchTargets.length ? (
+                                <label className="mt-1 flex items-center gap-1.5 pl-8">
+                                  <span className="shrink-0 text-[10.5px] text-[var(--muted)]">完成后去</span>
+                                  <select
+                                    className="input h-7 min-h-0 py-0 text-[11.5px]"
+                                    aria-label={`选项 ${i + 1} 完成后的后续场景`}
+                                    value={branchValue}
+                                    onChange={(e) => updateScene(selected.id, { challenge: setOptionBranch(challenge, i, e.target.value || null) })}
+                                  >
+                                    <option value="">默认（路线顺序）</option>
+                                    {branchTargets.map((s) => (
+                                      <option key={s.id} value={s.id}>{s.title || s.id}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ) : null}
                             </div>
                           );
                         })}

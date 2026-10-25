@@ -59,6 +59,16 @@ export interface Challenge {
   media?: MediaItem[];
   /** Reflective choice: every deliberate selection is valid; the response is for self-reflection, not grading. */
   reflective?: boolean;
+  /**
+   * Branch routing for `choice` challenges: option index (as a string key)
+   * -> target scene id. When the player SUBMITS this challenge successfully,
+   * the chosen option decides which scene opens next, overriding the scene's
+   * `nextSceneId` for that playthrough. Keys must be valid option indexes;
+   * for non-reflective choices only the correct answer's branch can ever
+   * trigger, so declaring branches on other options is a validation error.
+   * Omit entirely for non-branching choices - existing packs are unaffected.
+   */
+  branches?: Record<string, string>;
   hint?: string;
   /**
    * For `keyword` challenges: additional accepted synonyms shown to the player
@@ -431,6 +441,25 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
           }
         }
       }
+      // Branch targets must exist and must not point at the choosing scene
+      // itself (completing a scene can never reopen it, so a self-branch is
+      // a permanent dead end).
+      if (scene?.challenge?.branches) {
+        for (const [key, target] of Object.entries(scene.challenge.branches)) {
+          if (typeof target !== "string" || !target) continue;
+          if (!ids.has(target)) {
+            err(
+              `$.scenes[${i}].challenge.branches.${key}`,
+              `分支目标场景不存在：${target}`,
+            );
+          } else if (target === scene.id) {
+            err(
+              `$.scenes[${i}].challenge.branches.${key}`,
+              "分支不能指向本场景：已完成的场景无法再次进入",
+            );
+          }
+        }
+      }
     });
 
     detectRequiresCycles(g.scenes, issues);
@@ -499,6 +528,34 @@ function validateChallenge(
       err(`${base}.answer`, "选择题的 answer 必须是选项下标（整数）；如果没有标准答案，请设置 reflective=true");
     } else if (c.answer < 0 || c.answer >= c.options.length) {
       err(`${base}.answer`, `选项下标越界：${c.answer}`);
+    }
+    if (c.branches !== undefined) {
+      if (!c.branches || typeof c.branches !== "object" || Array.isArray(c.branches)) {
+        err(`${base}.branches`, "必须是 选项下标 -> 场景 id 的对象");
+      } else {
+        for (const [key, target] of Object.entries(c.branches)) {
+          const index = Number(key);
+          if (!/^\d+$/.test(key) || !Number.isInteger(index) || index < 0 || index >= c.options.length) {
+            err(`${base}.branches`, `分支键 "${key}" 不是有效的选项下标（0 ~ ${c.options.length - 1}）`);
+          } else if (typeof target !== "string" || !target) {
+            err(`${base}.branches.${key}`, "分支目标必须是非空场景 id");
+          }
+        }
+        // Only the submitted (correct) choice can trigger a branch. On a
+        // graded (non-reflective) choice, wrong options can never submit, so
+        // branches on them are dead config - reject instead of silently
+        // ignoring, and keep the route graph honest for liveness checks.
+        if (!c.reflective && typeof c.answer === "number") {
+          for (const key of Object.keys(c.branches)) {
+            if (Number(key) !== c.answer) {
+              err(
+                `${base}.branches.${key}`,
+                "非反思型选择题只有正确答案的分支会触发；请把该分支移到正确答案上，或将此题设为 reflective",
+              );
+            }
+          }
+        }
+      }
     }
   } else if (c.type === "text" || c.type === "keyword") {
     const answers = Array.isArray(c.answer) ? c.answer : [c.answer];
@@ -571,6 +628,23 @@ function detectRequiresCycles(scenes: Scene[], issues: ValidationIssue[]): void 
   for (const scene of scenes) if (scene?.id) visit(scene.id, []);
 }
 
+/**
+ * Scene ids this scene's choice branches can legally lead to.
+ *
+ * For reflective choices every declared branch is reachable (each deliberate
+ * option submits successfully). For graded choices only the correct answer's
+ * branch can trigger - wrong options never submit - so only that edge exists.
+ */
+function branchTargetsOf(scene: Scene): string[] {
+  const branches = scene?.challenge?.branches;
+  if (!branches || scene.challenge?.type !== "choice") return [];
+  if (scene.challenge.reflective) return Object.values(branches);
+  const answer = scene.challenge.answer;
+  if (typeof answer !== "number") return [];
+  const target = branches[String(answer)];
+  return target ? [target] : [];
+}
+
 function collectReachable(entryId: string, scenes: Scene[]): Set<string> {
   const byId = new Map(scenes.map((s) => [s.id, s]));
   // Reverse adjacency: requires edges (r -> dependents) and item-kind edges
@@ -584,6 +658,7 @@ function collectReachable(entryId: string, scenes: Scene[]): Set<string> {
   };
   for (const s of scenes) {
     for (const r of s.requires ?? []) pushDependent(r, s.id);
+    for (const target of branchTargetsOf(s)) pushDependent(s.id, target);
     if (s.reward?.type === "item") {
       const kind = s.reward.value ?? s.reward.title;
       if (kind) {
@@ -629,6 +704,15 @@ function detectUnopenableScenes(
     const list = preds.get(s.nextSceneId);
     if (list) list.push(s.id);
     else preds.set(s.nextSceneId, [s.id]);
+  }
+  // Choice branches count as predecessor edges too: after the choosing scene
+  // opens (and is completed), its branch target becomes enterable.
+  for (const s of scenes) {
+    for (const target of branchTargetsOf(s)) {
+      const list = preds.get(target);
+      if (list) list.push(s.id);
+      else preds.set(target, [s.id]);
+    }
   }
 
   const openable = new Set<string>();

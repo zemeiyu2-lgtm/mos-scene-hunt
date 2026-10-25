@@ -93,6 +93,13 @@ export interface GameState {
   lastUpdatedAt: number;
   /** Set when every scene is complete. */
   finishedAt?: number;
+  /**
+   * Recorded branch choices: choosing scene id -> branch target scene id.
+   * Written once when a choice challenge is submitted successfully; drives
+   * which route the chain gate opens afterwards. Optional so saves from
+   * before branching restore cleanly (treated as no routes taken).
+   */
+  routes?: Record<string, string>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -129,14 +136,50 @@ export function rewardId(scene: Scene): string | null {
   return `${scene.id}:${type}:${value ?? title}`;
 }
 
-/** sceneId -> ids of scenes whose nextSceneId points at it. */
-function predecessorMap(game: Game): Map<string, string[]> {
+/**
+ * The scene this scene leads to for THIS playthrough.
+ *
+ * Non-branching scenes: the static `nextSceneId`. Graded (non-reflective)
+ * branching choices: only the correct answer can submit, so the route is
+ * content-determined - re-derived from the pack, never trusted from the save.
+ * Reflective branching choices: the route the player actually chose (recorded
+ * in `routes` at submit time and re-validated against declared branches on
+ * restore); before a choice is recorded the static edge remains, but the
+ * choosing scene is not completed yet then, so nothing opens through it.
+ */
+function effectiveNextId(scene: Scene, routes: Record<string, string> | undefined): string | null {
+  const challenge = scene.challenge;
+  const branches = challenge?.type === "choice" ? challenge.branches : undefined;
+  if (!challenge || !branches) return scene.nextSceneId;
+  if (!challenge.reflective) {
+    if (typeof challenge.answer === "number") {
+      return branches[String(challenge.answer)] ?? scene.nextSceneId;
+    }
+    return scene.nextSceneId;
+  }
+  const target = routes?.[scene.id];
+  if (target && Object.values(branches).includes(target)) return target;
+  return scene.nextSceneId;
+}
+
+/**
+ * sceneId -> ids of scenes that can follow it: static `nextSceneId` edges
+ * plus the branch edge actually taken (`routes`) for branching choice scenes.
+ */
+function predecessorMap(game: Game, routes?: Record<string, string>): Map<string, string[]> {
   const preds = new Map<string, string[]>();
+  const push = (from: string, to: string) => {
+    const list = preds.get(to);
+    if (list) list.push(from);
+    else preds.set(to, [from]);
+  };
   for (const scene of game.scenes) {
-    if (!scene.nextSceneId) continue;
-    const list = preds.get(scene.nextSceneId);
-    if (list) list.push(scene.id);
-    else preds.set(scene.nextSceneId, [scene.id]);
+    const next = effectiveNextId(scene, routes);
+    if (next) push(scene.id, next);
+    // A branching scene whose recorded route is still open must not keep its
+    // old static edge: the choice replaced it for this playthrough. But before
+    // any choice is recorded the static edge stays (the scene is not completed
+    // yet, so nothing opens through it either way).
   }
   return preds;
 }
@@ -217,9 +260,10 @@ function legitimateProgress(
   game: Game,
   isCompleted: (sceneId: string) => boolean,
   inventory: InventoryItem[],
+  routes?: Record<string, string>,
 ): { completed: Set<string>; heldItems: Set<string> } {
   const entryId = entryScene(game)?.id;
-  const predecessors = predecessorMap(game);
+  const predecessors = predecessorMap(game, routes);
   const byId = new Map(game.scenes.map((s) => [s.id, s]));
 
   const completed = new Set<string>();
@@ -263,9 +307,10 @@ export function availableSceneIds(game: Game, state: GameState): string[] {
     game,
     (id) => state.scenes[id]?.status === "completed",
     state.inventory,
+    state.routes,
   );
   const entryId = entryScene(game)?.id;
-  const predecessors = predecessorMap(game);
+  const predecessors = predecessorMap(game, state.routes);
 
   return sceneOrder(game)
     .filter(
@@ -281,15 +326,41 @@ export function activeScene(game: Game, state: GameState): Scene | null {
   const ids = availableSceneIds(game, state);
   const targetId = ids[ids.length - 1];
   if (!targetId) {
-    // Everything reachable is complete: surface the last completed scene.
-    const order = sceneOrder(game);
-    return order[order.length - 1] ?? null;
+    // Everything reachable is complete: surface the scene finished most
+    // recently - in a multi-ending hunt that is the ending just reached, not
+    // an arbitrary last entry of the pack.
+    let latest: { scene: Scene; at: number } | null = null;
+    for (const scene of game.scenes) {
+      const progress = state.scenes[scene.id];
+      if (progress?.status !== "completed") continue;
+      if (!latest || (progress.completedAt ?? 0) >= latest.at) {
+        latest = { scene, at: progress.completedAt ?? 0 };
+      }
+    }
+    return latest?.scene ?? null;
   }
   return game.scenes.find((s) => s.id === targetId) ?? null;
 }
 
+/** The route-aware next scene after `sceneId`, or null when it is an ending. */
+export function nextSceneIdOf(game: Game, state: GameState, sceneId: string): string | null {
+  const scene = game.scenes.find((s) => s.id === sceneId);
+  return scene ? effectiveNextId(scene, state.routes) : null;
+}
+
+/** True when the scene has no onward route for this playthrough (an ending). */
+function isEndingScene(scene: Scene, state: GameState): boolean {
+  return effectiveNextId(scene, state.routes) === null;
+}
+
+/**
+ * The hunt is complete once the player finishes ANY legal ending - a completed
+ * scene with no onward route. Single-line packs have exactly one such scene
+ * (the last), so the old "everything completed" outcome is unchanged; in a
+ * multi-ending hunt the other branches' scenes are not required.
+ */
 export function isGameComplete(game: Game, state: GameState): boolean {
-  return game.scenes.every((s) => state.scenes[s.id]?.status === "completed");
+  return game.scenes.some((s) => state.scenes[s.id]?.status === "completed" && isEndingScene(s, state));
 }
 
 export function completionRatio(game: Game, state: GameState): number {
@@ -362,6 +433,7 @@ export function createInitialState(game: Game, now: number = Date.now()): GameSt
     scenes,
     inventory: [],
     keywords: [],
+    routes: {},
     startedAt: now,
     lastUpdatedAt: now,
   };
@@ -410,6 +482,30 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
     };
   }
 
+  // Sanitize recorded routes before they influence any gate. A route entry
+  // survives only when the pack actually declares that branch on that scene's
+  // choice challenge; graded (non-reflective) choices are re-derived from the
+  // correct answer instead of trusted, since only the correct option can ever
+  // submit. Forged routes therefore cannot unlock undeclared paths.
+  const rawRoutes = raw.routes && typeof raw.routes === "object" ? raw.routes : {};
+  const routes: Record<string, string> = {};
+  for (const scene of game.scenes) {
+    const challenge = scene.challenge;
+    const branches = challenge?.type === "choice" ? challenge.branches : undefined;
+    if (!challenge || !branches) continue;
+    if (!challenge.reflective) {
+      if (typeof challenge.answer === "number") {
+        const derived = branches[String(challenge.answer)];
+        if (derived) routes[scene.id] = derived;
+      }
+      continue;
+    }
+    const stored = (rawRoutes as Record<string, unknown>)[scene.id];
+    if (typeof stored === "string" && Object.values(branches).includes(stored)) {
+      routes[scene.id] = stored;
+    }
+  }
+
   // Re-derive legitimacy so a tampered save file cannot unlock future scenes.
   // Completions and items are legitimate only together: a completion needs its
   // dependency gate (task gate + item gate) satisfied, an item kind needs a
@@ -421,6 +517,7 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
     game,
     (id) => scenes[id]?.status === "completed",
     Array.isArray(raw.inventory) ? (raw.inventory as InventoryItem[]) : [],
+    routes,
   );
   for (const scene of game.scenes) {
     const progress = scenes[scene.id];
@@ -467,7 +564,7 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
     ),
   );
 
-  return {
+  const reconciled: GameState = {
     gameId: game.id,
     gameVersion: game.version,
     currentSceneId:
@@ -475,10 +572,17 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
     scenes,
     inventory,
     keywords,
+    routes,
     startedAt: Number.isFinite(raw.startedAt) ? (raw.startedAt as number) : now,
     lastUpdatedAt: now,
-    finishedAt: Number.isFinite(raw.finishedAt) ? (raw.finishedAt as number) : undefined,
+    finishedAt: undefined,
   };
+  // finishedAt is re-derived, not trusted: a forged timestamp cannot mark an
+  // unfinished hunt complete, and a real finish survives the restore.
+  if (isGameComplete(game, reconciled)) {
+    reconciled.finishedAt = Number.isFinite(raw.finishedAt) ? (raw.finishedAt as number) : now;
+  }
+  return reconciled;
 }
 
 /* ------------------------------------------------------------------ */
@@ -583,7 +687,17 @@ export function gameReducer(game: Game, state: GameState, action: GameAction): G
         });
       }
 
-      return completeScene(game, state, scene, action.now);
+      const next = completeScene(game, state, scene, action.now);
+      // Record the route a successful choice took. Only the declared branch of
+      // the actually-submitted option is recorded, and only together with the
+      // completion (which the guards above enforce) - opening the question,
+      // arriving at the scene, or tapping an option never writes a route.
+      const branches = scene.challenge.type === "choice" ? scene.challenge.branches : undefined;
+      const target = branches && typeof action.selectedIndex === "number"
+        ? branches[String(action.selectedIndex)]
+        : undefined;
+      if (!target) return next;
+      return { ...next, routes: { ...(next.routes ?? {}), [scene.id]: target } };
     }
 
     case "ADVANCE":
@@ -687,7 +801,11 @@ export function completeScene(
   // Unlocking is implicit: `availableSceneIds` walks completed scenes. We do not
   // eagerly flip the next scene to "available" here, because doing so would let
   // two sources of truth drift apart.
-  const complete = game.scenes.every((s) => next.scenes[s.id]?.status === "completed");
+  // The hunt is finished when a legal ending has been completed - not when
+  // every scene is (other branches' endings are optional by design).
+  const complete = game.scenes.some(
+    (s) => next.scenes[s.id]?.status === "completed" && isEndingScene(s, next),
+  );
   return complete ? { ...next, finishedAt: now } : next;
 }
 
