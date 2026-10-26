@@ -194,7 +194,7 @@ async function simulateAt(page, chipNeedle) {
 
 /** 从地图展开任务面板并进入指定场景的故事页。
  *  到达后场景可能处于 arrived（面板给「解锁情境」）或 challenging
- *  （自动链路已开挑战，面板给「查看任务详情」→ 任务列表），两条路径都要能走通。 */
+ *  （已从到站弹窗进入过挑战，面板给「查看任务详情」→ 任务列表），两条路径都要能走通。 */
 async function openSceneStoryFromMap(page, sceneTitle) {
   await page.evaluate(() => {
     const b = document.querySelector('button[aria-label="展开任务详情"]');
@@ -390,26 +390,41 @@ try {
     await sleep(1500);
   });
 
-  await check("C2 传送抵达：自动进入情境→挑战链路", async () => {
+  await check("C2 传送抵达：地图弹到站提示，不自动跳转", async () => {
     await simulateAt(page, "1. 钟楼");
-    // 25461eb/a1cfc29 起：地图在「新鲜到达」时自动跳情境页（?auto=1），
-    // 情境页 900ms 后自动进入挑战页。旧断言假设到达后停留在地图页并出现
-    // 「解锁情境」按钮，已不匹配；改为验收自动链路把玩家送到场景内容。
-    await until(async () => /\/(scene|challenge)\//.test(page.url()), 12000);
-    await sleep(1300);
-    assert((await bodyText(page)).includes("钟楼"), "情境/挑战页看不到场景内容");
+    // 到站 UX 变更（feature/arrival-modal-sound）：地图不再自动跳情境页，
+    // 而是就地弹出「目标已发现」卡片。保护不变：到达仍然必须在原地给出
+    // 明确反馈，并且反馈里必须点名当前目标。
+    await until(async () => Boolean(await page.$('[data-testid="arrival-prompt"]')), 12000);
+    assert(
+      (await page.url()).replace(/\/$/, "").endsWith("/map"),
+      `到站后不应离开地图，实际 URL：${page.url()}`,
+    );
+    const promptText = await page.evaluate(
+      () => document.querySelector('[data-testid="arrival-prompt"]')?.innerText ?? "",
+    );
+    assert(promptText.includes("目标已发现"), "到站弹窗没有标题");
+    assert(promptText.includes("钟楼广场"), `到站弹窗没有点名目标：\n${promptText}`);
   });
 
-  await check("C2b 返回地图后仍标注模拟定位", async () => {
+  await check("C2b 到站弹窗点「查看任务」进入情境页", async () => {
+    await clickByText(page, "button", "查看任务");
+    await until(async () => (await page.url()).includes("/scene/"), 10000);
+    await sleep(1300);
+    assert((await bodyText(page)).includes("钟楼"), "情境页看不到场景内容");
+  });
+
+  await check("C2c 返回地图后仍标注模拟定位，且不再被弹走", async () => {
     // 模拟定位徽标是安全标注：模拟 fix 生效期间回到地图必须可见，
-    // 不得因自动跳转丢失 simulated 标志。
-    await clickByText(page, "button", "回到地图");
+    // 不得因到站提示丢失 simulated 标志。
+    // 情境页的退出按钮是「稍后再做」（自动进挑战链路已随到站弹窗下线）。
+    await clickByText(page, "button", "稍后再做");
     await until(async () => (await page.url()).replace(/\/$/, "").endsWith("/map"), 10000);
     await sleep(1200);
-    // 983f260 修复的回归防护：到达仍在新鲜窗口内（<30s）、自动展开冷却
-    // （60s）尚未过期时，回到地图不允许被再次弹回情境页。1200ms 大于
-    // 情境页 900ms 自动进挑战链路，若弹回 URL 必然已变化。
-    assert((await page.url()).replace(/\/$/, "").endsWith("/map"), "回到地图后被自动弹回情境页（冷却判重失效）");
+    // 同一到站事件已经提示过：回到地图不得再弹一次、更不得把玩家带走。
+    const promptAgain = await page.$('[data-testid="arrival-prompt"]');
+    assert(!promptAgain, "回到地图后同一到站事件又弹了一次（判重失效）");
+    assert((await page.url()).replace(/\/$/, "").endsWith("/map"), "回到地图后被自动弹走");
     assert((await bodyText(page)).includes("模拟定位中"), "地图页没有标注模拟定位");
   });
 
@@ -439,15 +454,20 @@ try {
     await sleep(1200);
   });
 
-  await check("C6 第二站：自动抵达→故事二→关键词题→完成", async () => {
+  await check("C6 第二站：到站弹窗→故事二→关键词题→完成", async () => {
     await simulateAt(page, "2. 喷泉");
-    await until(async () => /\/(scene|challenge)\//.test(page.url()), 12000);
-    await sleep(1300);
-    // 自动链路已把情境页推进到挑战页；回地图后经任务面板验收故事二。
-    await clickByText(page, "button", "回到地图");
-    await until(async () => (await page.url()).replace(/\/$/, "").endsWith("/map"), 10000);
-    await sleep(1000);
-    await openSceneStoryFromMap(page, "喷泉步道");
+    await until(async () => Boolean(await page.$('[data-testid="arrival-prompt"]')), 12000);
+    assert(
+      (await page.url()).replace(/\/$/, "").endsWith("/map"),
+      `第二站到站后不应离开地图，实际 URL：${page.url()}`,
+    );
+    const promptText = await page.evaluate(
+      () => document.querySelector('[data-testid="arrival-prompt"]')?.innerText ?? "",
+    );
+    assert(promptText.includes("喷泉步道"), `到站弹窗没有点名第二站：\n${promptText}`);
+    await clickByText(page, "button", "查看任务");
+    await until(async () => (await page.url()).includes("/scene/"), 10000);
+    await sleep(1200);
     assert((await bodyText(page)).includes("JOURNEY-STORY-2"), "故事二未显示");
     await clickByText(page, "button", "开始任务");
     await until(async () => (await page.url()).includes("/challenge/"), 10000);

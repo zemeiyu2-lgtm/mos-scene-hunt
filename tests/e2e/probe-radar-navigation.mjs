@@ -105,7 +105,7 @@ async function main() {
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--window-size=390,844"],
   });
 
-  const page = await browser.newPage();
+  let page = await browser.newPage();
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
   await browser.defaultBrowserContext().overridePermissions(BASE, ["geolocation", "notifications"]);
   await page.setGeolocation(START);
@@ -319,22 +319,35 @@ async function main() {
 
     await page.screenshot({ path: path.join(ARTIFACTS, "probe-radar-navigation.png") });
 
-    /* ------------------------------------------------- N9 到达后自动呈现内容 */
-    await check("N9 到达当前目标后自动呈现情境内容", async () => {
-      // 设计变更（25461eb/a1cfc29 起的到达 UX）：新鲜到达时地图自动跳转
-      // /scene?auto=1，情境页 900ms 后自动进挑战页——比旧版「任务详情自动
-      // 展开」更进一步。保护不变：到达后必须自动把玩家带到场景内容，
-      // 不需要玩家自己发现入口。
-      const scenes = await page.evaluate(async () => {
-        const res = await fetch("/content/demo-hunt.json");
-        const pack = await res.json();
-        return pack.scenes.map((scene) => ({
-          id: scene.id,
-          lat: scene.location.lat,
-          lng: scene.location.lng,
-        }));
-      });
-      const target = scenes[0];
+    /* ------------------------------------------------- N9 到达后就地提示 */
+    // 到站判重状态是按「游戏/场景」+ 时间戳记账的，N9/N9b 里还有一次整页刷新要
+    // 验证「同一到达不重弹」，所以重开一次游览上下文，从干净的存档开始跑。
+    const arrivalPage = await browser.newPage();
+    await arrivalPage.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+    await arrivalPage.setGeolocation(START);
+    arrivalPage.on("pageerror", (err) => pageErrors.push(String(err)));
+    page = arrivalPage;
+    // 新页面停在 about:blank，先落到同源地图页，后面才允许相对路径 fetch。
+    await page.goto(`${BASE}/map`, { waitUntil: "networkidle2" });
+    await sleep(2500);
+
+    // N9/N9b 共用同一个目标，所以先取出来，别把 target 关在单个 check 里。
+    const scenes = await page.evaluate(async () => {
+      const res = await fetch("/content/demo-hunt.json");
+      const pack = await res.json();
+      return pack.scenes.map((scene) => ({
+        id: scene.id,
+        title: scene.title,
+        lat: scene.location.lat,
+        lng: scene.location.lng,
+      }));
+    });
+    const target = scenes[0];
+
+    await check("N9 到达当前目标后地图就地弹出到站提示", async () => {
+      // 到站 UX 变更（feature/arrival-modal-sound）：新鲜到达不再把玩家自动
+      // 带离地图，而是就地弹出一张到站卡片（标题 + 目标名 + 查看任务）。
+      // 保护不变：到达后必须立刻有明确反馈，不需要玩家自己发现入口。
       // 先确保处于收起态：导航回 /map（模拟坐标已在 localStorage 里）。
       await page.goto(`${BASE}/map`, { waitUntil: "networkidle2" });
       await sleep(2800);
@@ -343,26 +356,42 @@ async function main() {
       assert(collapsedBefore, `到达前任务详情应为收起态：\n${before.slice(0, 400)}`);
 
       await teleport(page, { lat: target.lat, lng: target.lng }, { settle: 3400 });
-      const url = page.url();
-      if (/\/(scene|challenge)\//.test(url)) {
-        // 新 UX：地图自动跳情境/挑战页，页面必须已经显示场景内容。
-        await sleep(1300);
-        const text = await page.evaluate(() => document.body.innerText);
-        assert(
-          text.includes(target.title) || /\/challenge\//.test(page.url()),
-          `自动跳转后看不到场景内容：\n${text.slice(0, 500)}`,
-        );
-        return;
-      }
-      // 兜底：若未发生自动跳转（如非新鲜到达），地图任务卡必须已自动展开
-      // 详情（旧行为），否则到达毫无反馈。
-      const after = await page.evaluate(() => document.body.innerText);
-      const expandedAfter = after.includes("查看任务详情") || after.includes("解锁情境");
-      assert(after.includes(target.title), `传送后没有回到地图任务卡：\n${after.slice(0, 400)}`);
       assert(
-        expandedAfter,
-        `到达目标后既未自动跳情境页、详情也没有自动展开：\n${after.slice(0, 600)}`,
+        page.url().replace(/\/$/, "").endsWith("/map"),
+        `到达后不应离开地图，实际 URL：${page.url()}`,
       );
+      const promptText = await page.evaluate(
+        () => document.querySelector('[data-testid="arrival-prompt"]')?.innerText ?? null,
+      );
+      assert(promptText !== null, "到达目标后地图没有出现到站提示");
+      assert(promptText.includes("目标已发现"), `到站提示缺少标题：\n${promptText}`);
+      assert(promptText.includes(target.title), `到站提示没有点名目标：\n${promptText}`);
+      // 提示是叠加层，不是新页面：地图容器必须仍在，玩家可以继续看地图。
+      const mapAlive = await page.evaluate(() =>
+        Boolean(document.querySelector(".leaflet-container .leaflet-tile-pane")),
+      );
+      assert(mapAlive, "到站提示出现后地图容器消失");
+    });
+
+    /* ------------------------------------------------- N9b 提示可关闭 */
+    await check("N9b 关闭到站提示后仍停留地图、且不再自动重现", async () => {
+      await page.evaluate(() => {
+        document.querySelector('[data-testid="arrival-prompt-continue"]')?.click();
+      });
+      await sleep(900);
+      assert(
+        page.url().replace(/\/$/, "").endsWith("/map"),
+        `关闭提示后不应跳转，实际 URL：${page.url()}`,
+      );
+      const stillThere = await page.$('[data-testid="arrival-prompt"]');
+      assert(!stillThere, "关闭后到站提示仍然显示");
+      // 同一次到达不得因为重挂载再弹一次。
+      await page.reload({ waitUntil: "networkidle2" });
+      await sleep(3000);
+      const afterReload = await page.$('[data-testid="arrival-prompt"]');
+      assert(!afterReload, "刷新后同一次到站又弹了一次（判重失效）");
+      const text = await page.evaluate(() => document.body.innerText);
+      assert(text.includes(target.title) || text.includes("模拟定位中"), "刷新后地图内容丢失");
     });
 
     /* ------------------------------------------------- N10 圆形区域适配不崩溃 */

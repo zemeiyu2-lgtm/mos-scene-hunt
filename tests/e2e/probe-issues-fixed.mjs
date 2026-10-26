@@ -137,7 +137,7 @@ await page.evaluate((pack) => {
   localStorage.setItem("mos-scene-hunt:current-authored-game", "fieldtest-alpha-1");
 }, pack);
 
-// 到达测试点一 → 应自动跳情境页 → 自动打开挑战页
+// 到达测试点一 → 地图就地弹到站提示（不再自动跳页）→ 玩家点「查看任务」才进挑战
 const cdp = await page.createCDPSession();
 await cdp.send("Emulation.setGeolocationOverride", {
   latitude: 14.58305,
@@ -155,11 +155,38 @@ const started = await page.evaluate(() => {
 check("E2E-11 开始寻宝", started === "clicked", started);
 await new Promise((r) => setTimeout(r, 9000));
 const urlAfterArrival = page.url();
-check(
-  "E2E-12 到达后自动打开挑战页",
-  urlAfterArrival.includes("/challenge/scene-alpha-1"),
-  urlAfterArrival.replace(BASE, ""),
+const arrivalPrompt = await page.evaluate(
+  () => document.querySelector('[data-testid="arrival-prompt"]')?.innerText ?? null,
 );
+// 到站 UX 变更（feature/arrival-modal-sound）：到达不再自动打开挑战页，
+// 而是留在地图并弹出到站提示。断言换成同等强度的新契约：停在 /map、
+// 提示点名目标，玩家点击「查看任务」后才进入挑战。
+check(
+  "E2E-12 到达后停留地图并弹到站提示",
+  urlAfterArrival.replace(/\/$/, "").endsWith("/map") &&
+    Boolean(arrivalPrompt) &&
+    arrivalPrompt.includes("目标已发现"),
+  `${urlAfterArrival.replace(BASE, "")} | ${(arrivalPrompt ?? "无提示").slice(0, 60)}`,
+);
+await page.evaluate(() => {
+  document.querySelector('[data-testid="arrival-prompt-view-task"]')?.click();
+});
+await new Promise((r) => setTimeout(r, 3000));
+const urlAfterViewTask = page.url();
+// 到站弹窗先把玩家送到情境页；挑战由情境页的「开始任务」进入（到站不再
+// 自动串到挑战页，玩家要自己看过故事再决定开始）。
+check(
+  "E2E-12b 点「查看任务」后进入情境页",
+  urlAfterViewTask.includes("/scene/scene-alpha-1"),
+  urlAfterViewTask.replace(BASE, ""),
+);
+await page.evaluate(() => {
+  const btn = [...document.querySelectorAll("button")].find((b) =>
+    (b.innerText || "").includes("开始任务"),
+  );
+  btn?.click();
+});
+await new Promise((r) => setTimeout(r, 2500));
 const challengeShown = await page.evaluate(() => {
   const text = document.body.innerText;
   return { question: text.includes("喷泉在广场的哪一侧？"), option: text.includes("东侧") };

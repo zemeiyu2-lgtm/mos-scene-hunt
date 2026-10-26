@@ -20,20 +20,50 @@ import { calculateDistance, classifyFix, formatDistance, smoothHeading } from "@
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
 import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
+import { ArrivalPrompt } from "@/components/arrival-prompt";
+import { hasProgressIn, readHuntIndex } from "@/lib/storage";
+import {
+  arrivalEventKey,
+  arrivalTargetKey,
+  loadServedArrivals,
+  loadServedTargets,
+  pruneServedArrivals,
+  saveServedArrivals,
+  saveServedTargets,
+} from "@/lib/game/arrival";
+import { decideArrivalPrompt } from "@/lib/game/arrival-decision";
+import { activeScene } from "@/lib/game/state";
 
 /** A GPS course heading is only trustworthy while the player is actually moving. */
 const GPS_COURSE_MIN_SPEED_MPS = 1;
-/** Only a *fresh* arrival (recently crossed into the ring) auto-opens the scene. */
-const FRESH_ARRIVAL_WINDOW_MS = 30_000;
-/** 同一场景自动展开情境页的冷却：跨页面导航重挂载仍然生效。 */
-const AUTO_OPEN_COOLDOWN_MS = 60_000;
-/** 模块级判重表：客户端导航重挂载后依然保留（useRef 做不到）。 */
-const autoOpenedAt = new Map<string, number>();
 
-/** 冷却键包含游戏 id：场景 id 由设计者输入派生，不同游戏可能出现相同场景 id，
- * 只按场景 id 判重会在切换游戏后的 60 秒内误挡另一个游戏的自动展开。 */
-const autoOpenKey = (gameId: string | undefined, sceneId: string) =>
-  `${gameId ?? "?"}/${sceneId}`;
+/**
+ * 到站提示的模块级判重状态（跨客户端导航重挂载保留，useRef 做不到）。
+ *
+ * 键 = 游戏 id + 场景 id + 状态机写入的 arrivedAt；另按「游戏/场景」记一条该目标
+ * 最近一次已提示的到达戳。两份记录都持久化到 localStorage，因为整页刷新会清空
+ * 模块内存。刷新判定的完整推导见 lib/game/arrival.ts。
+ */
+let servedArrivals: Map<string, number> | null = null;
+let servedTargets: Map<string, number> | null = null;
+/**
+ * 已做过到站判定的「游戏/场景」。
+ *
+ * 每个目标在本页文档里的**第一次**判定要单独对待：若加载时就已有存档，那么这次
+ * 到达多半是刷新造成的伪事件（见 lib/game/arrival.ts）。之后的判定必然是玩家
+ * 真的又走进了触发圈，因此不再抑制。
+ */
+const evaluatedTargets = new Set<string>();
+
+function getServedArrivals(): Map<string, number> {
+  if (!servedArrivals) servedArrivals = loadServedArrivals();
+  return servedArrivals;
+}
+
+function getServedTargets(): Map<string, number> {
+  if (!servedTargets) servedTargets = loadServedTargets();
+  return servedTargets;
+}
 
 export default function MapPage() {
   const router = useRouter();
@@ -159,6 +189,94 @@ export default function MapPage() {
     }
   }, [arrivedScene?.id, current?.id]);
 
+  // ---- 到站提示 ------------------------------------------------------
+  // 行为变更（本功能）：到站不再把玩家自动带离地图。状态机照旧把场景翻成
+  // arrived（解锁条件、到达时间戳都不变），地图就地弹出一张到站卡片，由玩家
+  // 自己决定「查看任务」还是「继续查看地图」。自动跳转会先把页面推走，导致
+  // 地图上的到达提示根本来不及出现，所以跳转时机整体后移到玩家点击之后。
+  //
+  // 状态只记「这一次到达是否已提示过」：promptEventKey 指向一个具体的
+  // arrivedAt，样式与导航都不由它驱动，关闭它不会改动任何游戏状态。
+  const [promptEventKey, setPromptEventKey] = useState<string | null>(null);
+  const promptEventKeyRef = useRef<string | null>(null);
+  promptEventKeyRef.current = promptEventKey;
+
+  const currentArrivedAt = current ? state?.scenes[current.id]?.arrivedAt : undefined;
+  const currentId = current?.id ?? null;
+  const arrivedNow = Boolean(currentId && arrivedScene && arrivedScene.id === currentId);
+  const gameId = game?.id;
+
+  // 本页文档「加载那一刻」的快照，到站判重全靠它区分「刷新」与「真的又走到」：
+  //  - persistedStatusRef / persistedArrivalRef：加载时该场景的 status 与
+  //    arrivedAt。reconcileState 会把 arrived 翻回 locked 但保留 arrivedAt，
+  //    而这个戳随后会被状态机用新戳覆盖，所以必须趁早记下来。status 是「加载时
+  //    玩家是否已经站在圈里」的直接证据，比猜时间差可靠得多。
+  //  - hadProgressOnLoadRef：加载前是否已有真实进度（见 lib/storage 的
+  //    hasProgressIn）。全新开局为 false；刷新、切换游戏后回来、从游戏中心进入
+  //    已有存档的一局都为 true。
+  const persistedArrivalRef = useRef<{ gameId: string; sceneId: string; status: string | undefined; arrivedAt: number | undefined } | null>(null);
+  const hadProgressOnLoadRef = useRef(false);
+  const snapshotGameIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!state || !gameId || !game) return;
+    if (snapshotGameIdRef.current === gameId) return;
+    snapshotGameIdRef.current = gameId;
+    // 快照必须针对「页面此刻面对的目标场景」，而不是 state.currentSceneId：
+    // 后者只在玩家进入情境页后才写入，走到触发圈时会话里可能一直是 null
+    // （实测存档 currentSceneId 为 null 而 scene-a 已 arrived）。
+    const activeId = activeScene(game, state)?.id ?? null;
+    const persistedArrivedAt = activeId ? state.scenes[activeId]?.arrivedAt : undefined;
+    const persistedStatus = activeId ? state.scenes[activeId]?.status : undefined;
+    persistedArrivalRef.current = { gameId, sceneId: activeId ?? "", status: persistedStatus, arrivedAt: persistedArrivedAt };
+    // 存档索引只由本 provider 的保存副作用写入，用它区分「这一局之前真的玩过」
+    // 与「存档键已存在但从未离开起点」——启动页和游戏中心自己也可能建索引/存档。
+    const inIndex = readHuntIndex().some((entry) => entry.gameId === gameId);
+    hadProgressOnLoadRef.current = inIndex || hasProgressIn(state, gameId);
+  }, [state, game, gameId]);
+
+  useEffect(() => {
+    if (!currentId || !arrivedNow) return;
+    // 已为本事件弹过：GPS 抖动 / 重渲染 / 重挂载都停在这里。
+    const key = arrivalEventKey(gameId, currentId, currentArrivedAt);
+    if (!key || key === promptEventKeyRef.current) return;
+    const now = Date.now();
+    const served = getServedArrivals();
+    const targets = getServedTargets();
+    const targetKey = arrivalTargetKey(gameId, currentId);
+    const snapshot = persistedArrivalRef.current;
+    const snapshotMatches = Boolean(snapshot && snapshot.gameId === gameId && snapshot.sceneId === currentId);
+    const persistedArrivedAt = snapshotMatches ? snapshot?.arrivedAt : undefined;
+    const persistedStatus = snapshotMatches ? snapshot?.status : undefined;
+    const firstEvaluation = Boolean(targetKey) && !evaluatedTargets.has(targetKey as string);
+    if (targetKey) evaluatedTargets.add(targetKey);
+
+    const announced = decideArrivalPrompt({
+      gameId,
+      sceneId: currentId,
+      arrivedAt: currentArrivedAt,
+      now,
+      lastServed: served,
+      persistedStatus,
+      persistedArrivedAt,
+      hadProgressOnLoad: hadProgressOnLoadRef.current,
+      targetServedAt: targetKey ? targets.get(targetKey) : undefined,
+      firstEvaluation,
+    });
+    if (!announced) return;
+
+    served.set(key, now);
+    pruneServedArrivals(served, now);
+    saveServedArrivals(served, now);
+    if (targetKey && currentArrivedAt) {
+      targets.set(targetKey, currentArrivedAt);
+      saveServedTargets(targets, now);
+    }
+    setPromptEventKey(key);
+  }, [currentId, arrivedNow, currentArrivedAt, gameId]);
+
+  // 只在这张提示对应的仍是当前目标时显示；目标推进后旧提示自动让位。
+  const promptScene = promptEventKey && current ? current : null;
+
   // ---- 问题 1：方向尾巴的最终驱动值 ----------------------------------
   // 优先级：设备指南针（真实设备朝向）> GPS 航向（真实移动方向，仅在移动时
   // 可信）。两者都不是伪造的方向数据；都不可用时尾巴保持指向上方（北），
@@ -177,31 +295,17 @@ export default function MapPage() {
     setDisplayHeading(next);
   }, [heading, gpsCourse]);
 
-  // ---- 问题 3：到达当前目标后自动显示情境/问题 ------------------------
-  // 只对「新鲜到达」触发（30 秒内跨入触发圈），避免老进度或站在圈内反复打开。
-  // OPEN_CHALLENGE 在状态机里幂等，GPS 抖动不会重复解锁或重复发奖。离开范围后
-  // 挑战状态由状态机保留（challenging 不回退），已填写的答案不会丢失。
-  //
-  // 去重有两个坑：
-  //  1. useRef 挡不住客户端导航重挂载——挑战页「回到地图」→ 地图重挂载，会在
-  //     30 秒窗口内再次自动跳转，玩家被弹回情境页回不到地图；
-  //  2. arrivedAt 不能作为去重键——到达循环里状态机会刷新它（locked→arrived
-  //     会写入新时间戳），同一个到达会出现多个 arrivedAt。
-  // 因此用模块级「同场景 60 秒冷却」：跨重挂载保留，与 arrivedAt 解耦；
-  // 冷却大于 30 秒新鲜窗口，真离开再回来会得到新的到达，不会被误挡。
-  const autoOpenedSceneRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!current || !arrivedScene || arrivedScene.id !== current.id) return;
-    if (autoOpenedSceneRef.current === arrivedScene.id) return;
-    const arrivedAt = state?.scenes[current.id]?.arrivedAt ?? 0;
-    if (!arrivedAt || Date.now() - arrivedAt > FRESH_ARRIVAL_WINDOW_MS) return;
-    const key = autoOpenKey(game?.id, arrivedScene.id);
-    const lastOpenedAt = autoOpenedAt.get(key) ?? 0;
-    if (Date.now() - lastOpenedAt < AUTO_OPEN_COOLDOWN_MS) return;
-    autoOpenedAt.set(key, Date.now());
-    autoOpenedSceneRef.current = arrivedScene.id;
-    router.push(`/scene/${arrivedScene.id}?auto=1`);
-  }, [arrivedScene?.id, current?.id, state, router]);
+  // ---- 问题 3（已被本功能取代）：到达后不再自动跳转情境页 -------------
+  // 旧实现：新鲜到达 → router.push(`/scene/${id}?auto=1`)，情境页再自动进挑战。
+  // 它有三个副作用：地图上的到站反馈来不及出现；玩家被弹离地图后回不去；
+  // 只能靠「同场景 60 秒冷却」兜住重挂载，跨游戏切换时容易误挡。
+  // 现在改由上面的 promptEventKey + 玩家显式点击驱动（见 ArrivalPrompt），
+  // 情境页仍然兼容 ?auto=1（分享/深链保持可用），只是地图不再主动带这个参数。
+  const openArrivedScene = () => {
+    if (!current) return;
+    setPromptEventKey(null);
+    router.push(`/scene/${current.id}`);
+  };
 
   return (
     <>
@@ -443,6 +547,17 @@ export default function MapPage() {
             )}
           </div>
         </div>
+
+        {/* 到站提示：居中叠在地图中部，避开顶部 HUD 与底部任务卡。 */}
+        {promptScene ? (
+          <ArrivalPrompt
+            sceneTitle={promptScene.title}
+            placeName={promptScene.location.name ?? null}
+            distanceMetres={distances[promptScene.id]?.distance ?? null}
+            onViewTask={openArrivedScene}
+            onDismiss={() => setPromptEventKey(null)}
+          />
+        ) : null}
 
         {simulatorAvailable ? <SimulatorPanel activeSceneId={current?.id ?? null} /> : null}
       </div>

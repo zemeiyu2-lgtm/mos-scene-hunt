@@ -144,6 +144,49 @@ export function isPersistentStorageAvailable(): boolean {
 /* Save data                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Whether a save with real progress exists for this game at page load.
+ *
+ * Used by the map screen's arrival guard: the map must be able to tell "this
+ * page load found saved progress" (so a scene showing as newly arrived is very
+ * likely the reload artefact described in `lib/game/arrival.ts`) from "this
+ * page load started the hunt from scratch".
+ *
+ * Peeking at the key is not enough. The hunt provider persists the state it
+ * hydrated, and plain hydration of an untouched save produces
+ * "scenes: {a: locked, b: locked, ...}", so a key can exist while the player
+ * has not done anything. The launch screen and the game centre also touch the
+ * save index on their own. What counts as progress is therefore either
+ *
+ *  - a record in the save index (written only by the provider's save effect),
+ *  - a scene the player interacted with (arrived / challenging / completed),
+ *  - a kept arrival stamp, or
+ *  - a moved scene pointer.
+ *
+ * Read-only: nothing is migrated, nothing is written.
+ */
+export function hasGameProgress(gameId: string): boolean {
+  if (readHuntIndex().some((entry) => entry.gameId === gameId)) return true;
+  return hasProgressIn(loadGameState(gameId), gameId);
+}
+
+/**
+ * The progress test above, for a save that is already in hand.
+ *
+ * The map screen hydrates its own copy of the game state, so it can answer
+ * this without touching storage; `hadProgressAtLoad` then compares that answer
+ * against the save index at the moment the document loaded.
+ */
+export function hasProgressIn(state: GameState | null | undefined, gameId: string): boolean {
+  if (!state || state.gameId !== gameId) return false;
+  if (state.currentSceneId) return true;
+  return Object.values(state.scenes ?? {}).some(
+    (progress) =>
+      Boolean(progress) &&
+      (progress.status !== "locked" || progress.arrivedAt !== undefined),
+  );
+}
+
 export function saveGameState(state: GameState): boolean {
   const envelope: SaveEnvelope = {
     schemaVersion: SAVE_SCHEMA_VERSION,
