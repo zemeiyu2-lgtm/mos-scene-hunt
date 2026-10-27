@@ -27,6 +27,19 @@ export function isSoundEnabled(): boolean {
   return window.localStorage.getItem(KEY) !== "off";
 }
 
+export type AudioPlaybackState = "unavailable" | "suspended" | "running";
+
+/**
+ * Current audio readiness, for UI that wants to explain an autoplay-policy
+ * block. Deliberately does NOT create a context: before the first playSound
+ * there is nothing to unlock, and callers should treat "unavailable" as
+ * "nothing to hint about" (no hardware, muted, or audio never attempted).
+ */
+export function currentAudioState(): AudioPlaybackState {
+  if (typeof window === "undefined" || !ctx) return "unavailable";
+  return ctx.state === "suspended" ? "suspended" : "running";
+}
+
 /* ------------------------------------------------------------------ */
 /* Audio context + master bus                                          */
 /* ------------------------------------------------------------------ */

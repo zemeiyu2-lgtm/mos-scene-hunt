@@ -189,6 +189,44 @@ describe("GPS FIX_UPDATE only moves between available and arrived", () => {
     s = gameReducer(game, s, { type: "FIX_UPDATE", now: T + 1, insideSceneIds: [] });
     expect(s.scenes.a.status).toBe("challenging");
   });
+
+  it("never re-stamps a completed scene standing in its ring (规则 A：已完成不重复打扰)", () => {
+    // Structural guarantee behind "completed targets are never re-announced":
+    // FIX_UPDATE only writes arrivedAt on the locked -> arrived transition, so
+    // a finished scene inside the ring keeps its status and its old stamp -
+    // the arrival prompt (keyed on arrivedAt) has no new event to announce.
+    let s = solve(fresh(), "a", {
+      type: "SUBMIT_ANSWER",
+      sceneId: "a",
+      selectedIndex: 1,
+      now: T,
+    });
+    expect(s.scenes.a.status).toBe("completed");
+    const stamp = s.scenes.a.arrivedAt;
+    s = gameReducer(game, s, {
+      type: "FIX_UPDATE",
+      now: T + 60_000,
+      insideSceneIds: ["a"],
+    });
+    expect(s.scenes.a.status).toBe("completed");
+    expect(s.scenes.a.arrivedAt).toBe(stamp);
+  });
+
+  it("keeps a challenge in progress unchanged while the player stands in the ring", () => {
+    // A player re-entering the ring mid-challenge must not get a fresh
+    // arrival stamp (which would re-trigger the arrival prompt).
+    let s = fresh();
+    s = gameReducer(game, s, { type: "FIX_UPDATE", now: T, insideSceneIds: ["a"] });
+    s = gameReducer(game, s, { type: "OPEN_CHALLENGE", sceneId: "a", now: T });
+    const stamp = s.scenes.a.arrivedAt;
+    s = gameReducer(game, s, {
+      type: "FIX_UPDATE",
+      now: T + 30_000,
+      insideSceneIds: ["a"],
+    });
+    expect(s.scenes.a.status).toBe("challenging");
+    expect(s.scenes.a.arrivedAt).toBe(stamp);
+  });
 });
 
 describe("wrong answers cannot advance", () => {

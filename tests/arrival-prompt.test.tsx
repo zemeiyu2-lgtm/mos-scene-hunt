@@ -96,11 +96,15 @@ async function loadPrompt() {
 const arriveProps = (overrides: Partial<Record<string, unknown>> = {}) => ({
   sceneTitle: "1. 钟楼",
   placeName: "钟楼广场",
-  distanceMetres: 12.4,
   onViewTask: vi.fn(),
   onDismiss: vi.fn(),
   ...overrides,
 });
+
+/** The sound hint appears after a 400 ms grace period; wait past it. */
+async function afterSoundGracePeriod() {
+  await new Promise((resolve) => setTimeout(resolve, 450));
+}
 
 beforeEach(() => {
   vi.unstubAllGlobals();
@@ -118,14 +122,23 @@ describe("announcement content", () => {
     expect(screen.getByTestId("arrival-prompt")).toBeTruthy();
     expect(screen.getByText("目标已发现！")).toBeTruthy();
     expect(screen.getByText("1. 钟楼")).toBeTruthy();
-    // Place + in-range hint, so the player knows why this appeared.
-    expect(screen.getByText(/钟楼广场 · 你已进入触发范围（距中心 12 m）/)).toBeTruthy();
+    // Place + qualitative in-range hint. No precise distance: GPS accuracy
+    // (±20-65 m) dwarfs the trigger ring (15-30 m), so a metre figure would
+    // be unverifiable noise.
+    expect(screen.getByText(/钟楼广场 · 你已进入任务触发范围。/)).toBeTruthy();
   });
 
-  it("renders without a place name or distance", async () => {
+  it("never shows a precise distance figure", async () => {
     vi.stubGlobal("AudioContext", makeFakeContext());
     const { ArrivalPrompt } = await loadPrompt();
-    render(<ArrivalPrompt {...arriveProps({ placeName: null, distanceMetres: null })} />);
+    render(<ArrivalPrompt {...arriveProps()} />);
+    expect(screen.queryByText(/距中心/)).toBeNull();
+  });
+
+  it("renders without a place name", async () => {
+    vi.stubGlobal("AudioContext", makeFakeContext());
+    const { ArrivalPrompt } = await loadPrompt();
+    render(<ArrivalPrompt {...arriveProps({ placeName: null })} />);
     expect(screen.getByText("1. 钟楼")).toBeTruthy();
     expect(screen.getByText("你已进入任务触发范围。")).toBeTruthy();
   });
@@ -209,8 +222,8 @@ describe("arrival cue", () => {
     const { ArrivalPrompt } = await loadPrompt();
     const { rerender } = render(<ArrivalPrompt {...arriveProps()} />);
     const afterMount = oscillatorCount;
-    rerender(<ArrivalPrompt {...arriveProps({ distanceMetres: 11.2 })} />);
-    rerender(<ArrivalPrompt {...arriveProps({ distanceMetres: 10.8 })} />);
+    rerender(<ArrivalPrompt {...arriveProps({ placeName: "钟楼广场（东侧入口）" })} />);
+    rerender(<ArrivalPrompt {...arriveProps({ placeName: "钟楼广场（西门）" })} />);
     expect(oscillatorCount).toBe(afterMount);
   });
 
@@ -250,5 +263,58 @@ describe("arrival cue", () => {
     expect(screen.getByTestId("arrival-prompt")).toBeTruthy();
     fireEvent.click(screen.getByTestId("arrival-prompt-continue"));
     expect(props.onDismiss).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("autoplay-policy sound hint", () => {
+  it("explains how to unlock the chime when the context stays suspended", async () => {
+    // Phone browsers: no user gesture yet, so the context stays suspended and
+    // the chime cannot play. The card must tell the player the one tap that
+    // unlocks it instead of leaving silence unexplained.
+    vi.stubGlobal("AudioContext", makeFakeContext("suspended", true));
+    const { ArrivalPrompt } = await loadPrompt();
+    render(<ArrivalPrompt {...arriveProps()} />);
+
+    // Within the grace period the card does not claim anything yet.
+    expect(screen.queryByTestId("arrival-prompt-sound-hint")).toBeNull();
+    await afterSoundGracePeriod();
+    expect(screen.getByTestId("arrival-prompt-sound-hint").textContent).toContain(
+      "点按屏幕任意处",
+    );
+    // The hint must never gate the interaction.
+    expect(screen.getByTestId("arrival-prompt-view-task")).toBeTruthy();
+  });
+
+  it("shows no hint when the chime actually plays", async () => {
+    vi.stubGlobal("AudioContext", makeFakeContext());
+    const { ArrivalPrompt } = await loadPrompt();
+    render(<ArrivalPrompt {...arriveProps()} />);
+
+    await afterSoundGracePeriod();
+    expect(screen.queryByTestId("arrival-prompt-sound-hint")).toBeNull();
+  });
+
+  it("shows no hint when audio is unavailable (nothing to unlock)", async () => {
+    vi.stubGlobal("AudioContext", undefined);
+    vi.stubGlobal("webkitAudioContext", undefined);
+    const { ArrivalPrompt } = await loadPrompt();
+    const props = arriveProps();
+    render(<ArrivalPrompt {...props} />);
+
+    await afterSoundGracePeriod();
+    expect(screen.queryByTestId("arrival-prompt-sound-hint")).toBeNull();
+    // Card still fully works in silence.
+    fireEvent.click(screen.getByTestId("arrival-prompt-view-task"));
+    expect(props.onViewTask).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no hint while the player has muted sound", async () => {
+    window.localStorage.setItem(SOUND_KEY, "off");
+    vi.stubGlobal("AudioContext", makeFakeContext());
+    const { ArrivalPrompt } = await loadPrompt();
+    render(<ArrivalPrompt {...arriveProps()} />);
+
+    await afterSoundGracePeriod();
+    expect(screen.queryByTestId("arrival-prompt-sound-hint")).toBeNull();
   });
 });

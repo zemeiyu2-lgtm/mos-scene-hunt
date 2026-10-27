@@ -13,20 +13,19 @@
  *  - 「查看任务」 is the only path into the scene. The parent navigates.
  *  - Closing keeps the player on the map; the arrived status is untouched, so
  *    the task card's own 「解锁情境」 entry is still there afterwards.
- *  - Sound is entirely optional: a blocked AudioContext only hides the
- *    "enable sound" hint, it never blocks either action.
+ *  - Sound is entirely optional: a blocked AudioContext never blocks either
+ *    action. When autoplay policy keeps the chime silent, the card explains
+ *    the one gesture that unlocks it, so silence never reads as breakage.
  */
 
-import { useEffect, useRef } from "react";
-import { playSound } from "@/components/sound";
+import { useEffect, useRef, useState } from "react";
+import { currentAudioState, playSound } from "@/components/sound";
 
 export interface ArrivalPromptProps {
   /** Title of the scene the player just reached. */
   sceneTitle: string;
   /** Optional place label shown under the title. */
   placeName?: string | null;
-  /** Distance in metres to the target, for a "you are standing in it" hint. */
-  distanceMetres?: number | null;
   /** Enter the scene / challenge. Only called on an explicit tap. */
   onViewTask: () => void;
   /** Dismiss the card and keep exploring the map. */
@@ -36,18 +35,33 @@ export interface ArrivalPromptProps {
 export function ArrivalPrompt({
   sceneTitle,
   placeName,
-  distanceMetres,
   onViewTask,
   onDismiss,
 }: ArrivalPromptProps) {
   const navigatedRef = useRef(false);
 
+  // The card deliberately shows NO precise distance number: consumer GPS is
+  // routinely ±20-65 m while trigger rings are 15-30 m, so a "距中心 N m"
+  // figure would usually be wrong by more than the ring itself. The engine
+  // has already confirmed the ring entry; the text below stays qualitative.
+
   // Arrival cue: soft two-bell `arrive` from the shared sound module, which
   // already applies the mute toggle, its own per-cue cooldown and the gesture
   // unlock. Keyed on the scene so a re-render never re-rings; callers also
   // guard the mount with the same per-arrival event key.
+  //
+  // Phone browsers keep the audio context suspended until the first user
+  // gesture, so the chime can stay silent exactly when the card appears with
+  // no tap yet. Give a resume a short grace period (desktop engagement
+  // resumes instantly); if it is still suspended, show the one-sentence hint
+  // instead of leaving the player wondering whether sound is broken.
+  const [soundNeedsGesture, setSoundNeedsGesture] = useState(false);
   useEffect(() => {
     playSound("arrive");
+    const timer = setTimeout(() => {
+      setSoundNeedsGesture(currentAudioState() === "suspended");
+    }, 400);
+    return () => clearTimeout(timer);
   }, [sceneTitle]);
 
   const viewTask = () => {
@@ -95,10 +109,16 @@ export function ArrivalPrompt({
                 className="mt-1 text-[12px] leading-snug text-[var(--muted)]"
               >
                 {placeName ? `${placeName} · ` : ""}
-                {distanceMetres !== null && distanceMetres !== undefined
-                  ? `你已进入触发范围（距中心 ${Math.max(0, Math.round(distanceMetres))} m）。`
-                  : "你已进入任务触发范围。"}
+                你已进入任务触发范围。
               </p>
+              {soundNeedsGesture ? (
+                <p
+                  className="mt-2 text-[11.5px] leading-snug text-amber-700"
+                  data-testid="arrival-prompt-sound-hint"
+                >
+                  🔔 提示音将在你点按屏幕任意处后自动播放（手机浏览器的声音限制）；提示卡和任务不受影响。
+                </p>
+              ) : null}
             </div>
             <button
               type="button"

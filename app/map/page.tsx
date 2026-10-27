@@ -548,12 +548,13 @@ export default function MapPage() {
           </div>
         </div>
 
-        {/* 到站提示：居中叠在地图中部，避开顶部 HUD 与底部任务卡。 */}
+        {/* 到站提示：居中叠在地图中部，避开顶部 HUD 与底部任务卡。
+            不传精确距离：GPS 精度（±20-65 m 常见）远大于触发圈（15-30 m），
+            具体米数不可靠，卡片保持定性描述。 */}
         {promptScene ? (
           <ArrivalPrompt
             sceneTitle={promptScene.title}
             placeName={promptScene.location.name ?? null}
-            distanceMetres={distances[promptScene.id]?.distance ?? null}
             onViewTask={openArrivedScene}
             onDismiss={() => setPromptEventKey(null)}
           />
