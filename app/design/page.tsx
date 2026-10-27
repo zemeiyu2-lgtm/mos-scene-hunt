@@ -35,7 +35,7 @@ import {
   importGamePackageChecked,
   readAuthoredGame,
 } from "@/lib/content";
-import type { Game, HuntArea, Scene } from "@/lib/game/types";
+import type { Game, HuntArea, Reward, Scene } from "@/lib/game/types";
 import {
   addChoiceOption,
   answerLines,
@@ -51,6 +51,12 @@ import {
   canOptionBranch,
   withAnswerLines,
 } from "@/lib/game/challenge-edit";
+import {
+  itemKindsProducedBy,
+  REWARD_TYPE_LABEL,
+  switchSceneRewardType,
+  toggleSceneRequiresItems,
+} from "@/lib/game/reward-edit";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
 import {
   isPointInPolygon,
@@ -102,6 +108,8 @@ export default function DesignPage() {
   const [blankMessage, setBlankMessage] = useState<string | null>(null);
   // The intro is secondary to the map, so it stays collapsed until asked for.
   const [infoOpen, setInfoOpen] = useState(false);
+
+  const [rewardNotice, setRewardNotice] = useState<string | null>(null);
   // 问题 4：地图视野归设计者所有。只有显式「重置视野」才重新取景；选站、
   // 拖动标记、开关面板都不会再自动重置缩放。
   const [fitToken, setFitToken] = useState(0);
@@ -1281,9 +1289,84 @@ export default function DesignPage() {
 
             <div className="mt-4 rounded-xl bg-[var(--surface)] p-3">
               <p className="text-xs font-semibold">奖励</p>
-              <label className="mt-2 block text-xs">奖励名称<input className="input mt-1" value={selected.reward?.title ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, title: e.target.value } : { type: "keyword", title: e.target.value, value: e.target.value } })} /></label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <label className="block text-xs">奖励类型
+                  <select
+                    className="input mt-1"
+                    value={selected.reward?.type ?? "keyword"}
+                    onChange={(e) => {
+                      setRewardNotice(null);
+                      const result = switchSceneRewardType(working, selected.id, e.target.value as Reward["type"]);
+                      setDraft({ ...result.game, version: bumpVersion(working.version) });
+                      setSaved(false);
+                      if (result.warnings.length) setRewardNotice(result.warnings.join("；"));
+                    }}
+                  >
+                    {(Object.keys(REWARD_TYPE_LABEL) as Array<Reward["type"]>).map((type) => (
+                      <option key={type} value={type}>{REWARD_TYPE_LABEL[type]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs">奖励名称<input className="input mt-1" value={selected.reward?.title ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, title: e.target.value } : { type: "keyword", title: e.target.value, value: e.target.value } })} /></label>
+              </div>
               <label className="mt-2 block text-xs">奖励内容<input className="input mt-1" value={selected.reward?.value ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, value: e.target.value } : undefined })} /></label>
+              {rewardNotice ? (
+                <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">{rewardNotice}</div>
+              ) : null}
+              {selected.reward?.type === "item" ? (
+                <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">
+                  物品奖励会进入玩家背包，可用于其他场景的「物品门控」。
+                </p>
+              ) : null}
             </div>
+
+            {(() => {
+              const kinds = itemKindsProducedBy(working);
+              if (!kinds.length) return null;
+              const current = selected.requiresItems ?? [];
+              return (
+                <div className="mt-3 rounded-xl bg-[var(--surface)] p-3">
+                  <p className="text-xs font-semibold">物品门控（收集解锁）</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">
+                    勾选后，玩家必须先在别处集齐这些物品，本场景才会解锁。适合「收集+合成」玩法。
+                  </p>
+                  <div className="mt-2 grid gap-1.5">
+                    {kinds.map(({ kind, producerIds }) => {
+                      const selfOnly = producerIds.every((id) => id === selected.id);
+                      const checked = current.includes(kind);
+                      return (
+                        <label key={kind} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs ${selfOnly ? "opacity-50" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={selfOnly}
+                            onChange={() => {
+                              setRewardNotice(null);
+                              const result = toggleSceneRequiresItems(selected, working, kind);
+                              if ("error" in result) {
+                                setRewardNotice(result.error);
+                                return;
+                              }
+                              updateScene(selected.id, { requiresItems: result.scene.requiresItems });
+                            }}
+                          />
+                          <span className="font-medium">{kind}</span>
+                          <span className="text-[10.5px] text-[var(--muted)]">
+                            来自：{producerIds.map((id) => working.scenes.find((s) => s.id === id)?.title ?? id).join("、")}
+                            {selfOnly ? "（本场景自己产出，不可用于本场景门控）" : ""}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {current.length ? (
+                    <p className="mt-2 text-[11px] text-[var(--muted)]">
+                      已勾选 {current.length} 项：集齐后本场景才会出现。
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })()}
 
             <button type="button" className="mt-4 text-xs font-semibold text-red-700 underline" onClick={deleteSelected} disabled={working.scenes.length <= 1}>
               删除这个场景

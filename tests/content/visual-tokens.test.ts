@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { NAV_BLUE } from "@/lib/visual-tokens";
@@ -107,7 +108,6 @@ describe("brand tokens (batch B)", () => {
     }
     // And no template references them either.
     for (const dir of ["app", "components", "lib", "tests"]) {
-      const { execSync } = require("node:child_process") as typeof import("node:child_process");
       const hits = execSync(
         `grep -rl "bsop-reference\\\\|bsop-key-rail\\\\|map-bottom-sheet" ${dir} --include="*.ts" --include="*.tsx" --include="*.mjs" || true`,
         { cwd: repoRoot, encoding: "utf8" },
