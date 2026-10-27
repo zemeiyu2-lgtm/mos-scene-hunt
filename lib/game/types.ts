@@ -734,7 +734,14 @@ function detectUnopenableScenes(
         );
       const hasTaskSource =
         !!declared || scene.id === entryId || (preds.get(scene.id) ?? []).length > 0;
-      if ((hasTaskSource ? taskGate : true) && itemGate) {
+      // Mirrors `sceneGateOpen` exactly: a scene with NO task-gate source at all
+      // opens only when it declares `requiresItems` (the item condition is then
+      // its whole gate). Treating it as openable regardless - as this fixpoint
+      // used to - hid a real deadlock: an entry scene that declares `requires`
+      // is never offered by the engine at game start, yet every prerequisite
+      // looked "openable" through this branch, so nothing was reported.
+      const hasItems = !!required && required.length > 0;
+      if ((hasTaskSource ? taskGate : hasItems) && itemGate) {
         openable.add(scene.id);
         changed = true;
       }

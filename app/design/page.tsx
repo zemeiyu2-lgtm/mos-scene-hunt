@@ -57,6 +57,14 @@ import {
   switchSceneRewardType,
   toggleSceneRequiresItems,
 } from "@/lib/game/reward-edit";
+import {
+  danglingRequiresRefs,
+  isEntryScene,
+  normalizeEntryRequires,
+  removeRequiresRefsTo,
+  requirableSceneOptions,
+  toggleSceneRequires,
+} from "@/lib/game/dependency-edit";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
 import {
   isPointInPolygon,
@@ -110,6 +118,8 @@ export default function DesignPage() {
   const [infoOpen, setInfoOpen] = useState(false);
 
   const [rewardNotice, setRewardNotice] = useState<string | null>(null);
+
+  const [requiresNotice, setRequiresNotice] = useState<string | null>(null);
   // 问题 4：地图视野归设计者所有。只有显式「重置视野」才重新取景；选站、
   // 拖动标记、开关面板都不会再自动重置缩放。
   const [fitToken, setFitToken] = useState(0);
@@ -383,24 +393,42 @@ export default function DesignPage() {
     const scenes = [...working.scenes];
     [scenes[index], scenes[target]] = [scenes[target], scenes[index]];
     for (let i = 0; i < scenes.length; i++) scenes[i] = { ...scenes[i], nextSceneId: i < scenes.length - 1 ? scenes[i + 1].id : null };
-    setDraft({ ...working, scenes, entrySceneId: scenes[0]?.id, version: bumpVersion(working.version) });
+    // The first scene becomes the entry: an entry with prerequisites could never
+    // open, so those are cleared and the author is told.
+    const normalized = normalizeEntryRequires(scenes);
+    setDraft({ ...working, scenes: normalized.scenes, entrySceneId: normalized.scenes[0]?.id, version: bumpVersion(working.version) });
     setSelectedId(sceneId);
     setSaved(false);
+    if (normalized.clearedTitle) {
+      setRequiresNotice(`「${normalized.clearedTitle}」已排到第一位并成为起点，已移除它的前置场景设置。`);
+    }
   };
 
   const deleteSelected = () => {
     if (!selected || working.scenes.length <= 1) return;
+    const deletedId = selected.id;
     const nextId = selected.nextSceneId;
     const scenes = working.scenes
-      .filter((scene) => scene.id !== selected.id)
+      .filter((scene) => scene.id !== deletedId)
       .map((scene) =>
-        scene.nextSceneId === selected.id ? { ...scene, nextSceneId: nextId } : scene,
+        scene.nextSceneId === deletedId ? { ...scene, nextSceneId: nextId } : scene,
       );
+    // Deleting a scene others declare as a prerequisite would leave dangling
+    // ids that make the whole pack fail validation (and vanish on reload), so
+    // those references are removed and the author is told which scenes changed.
+    const cleaned = removeRequiresRefsTo({ ...working, scenes }, deletedId);
     const entrySceneId =
-      working.entrySceneId === selected.id ? scenes[0]?.id : working.entrySceneId;
-    setDraft({ ...working, scenes, entrySceneId, version: bumpVersion(working.version) });
+      working.entrySceneId === deletedId ? cleaned.game.scenes[0]?.id : working.entrySceneId;
+    setDraft({ ...cleaned.game, entrySceneId, version: bumpVersion(working.version) });
     setSelectedId(scenes[0]?.id ?? null);
     setSaved(false);
+    setRequiresNotice(
+      cleaned.affected.length
+        ? `已删除「${selected.title}」，并移除 ${cleaned.affected
+            .map((a) => `「${a.title}」`)
+            .join("、")} 对它的前置依赖。`
+        : null,
+    );
   };
 
   /* ---------------------------------------------------------------- ④ 保存 */
@@ -1144,6 +1172,65 @@ export default function DesignPage() {
                             </button>
                           );
                         })()}
+
+            {(() => {
+              const entry = isEntryScene(working, selected.id);
+              const options = requirableSceneOptions(working, selected.id);
+              const dangling = danglingRequiresRefs(working);
+              const chosen = selected.requires ?? [];
+              return (
+                <div className="mb-3 rounded-xl bg-[var(--surface)] p-3">
+                  <p className="text-xs font-semibold">前置场景（可选）</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">
+                    {entry
+                      ? "这是起点场景，玩家一开局就要能到这里，因此不能设置前置场景。"
+                      : "勾选后，玩家必须按顺序完成这些场景，本场景才会解锁（勾选会替代「路线顺序」的默认解锁条件）。"}
+                  </p>
+                  {!entry && options.length ? (
+                    <div className="mt-2 grid gap-1.5">
+                      {options.map((option) => (
+                        <label key={option.id} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs ${option.wouldCycle ? "opacity-50" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={option.selected}
+                            disabled={option.wouldCycle}
+                            onChange={() => {
+                              setRequiresNotice(null);
+                              const result = toggleSceneRequires(working, selected.id, option.id);
+                              if ("error" in result) {
+                                setRequiresNotice(result.error);
+                                return;
+                              }
+                              updateScene(selected.id, { requires: result.scene.requires });
+                            }}
+                          />
+                          <span className="font-medium">{option.position}. {option.title}</span>
+                          <span className="text-[10.5px] text-[var(--muted)]">
+                            {option.selected ? "已设为前置" : option.wouldCycle ? "（会形成循环依赖）" : ""}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : null}
+                  {!entry && chosen.length ? (
+                    <p className="mt-2 text-[11px] text-[var(--muted)]">
+                      需先完成 {chosen.length} 个前置场景，本场景才会出现：{chosen
+                        .map((id) => working.scenes.find((s) => s.id === id)?.title ?? id)
+                        .join("、")}
+                    </p>
+                  ) : null}
+                  {requiresNotice ? (
+                    <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">{requiresNotice}</div>
+                  ) : null}
+                  {dangling.length ? (
+                    <div className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[11.5px] leading-relaxed text-red-800">
+                      发现失效的前置引用（{dangling.map((d) => d.missingId).join("、")}），保存会被校验拦下。请取消对应勾选后重试。
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })()}
+
             <label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">现场名称<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达后故事<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
