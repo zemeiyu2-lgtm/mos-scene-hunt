@@ -328,3 +328,19 @@ describe("branch configuration consistency", () => {
     expect(imported.scenes[0].challenge?.branches).toEqual({ "0": "s3" });
   });
 });
+
+describe("限时 survives editing", () => {
+  it("carries the limit across a type switch instead of dropping it", () => {
+    const timed: Challenge = { ...CHOICE, timeLimitSeconds: 90 };
+    for (const type of ["keyword", "text", "choice"] as const) {
+      const next = changeChallengeType(timed, type);
+      expect(next.timeLimitSeconds).toBe(90);
+      expectValid(next);
+    }
+  });
+
+  it("creates new questions untimed, so a fresh pack keeps the V0.1 rules", () => {
+    expect(createChallenge("choice").timeLimitSeconds).toBeUndefined();
+    expect(createChallenge("text").timeLimitSeconds).toBeUndefined();
+  });
+});

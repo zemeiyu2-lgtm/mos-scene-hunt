@@ -96,6 +96,9 @@ export function changeChallengeType(
   if (source.explanation !== undefined) next.explanation = source.explanation;
   if (source.hint !== undefined) next.hint = source.hint;
   if (source.hintAfterAttempts !== undefined) next.hintAfterAttempts = source.hintAfterAttempts;
+  // 限时 is a property of the question, not of its type: switching 选择题 -> 简答题
+  // must not silently drop the author's clock.
+  if (source.timeLimitSeconds !== undefined) next.timeLimitSeconds = source.timeLimitSeconds;
   if (source.media !== undefined) next.media = source.media;
 
   const carried = carryAnswers(source);

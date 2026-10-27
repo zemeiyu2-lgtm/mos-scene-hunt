@@ -98,6 +98,10 @@ interface HuntContextValue {
   enterScene: (sceneId: string) => void;
   openChallenge: (sceneId: string) => void;
   submitAnswer: (sceneId: string, payload: { selectedIndex?: number; text?: string }) => void;
+  /** Timed questions: record that the current attempt ran out (idempotent). */
+  expireAttempt: (sceneId: string) => void;
+  /** Timed questions: 重试 - start a fresh attempt with the full limit. */
+  retryAttempt: (sceneId: string) => void;
   dismissScene: () => void;
   resetHunt: () => void;
   setState: (state: GameState) => void;
@@ -332,6 +336,17 @@ export function HuntProvider({
     () => act({ type: "CLOSE_SCENE", sceneId: state?.currentSceneId ?? "", now: Date.now() }),
     [act, state?.currentSceneId],
   );
+  // Timed questions. Both are ordinary engine actions so the timing rules stay
+  // in the reducer; the screen only reports "the clock hit zero" and "the player
+  // asked for another try".
+  const expireAttempt = useCallback(
+    (sceneId: string) => act({ type: "EXPIRE_ATTEMPT", sceneId, now: Date.now() }),
+    [act],
+  );
+  const retryAttempt = useCallback(
+    (sceneId: string) => act({ type: "RETRY_ATTEMPT", sceneId, now: Date.now() }),
+    [act],
+  );
   const resetHunt = useCallback(() => {
     // Clear only this hunt. Other games keep their independent saves.
     if (state?.gameId) clearGameState(state.gameId);
@@ -401,6 +416,8 @@ export function HuntProvider({
       enterScene,
       openChallenge,
       submitAnswer,
+      expireAttempt,
+      retryAttempt,
       dismissScene,
       resetHunt,
       setState: setStateExternal,
@@ -419,6 +436,8 @@ export function HuntProvider({
       enterScene,
       openChallenge,
       submitAnswer,
+      expireAttempt,
+      retryAttempt,
       dismissScene,
       resetHunt,
       setStateExternal,

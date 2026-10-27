@@ -65,6 +65,11 @@ import {
   requirableSceneOptions,
   toggleSceneRequires,
 } from "@/lib/game/dependency-edit";
+import {
+  parseTimeLimitInput,
+  timeLimitInputValue,
+  withTimeLimitSeconds,
+} from "@/lib/game/timed-challenge";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
 import {
   isPointInPolygon,
@@ -120,6 +125,14 @@ export default function DesignPage() {
   const [rewardNotice, setRewardNotice] = useState<string | null>(null);
 
   const [requiresNotice, setRequiresNotice] = useState<string | null>(null);
+
+  // 限时输入的中转草稿：允许作者在输入框里停留在非法值（如 "0"、"-"）并看到
+  // 提示，而不是被模型值强行回弹。sceneId 用来在切换场景时丢弃旧草稿。
+  const [timeLimitDraft, setTimeLimitDraft] = useState<{
+    sceneId: string;
+    text: string;
+    error: string | null;
+  } | null>(null);
   // 问题 4：地图视野归设计者所有。只有显式「重置视野」才重新取景；选站、
   // 拖动标记、开关面板都不会再自动重置缩放。
   const [fitToken, setFitToken] = useState(0);
@@ -1358,6 +1371,40 @@ export default function DesignPage() {
                     <label className="mt-2 block text-xs">可接受的答案（每行一个）<textarea className="input mt-1 min-h-16" value={answerLines(challenge)} onChange={(e) => updateScene(selected.id, { challenge: withAnswerLines(challenge, e.target.value) })} /></label>
                   )}
                   <label className="mt-2 block text-xs">答案说明<textarea className="input mt-1 min-h-16" value={challenge.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: { ...challenge, explanation: e.target.value } })} /></label>
+                  <label className="mt-2 block text-xs">
+                    限时（秒，留空为不限时）
+                    <input
+                      className="input mt-1"
+                      inputMode="numeric"
+                      placeholder="例如 90"
+                      aria-label="限时秒数"
+                      value={
+                        timeLimitDraft?.sceneId === selected.id
+                          ? timeLimitDraft.text
+                          : timeLimitInputValue(challenge)
+                      }
+                      onChange={(e) => {
+                        const parsed = parseTimeLimitInput(e.target.value);
+                        setTimeLimitDraft({
+                          sceneId: selected.id,
+                          text: e.target.value,
+                          error: parsed.error,
+                        });
+                        if (!parsed.error) {
+                          updateScene(selected.id, {
+                            challenge: withTimeLimitSeconds(challenge, parsed.seconds),
+                          });
+                        }
+                      }}
+                    />
+                  </label>
+                  {timeLimitDraft?.sceneId === selected.id && timeLimitDraft.error ? (
+                    <p className="mt-1 text-[10.5px] leading-snug text-red-700">{timeLimitDraft.error}</p>
+                  ) : challenge.timeLimitSeconds ? (
+                    <p className="mt-1 text-[10.5px] leading-snug text-[var(--muted)]">
+                      进入题目即开始计时；超时后本次作答作废，可重试，每次重试重新获得完整时限。
+                    </p>
+                  ) : null}
                   <MediaEditor media={challenge.media} onChange={(media) => updateScene(selected.id, { challenge: { ...challenge, media } })} />
                 </>
               ) : (

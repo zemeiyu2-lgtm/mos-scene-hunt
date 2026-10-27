@@ -81,6 +81,15 @@ export interface Challenge {
   explanation?: string;
   /** Max attempts before the hint is revealed automatically. 0 = unlimited. */
   hintAfterAttempts?: number;
+  /**
+   * Optional time limit for one attempt, in seconds.
+   *
+   * Omit it for an untimed question - that keeps the V0.1 behaviour exactly, so
+   * existing packs are unaffected. When set, the clock starts the moment the
+   * question becomes answerable, a late submission is never graded, and 重试
+   * grants a fresh full window (see `lib/game/timed-challenge.ts`).
+   */
+  timeLimitSeconds?: number;
 }
 
 /** A remote or local character that can speak in a scene (future AI hook). */
@@ -515,6 +524,23 @@ function validateChallenge(
     return;
   }
   if (typeof c.question !== "string" || !c.question) err(`${base}.question`, "必须是非空字符串");
+
+  // Optional, so untimed questions stay valid. When present it must be a
+  // positive number of seconds; anything else would silently disable the clock
+  // (timeLimitMs() returns null) and the author would never learn why.
+  if (c.timeLimitSeconds !== undefined) {
+    if (
+      typeof c.timeLimitSeconds !== "number" ||
+      !Number.isFinite(c.timeLimitSeconds) ||
+      c.timeLimitSeconds <= 0
+    ) {
+      err(`${base}.timeLimitSeconds`, "限时必须大于 0（单位：秒）");
+    } else if (!Number.isInteger(c.timeLimitSeconds)) {
+      warn(`${base}.timeLimitSeconds`, "限时建议填写整数秒");
+    } else if (c.timeLimitSeconds < 5) {
+      warn(`${base}.timeLimitSeconds`, "限时少于 5 秒，玩家可能来不及作答");
+    }
+  }
 
   if (c.type === "choice") {
     if (!Array.isArray(c.options) || c.options.length < 2) {

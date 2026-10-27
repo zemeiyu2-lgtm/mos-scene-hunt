@@ -19,6 +19,7 @@ import {
   type MatchResult,
 } from "./answers";
 import { entryScene, sceneOrder, type Challenge, type Game, type Reward, type Scene } from "./types";
+import { timeLimitMs } from "./timed-challenge";
 
 /* ------------------------------------------------------------------ */
 /* State shape                                                        */
@@ -63,6 +64,19 @@ export interface SceneProgress {
   completedAt?: number;
   /** Number of failed attempts. Drives hint reveal, never locks the player out. */
   attempts: number;
+  /**
+   * When the current timed attempt's clock started (Unix ms).
+   *
+   * Persisted on purpose: this is what makes a reload continue the same attempt
+   * instead of handing out a fresh window. Absent on untimed challenges, and
+   * cleared when an attempt expires or the scene completes.
+   */
+  attemptStartedAt?: number;
+  /**
+   * When the current attempt ran out of time. Sticky until 重试, so an expired
+   * attempt stays expired across reloads and can never be graded afterwards.
+   */
+  timedOutAt?: number;
   /** Ids of rewards already granted, so a revisit cannot double-grant. */
   grantedRewardIds: string[];
 }
@@ -123,7 +137,15 @@ export type GameAction =
   | { type: "CLOSE_SCENE"; sceneId: string; now: number }
   | { type: "ADVANCE"; sceneId: string; now: number }
   | { type: "RESET"; now: number }
-  | { type: "HYDRATE"; state: GameState };
+  | { type: "HYDRATE"; state: GameState }
+  /**
+   * The timed attempt ran out. Idempotent: only the first call after the
+   * deadline is honoured, so a timer that fires twice (or a submit racing the
+   * timer) can never add two failed attempts.
+   */
+  | { type: "EXPIRE_ATTEMPT"; sceneId: string; now: number }
+  /** 重试: start a fresh, independent attempt with the full limit. */
+  | { type: "RETRY_ATTEMPT"; sceneId: string; now: number };
 
 /* ------------------------------------------------------------------ */
 /* Derived values (computed, never stored twice)                      */
@@ -468,6 +490,11 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
     const status: StoredSceneStatus = validStored.includes(rawStatus as StoredSceneStatus)
       ? (rawStatus as StoredSceneStatus)
       : "locked";
+    // Timed-attempt bookkeeping survives a reload verbatim (that is the whole
+    // point of persisting the start stamp), but is dropped when the pack no
+    // longer declares a limit - an author removing 限时 must not leave a stale
+    // clock behind in a save the player keeps.
+    const timed = timeLimitMs(scene.challenge) !== null;
     scenes[scene.id] = {
       sceneId: scene.id,
       // A scene that was mid-arrival when the app closed reopens at the neutral
@@ -476,6 +503,12 @@ export function reconcileState(game: Game, raw: Partial<GameState> | null, now =
       arrivedAt: persisted.arrivedAt,
       completedAt: persisted.completedAt,
       attempts: Number.isFinite(persisted.attempts) ? Math.max(0, persisted.attempts) : 0,
+      attemptStartedAt:
+        timed && Number.isFinite(persisted.attemptStartedAt)
+          ? (persisted.attemptStartedAt as number)
+          : undefined,
+      timedOutAt:
+        timed && Number.isFinite(persisted.timedOutAt) ? (persisted.timedOutAt as number) : undefined,
       grantedRewardIds: Array.isArray(persisted.grantedRewardIds)
         ? persisted.grantedRewardIds.filter((id) => typeof id === "string")
         : [],
@@ -665,7 +698,54 @@ export function gameReducer(game: Game, state: GameState, action: GameAction): G
       if (!scene?.challenge || !progress) return state;
       if (progress.status === "completed") return state;
       if (!new Set(availableSceneIds(game, state)).has(action.sceneId)) return state;
-      return withProgress(state, action.sceneId, { status: "challenging" });
+      // Timed question: the clock starts the moment it becomes answerable, and
+      // only once. Re-opening an attempt that is already running (leaving the
+      // screen and coming back) must not restart it, and an expired attempt
+      // stays expired until 重试 - otherwise navigating away would buy time.
+      const limitMs = timeLimitMs(scene.challenge);
+      const startClock =
+        limitMs !== null && progress.attemptStartedAt === undefined && progress.timedOutAt === undefined;
+      return withProgress(state, action.sceneId, {
+        status: "challenging",
+        ...(startClock ? { attemptStartedAt: action.now } : {}),
+      });
+    }
+
+    case "EXPIRE_ATTEMPT": {
+      const scene = game.scenes.find((s) => s.id === action.sceneId);
+      const progress = state.scenes[action.sceneId];
+      if (!scene?.challenge || !progress) return state;
+      if (progress.status !== "challenging") return state;
+      const limitMs = timeLimitMs(scene.challenge);
+      if (limitMs === null) return state;
+      // Exactly once per attempt: `timedOutAt` is the latch, and the start
+      // stamp is cleared so a second timer tick finds nothing to expire.
+      if (progress.timedOutAt !== undefined) return state;
+      if (progress.attemptStartedAt === undefined) return state;
+      if (action.now - progress.attemptStartedAt < limitMs) return state;
+      return withProgress(state, action.sceneId, {
+        status: "challenging",
+        attempts: progress.attempts + 1,
+        attemptStartedAt: undefined,
+        timedOutAt: action.now,
+      });
+    }
+
+    case "RETRY_ATTEMPT": {
+      const scene = game.scenes.find((s) => s.id === action.sceneId);
+      const progress = state.scenes[action.sceneId];
+      if (!scene?.challenge || !progress) return state;
+      if (progress.status !== "challenging") return state;
+      if (timeLimitMs(scene.challenge) === null) return state;
+      // Retry only exists for an expired attempt. Guarding on the latch makes a
+      // double-tap idempotent: the second dispatch finds no expiry to clear and
+      // cannot start a second clock.
+      if (progress.timedOutAt === undefined) return state;
+      if (!new Set(availableSceneIds(game, state)).has(action.sceneId)) return state;
+      return withProgress(state, action.sceneId, {
+        attemptStartedAt: action.now,
+        timedOutAt: undefined,
+      });
     }
 
     case "SUBMIT_ANSWER": {
@@ -676,6 +756,26 @@ export function gameReducer(game: Game, state: GameState, action: GameAction): G
       // double reward grants on revisit.
       if (progress.status === "completed") return state;
       if (!new Set(availableSceneIds(game, state)).has(action.sceneId)) return state;
+
+      // Timed questions are graded against the stored deadline, not against what
+      // the screen believed: a late answer is either rejected (attempt already
+      // expired) or converted into the expiry it actually is. Without this, a
+      // stale tab could still submit after the countdown hit zero.
+      const limitMs = timeLimitMs(scene.challenge);
+      if (limitMs !== null) {
+        if (progress.timedOutAt !== undefined) return state;
+        if (
+          progress.attemptStartedAt !== undefined &&
+          action.now - progress.attemptStartedAt >= limitMs
+        ) {
+          return withProgress(state, action.sceneId, {
+            status: "challenging",
+            attempts: progress.attempts + 1,
+            attemptStartedAt: undefined,
+            timedOutAt: action.now,
+          });
+        }
+      }
 
       const result = evaluateChallenge(scene.challenge, action);
 
@@ -800,6 +900,10 @@ export function completeScene(
         ...progress,
         status: "completed",
         completedAt: now,
+        // Success ends the attempt: no countdown may survive it, and a solved
+        // timed question must never resurrect an expiry on the next visit.
+        attemptStartedAt: undefined,
+        timedOutAt: undefined,
         grantedRewardIds: rewardKey && !alreadyGranted
           ? [...progress.grantedRewardIds, rewardKey]
           : progress.grantedRewardIds,
