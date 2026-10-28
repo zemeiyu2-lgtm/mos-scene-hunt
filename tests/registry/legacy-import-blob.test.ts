@@ -16,6 +16,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as importPost } from "@/app/api/admin/import-legacy/route";
+import { GET as gamesGet } from "@/app/api/games/[gameId]/route";
 import { validateGame } from "@/lib/game/types";
 import type { Game, Scene } from "@/lib/game/types";
 import { canonicalJson, deriveVersionId } from "@/lib/publish/version";
@@ -46,6 +47,7 @@ vi.mock("@vercel/blob", async () => {
 let env: TestEnv;
 
 beforeEach(async () => {
+  blobState.reset();
   env = await setupRegistryEnv();
   // Route the registry to the (fake) Blob store; legacy objects stay on disk.
   process.env.REGISTRY_STORE = "blob";
@@ -176,5 +178,76 @@ describe("legacy import against the blob registry (synthetic)", () => {
     };
     expect(final.totals.importPublished).toBe(0);
     expect(final.totals.skipExisting).toBe(2);
+  });
+
+  it("dry-run enumerates every action class, writes nothing, and public read follows state", async () => {
+    // alpha: valid, imported by the limited first apply → skip_existing later.
+    // beta:  valid, still waiting → import_published in the dry-run plan.
+    // gamma: meta exists but the version object is missing → import_quarantined.
+    await seedLegacy("blob-legacy-alpha");
+    await seedLegacy("blob-legacy-beta");
+    const gammaDir = path.join(process.env.PUBLISHED_GAMES_DIR!, "blob-legacy-gamma");
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    await mkdir(path.join(gammaDir, "versions"), { recursive: true });
+    await writeFile(
+      path.join(gammaDir, "meta.json"),
+      JSON.stringify({
+        gameId: "blob-legacy-gamma",
+        latestVersionId: "0123456789abcdef",
+        versions: [
+          { versionId: "0123456789abcdef", title: "x", sceneCount: 1, publishedAt: "2026-01-01T00:00:00.000Z" },
+        ],
+      }),
+      "utf8",
+    );
+
+    const admin = await createUser({ email: "admin@test.local", role: "admin" });
+    const cookie = await sessionCookieFor(admin);
+
+    // Simulated interrupted first migration: only alpha lands.
+    await importRequest(cookie, { apply: true, limit: 1 });
+    const worksAfterFirst = blobState.keys().filter((k) => k.includes("/works/")).length;
+    expect(worksAfterFirst).toBe(1);
+
+    // Dry-run must enumerate ALL THREE classes and remain side-effect free.
+    const dry = await importRequest(cookie, { apply: false });
+    expect(dry.status).toBe(200);
+    const dryReport = (await dry.json()) as {
+      applied: boolean;
+      games: { gameId: string; action: string }[];
+    };
+    expect(dryReport.applied).toBe(false);
+    const actions = Object.fromEntries(dryReport.games.map((g) => [g.gameId, g.action]));
+    expect(actions["blob-legacy-alpha"]).toBe("skip_existing");
+    expect(actions["blob-legacy-beta"]).toBe("import_published");
+    expect(actions["blob-legacy-gamma"]).toBe("import_quarantined");
+    expect(blobState.keys().filter((k) => k.includes("/works/")).length).toBe(worksAfterFirst);
+
+    // Real migration completes the rest.
+    const full = await importRequest(cookie, { apply: true });
+    const fullReport = (await full.json()) as {
+      totals: { importPublished: number; importQuarantined: number; skipExisting: number };
+    };
+    expect(fullReport.totals).toMatchObject({
+      importPublished: 1,
+      importQuarantined: 1,
+      skipExisting: 1,
+    });
+
+    // Public read rules after migration: published work serves the pack it
+    // came from; the quarantined history stays invisible (404, same as absent).
+    const getLatest = (gameId: string) =>
+      gamesGet(new Request(`https://host.test/api/games/${gameId}`), {
+        params: Promise.resolve({ gameId }),
+      });
+    expect((await getLatest("blob-legacy-beta")).status).toBe(200);
+    expect((await getLatest("blob-legacy-gamma")).status).toBe(404);
+
+    // Ownership lands on the suspended, password-less system account — a
+    // real author can only take over via an explicit admin transfer_owner.
+    const work = await getRegistry().getWork("blob-legacy-beta");
+    expect(work).not.toBeNull();
+    const owner = work && (await getRegistry().getUser(work.ownerUserId));
+    expect(owner).toMatchObject({ status: "suspended", role: "creator" });
   });
 });
