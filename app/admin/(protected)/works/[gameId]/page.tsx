@@ -45,6 +45,16 @@ export default async function WorkDetailPage({
     (v) => v.status === "approved" && v.versionId !== work.publishedVersionId,
   );
 
+  // Only an admin can reassign ownership, so only an admin's page pays for the
+  // user listing. Everyone else gets an empty list and sees no control.
+  const assignableUsers =
+    ROLE_RANK[user.role] >= ROLE_RANK.admin
+      ? (await getRegistry().listUsers())
+          .filter((u) => u.status === "active")
+          .map((u) => ({ id: u.id, label: `${u.displayName} · ${u.email}` }))
+          .sort((a, b) => a.label.localeCompare(b.label, "zh-CN"))
+      : [];
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -101,6 +111,8 @@ export default async function WorkDetailPage({
         hasPendingSubmission={hasPendingSubmission}
         hasInReviewSubmission={hasInReviewSubmission}
         hasApprovedUnpublished={hasApprovedUnpublished}
+        ownerUserId={work.ownerUserId}
+        assignableUsers={assignableUsers}
       />
 
       <section className="overflow-x-auto rounded-xl bg-[var(--card)] shadow-card">

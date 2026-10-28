@@ -5,7 +5,15 @@ import { useState, useTransition } from "react";
 import { REVIEW_REASON_CODES } from "@/lib/registry/labels";
 import type { Role, WorkState } from "@/lib/registry/types";
 
-type Action = "claim" | "decision" | "publish" | "withdraw" | "unlist" | "restore" | "archive";
+type Action =
+  | "claim"
+  | "decision"
+  | "publish"
+  | "transfer"
+  | "withdraw"
+  | "unlist"
+  | "restore"
+  | "archive";
 
 interface Props {
   gameId: string;
@@ -19,6 +27,13 @@ interface Props {
   hasInReviewSubmission: boolean;
   /** True when an approved version is waiting to be promoted. */
   hasApprovedUnpublished: boolean;
+  /** Current owner, shown so a reassignment is never blind. */
+  ownerUserId: string;
+  /**
+   * Accounts an admin may hand the work to. Empty for non-admins — the list is
+   * only fetched server-side when the viewer can actually use it.
+   */
+  assignableUsers: { id: string; label: string }[];
 }
 
 const RANK: Record<Role, number> = { creator: 1, reviewer: 2, admin: 3 };
@@ -39,6 +54,8 @@ export function WorkActions({
   hasPendingSubmission,
   hasInReviewSubmission,
   hasApprovedUnpublished,
+  ownerUserId,
+  assignableUsers,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -46,6 +63,8 @@ export function WorkActions({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [showDecision, setShowDecision] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferTo, setTransferTo] = useState("");
   const [reasonCodes, setReasonCodes] = useState<string[]>([]);
   const [reasonText, setReasonText] = useState("");
   const [checklist, setChecklist] = useState<Record<string, boolean>>({
@@ -74,6 +93,8 @@ export function WorkActions({
       }
       setMessage("已更新。");
       setShowDecision(false);
+      setShowTransfer(false);
+      setTransferTo("");
       setReasonCodes([]);
       setReasonText("");
       startTransition(() => router.refresh());
@@ -192,7 +213,51 @@ export function WorkActions({
             归档
           </button>
         ) : null}
+
+        {admin && assignableUsers.length > 0 ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setShowTransfer((v) => !v)}
+            className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--text)] disabled:opacity-50"
+          >
+            {showTransfer ? "收起归属转移" : "转移作品归属"}
+          </button>
+        ) : null}
       </div>
+
+      {showTransfer && admin ? (
+        <div className="mt-4 space-y-3 rounded-lg border border-[var(--line)] p-3">
+          <p className="text-xs text-[var(--muted)]">
+            当前归属账号 <span className="font-mono">{ownerUserId}</span>。
+            转移只改变「谁能提交后续版本」，不会改变作品状态，也不会改变线上正在展示的版本。
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={transferTo}
+              onChange={(event) => setTransferTo(event.target.value)}
+              className="rounded-lg border border-[var(--line)] bg-[var(--card)] px-2 py-1.5 text-xs"
+            >
+              <option value="">选择目标账号…</option>
+              {assignableUsers
+                .filter((u) => u.id !== ownerUserId)
+                .map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.label}
+                  </option>
+                ))}
+            </select>
+            <button
+              type="button"
+              disabled={disabled || transferTo === ""}
+              onClick={() => call("transfer", { toUserId: transferTo })}
+              className="rounded-lg bg-[var(--text)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            >
+              {busy === "transfer" ? "转移中…" : "确认转移"}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {showDecision && staff && hasInReviewSubmission ? (
         <div className="mt-4 space-y-3 rounded-lg border border-[var(--line)] p-3">

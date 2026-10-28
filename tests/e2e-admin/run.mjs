@@ -9,13 +9,25 @@
  * Usage:
  *   node tests/e2e-admin/run.mjs [baseUrl]
  *
+ * Works against both plain HTTP (local dev) and HTTPS (Preview deployment).
+ * When the deployment sits behind a share-code gateway, pass the gateway
+ * cookie via E2E_SHARECODE (the `sharecode` query value) so every request
+ * carries it; otherwise the gateway answers 403 before Next.js ever runs.
+ *
  * Exit code 0 only when every step passes. Prints one line per assertion so a
  * reviewer can read the transcript without opening a browser.
  */
 
 import http from "node:http";
+import https from "node:https";
 
-const BASE = process.argv[2] || "http://127.0.0.1:3210";
+const rawBase = process.argv[2] || "http://127.0.0.1:3210";
+const baseUrl = new URL(rawBase);
+const BASE = baseUrl.origin;
+const TRANSPORT = baseUrl.protocol === "https:" ? https : http;
+const SHARECODE = process.env.E2E_SHARECODE || baseUrl.searchParams.get("sharecode") || "";
+/** Gateway cookie (share-code gate) that every subsequent request must carry. */
+let gatewayCookie = "";
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || "admin@e2e.test";
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || "e2e-admin-password-2026";
 const CREATOR_EMAIL = `creator-${Date.now()}@e2e.test`;
@@ -39,11 +51,31 @@ function check(label, condition, detail) {
 function cookieFrom(response) {
   // `response.setCookie` is the raw array; fetch-based clients hide this
   // header per the Fetch spec, which is why this script uses node:http.
+  // Join every surviving pair: a deployment may set more than one cookie
+  // (gateway gate cookie + session cookie) on the same response.
+  const pairs = [];
   for (const entry of response.setCookie ?? []) {
     const pair = entry.split(";")[0];
-    if (pair && pair.includes("=")) return pair;
+    if (!pair || !pair.includes("=")) continue;
+    if (/-Max-Age=0/i.test(entry) || pair.endsWith("=")) continue;
+    pairs.push(pair);
   }
-  return "";
+  return pairs.join("; ");
+}
+
+/**
+ * Exchange the share code for the gateway cookie.
+ *
+ * The gateway only issues the cookie on a request that carries `?sharecode=`,
+ * and rejects everything afterwards with 403. Doing this once up front keeps
+ * the rest of the script free of deployment-specific handling.
+ */
+async function unlockGateway() {
+  if (!SHARECODE) return "";
+  const res = await call(`/?sharecode=${encodeURIComponent(SHARECODE)}`);
+  const issued = cookieFrom(res);
+  gatewayCookie = issued;
+  return issued;
 }
 
 /**
@@ -66,9 +98,11 @@ function call(path, { method = "GET", body, raw, cookie } = {}) {
       headers["content-type"] = "application/json";
       headers["content-length"] = Buffer.byteLength(payload);
     }
-    if (cookie) headers.cookie = cookie;
+    // Gateway cookie first, actor cookie second: both must survive.
+    const jar = [gatewayCookie, cookie].filter(Boolean).join("; ");
+    if (jar) headers.cookie = jar;
 
-    const req = http.request(
+    const req = TRANSPORT.request(
       {
         hostname: url.hostname,
         port: url.port,
@@ -126,7 +160,15 @@ function pack(id, title, sceneCount = 2) {
 }
 
 async function main() {
-  console.log(`\n=== MOS Scene Hunt 后台端到端验收 @ ${BASE} ===\n`);
+  console.log(`\n=== MOS Scene Hunt 后台端到端验收 @ ${BASE} ===`);
+  if (SHARECODE) console.log(`    (share-code gateway mode)\n`);
+  else console.log("");
+
+  // -1. Preview deployments sit behind a share-code gate; unlock it first.
+  if (SHARECODE) {
+    const unlocked = await unlockGateway();
+    check("已换取预览网关 Cookie", unlocked.length > 0, unlocked || "(空)");
+  }
 
   // 0. The login page triggers the one-time bootstrap administrator.
   const loginPage = await call("/admin/login");
@@ -304,6 +346,68 @@ async function main() {
     readRestored.status === 200 && readRestored.json?.title === "E2E 第二版",
     `HTTP ${readRestored.status} title=${readRestored.json?.title}`,
   );
+
+  // 11.5 Ownership transfer (admin only, never changes what is live)
+  const successorEmail = `successor-${Date.now()}@e2e.test`;
+  const successor = await call("/api/admin/users", {
+    method: "POST",
+    cookie: adminCookie,
+    body: {
+      email: successorEmail,
+      password: CREATOR_PASSWORD,
+      displayName: "E2E 承接人",
+      role: "creator",
+    },
+  });
+  const successorId = successor.json?.user?.id;
+  check("管理员可创建第二个创作者账号", successor.status === 201 && Boolean(successorId), `HTTP ${successor.status}`);
+
+  const creatorTransfer = await call(`/api/admin/works/${gameId}/transfer`, {
+    method: "POST",
+    cookie: creatorCookie,
+    body: { toUserId: successorId },
+  });
+  check("创作者不能转移作品归属（403）", creatorTransfer.status === 403, `HTTP ${creatorTransfer.status}`);
+
+  const transfer = await call(`/api/admin/works/${gameId}/transfer`, {
+    method: "POST",
+    cookie: adminCookie,
+    body: { toUserId: successorId },
+  });
+  check("管理员可以转移作品归属", transfer.status === 200, `HTTP ${transfer.status} ${transfer.text.slice(0, 120)}`);
+  check(
+    "转移后归属变成目标账号",
+    transfer.json?.work?.ownerUserId === successorId,
+    String(transfer.json?.work?.ownerUserId),
+  );
+  const readAfterTransfer = await call(`/api/games/${gameId}`);
+  check(
+    "转移归属不改变线上内容",
+    readAfterTransfer.status === 200 && readAfterTransfer.json?.title === "E2E 第二版",
+    `HTTP ${readAfterTransfer.status} title=${readAfterTransfer.json?.title}`,
+  );
+  const oldOwnerSubmit = await call("/api/publish", {
+    method: "POST",
+    cookie: creatorCookie,
+    body: pack(gameId, "原归属人再提交"),
+  });
+  check("原归属人转移后不能再提交该作品（403）", oldOwnerSubmit.status === 403, `HTTP ${oldOwnerSubmit.status}`);
+
+  // 11.6 Legacy import is admin-only and dry by default
+  const importDenied = await call("/api/admin/import-legacy", {
+    method: "POST",
+    cookie: creatorCookie,
+    body: {},
+  });
+  check("创作者不能调用历史导入（403）", importDenied.status === 403, `HTTP ${importDenied.status}`);
+
+  const importDry = await call("/api/admin/import-legacy", {
+    method: "POST",
+    cookie: adminCookie,
+    body: {},
+  });
+  check("管理员可演练历史导入", importDry.status === 200, `HTTP ${importDry.status}`);
+  check("演练模式不写入（applied=false）", importDry.json?.applied === false, String(importDry.json?.applied));
 
   // 12. Pages render for a signed-in admin, and redirect for anonymous users
   const adminHome = await call("/admin", { cookie: adminCookie });

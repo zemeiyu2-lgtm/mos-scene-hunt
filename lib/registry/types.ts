@@ -196,7 +196,9 @@ export type AuditAction =
   | "work.withdraw"
   | "work.unlist"
   | "work.restore"
-  | "work.archive";
+  | "work.archive"
+  | "work.transfer_owner"
+  | "work.import_legacy";
 
 export interface AuditRecord {
   id: string;

@@ -291,6 +291,47 @@ export async function publishWork(actor: ActorContext, gameId: string): Promise<
   return work;
 }
 
+/**
+ * Reassign a work to another account (admin only, enforced by the route).
+ *
+ * Needed for two real cases: works imported from the pre-account era have no
+ * human owner, and a mistaken claim has to be reversible. Content is not
+ * touched — `state`, `publishedVersionId` and the version list stay identical,
+ * so a transfer can never alter what the public reads.
+ */
+export async function transferOwner(
+  actor: ActorContext,
+  gameId: string,
+  toUserId: string,
+): Promise<WorkRecord> {
+  const registry = getRegistry();
+  const before = await registry.getWork(gameId);
+  if (!before) {
+    throw new HttpError(404, "work_not_found", "作品不存在。");
+  }
+  const target = await registry.getUser(toUserId);
+  if (!target) {
+    throw new HttpError(400, "unknown_user", "目标账号不存在。");
+  }
+  if (target.status !== "active") {
+    throw new HttpError(409, "user_inactive", "目标账号已停用，无法承接作品。");
+  }
+  const { work } = await mutateWork(registry, gameId, actor, {
+    type: "transfer_owner",
+    toUserId,
+    actorUserId: actor.user.id,
+  });
+  await recordAudit(registry, {
+    actor,
+    action: "work.transfer_owner",
+    targetType: "work",
+    targetId: gameId,
+    before: { ownerUserId: before.ownerUserId },
+    after: { ownerUserId: work.ownerUserId },
+  });
+  return work;
+}
+
 type SimpleAction = "withdraw" | "unlist" | "restore" | "archive";
 
 const AUDIT_FOR: Record<SimpleAction, AuditAction> = {

@@ -12,6 +12,7 @@ import {
   claimReview,
   decide,
   publishWork,
+  transferOwner,
 } from "@/lib/registry/service";
 
 /**
@@ -58,7 +59,9 @@ export async function POST(
     }
 
     // Publishing changes what the public sees: admin only, checked first.
-    const needsAdmin = action === "publish" || isSimpleAction(action);
+    // Ownership transfer is admin-only for the same reason: it decides who can
+    // push future content, even though it never changes what is live.
+    const needsAdmin = action === "publish" || action === "transfer" || isSimpleAction(action);
     const auth = needsAdmin
       ? await requireRole(request, "admin")
       : await requireRole(request, "reviewer");
@@ -107,6 +110,15 @@ export async function POST(
 
     if (action === "publish") {
       const work = await publishWork(actor, gameId);
+      return jsonResponse(200, { work });
+    }
+
+    if (action === "transfer") {
+      const body = (await readJson(request)) as { toUserId?: unknown };
+      if (typeof body.toUserId !== "string" || body.toUserId.length === 0 || body.toUserId.length > 64) {
+        throw new HttpError(400, "invalid_target_user", "toUserId 必须是账号 id。");
+      }
+      const work = await transferOwner(actor, gameId, body.toUserId);
       return jsonResponse(200, { work });
     }
 

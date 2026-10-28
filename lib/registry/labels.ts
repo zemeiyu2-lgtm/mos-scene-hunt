@@ -68,6 +68,8 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   "work.unlist": "下架",
   "work.restore": "恢复",
   "work.archive": "归档",
+  "work.transfer_owner": "转移归属",
+  "work.import_legacy": "导入历史作品",
 };
 
 /** Structured reason codes offered by the review form. */

@@ -321,3 +321,55 @@ describe("transition table", () => {
     expect(allowedEventsFor("draft")).toContain("submit");
   });
 });
+
+/**
+ * Ownership transfer exists for legacy works imported before accounts existed,
+ * and to undo a wrong claim. Its whole safety argument is that it is narrow:
+ * only `ownerUserId` moves.
+ */
+describe("transfer_owner", () => {
+  it("moves the owner and touches nothing else", () => {
+    const live = publishedWork();
+    const before = JSON.parse(JSON.stringify(live)) as WorkRecord;
+    const moved = applyWorkEvent(
+      live,
+      { type: "transfer_owner", toUserId: OTHER, actorUserId: "user-admin" },
+      { now: T3 },
+    );
+    if (!moved.ok) throw new Error(moved.message);
+    expect(moved.work.ownerUserId).toBe(OTHER);
+    // Everything that decides what the public reads must be untouched.
+    expect(moved.work.state).toBe(before.state);
+    expect(moved.work.publishedVersionId).toBe(before.publishedVersionId);
+    expect(moved.work.latestVersionId).toBe(before.latestVersionId);
+    expect(moved.work.versions).toEqual(before.versions);
+    expect(moved.work.submissions).toEqual(before.submissions);
+    expect(moved.work.updatedAt).toBe(T3);
+  });
+
+  it("refuses a no-op transfer to the current owner", () => {
+    const result = applyWorkEvent(
+      publishedWork(),
+      { type: "transfer_owner", toUserId: OWNER, actorUserId: "user-admin" },
+      { now: T3 },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("invalid_state");
+  });
+
+  it("is still allowed on an archived work", () => {
+    const archived = applyWorkEvent(
+      publishedWork(),
+      { type: "archive", actorUserId: "user-admin" },
+      { now: T3 },
+    );
+    if (!archived.ok) throw new Error(archived.message);
+    const moved = applyWorkEvent(
+      archived.work,
+      { type: "transfer_owner", toUserId: OTHER, actorUserId: "user-admin" },
+      { now: T3 },
+    );
+    expect(moved.ok).toBe(true);
+    if (moved.ok) expect(moved.work.state).toBe("archived");
+  });
+});

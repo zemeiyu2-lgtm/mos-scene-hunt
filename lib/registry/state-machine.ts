@@ -32,7 +32,14 @@ export type WorkEvent =
   | { type: "withdraw"; actorUserId: string }
   | { type: "unlist"; actorUserId: string }
   | { type: "restore"; actorUserId: string }
-  | { type: "archive"; actorUserId: string };
+  | { type: "archive"; actorUserId: string }
+  /**
+   * Ownership reassignment. Orthogonal to the lifecycle: it never changes
+   * `state`, `publishedVersionId` or the version list, only `ownerUserId`.
+   * Needed for legacy works imported before accounts existed, and to hand a
+   * work back after a mistaken claim.
+   */
+  | { type: "transfer_owner"; toUserId: string; actorUserId: string };
 
 export type TransitionErrorCode =
   | "not_owner"
@@ -113,11 +120,23 @@ export function applyWorkEvent(
 ): TransitionResult {
   const { now } = opts;
 
-  if (work.state === "archived" && event.type !== "restore") {
+  if (work.state === "archived" && event.type !== "restore" && event.type !== "transfer_owner") {
     return fail("work_archived", "作品已归档，只能先恢复再操作。");
   }
 
   switch (event.type) {
+    case "transfer_owner": {
+      // Deliberately narrow: content, lifecycle state and the published
+      // pointer are untouched, so a transfer can never change what the public
+      // sees. Only who may submit the next version moves.
+      if (event.toUserId === work.ownerUserId) {
+        return fail("invalid_state", "该用户已经是作品归属人。");
+      }
+      const next = clone(work);
+      next.ownerUserId = event.toUserId;
+      return { ok: true, work: settle(next, now), changed: true };
+    }
+
     case "submit":
       return applySubmit(work, event, opts);
 
