@@ -1,108 +1,156 @@
 import { GameDataError, validateGame } from "@/lib/game/types";
-import { canonicalJson, deriveVersionId, isValidGameId } from "@/lib/publish/version";
-import { getStore, VersionConflictError } from "@/lib/publish/storage";
+import { isValidGameId } from "@/lib/publish/version";
+import { VersionConflictError } from "@/lib/publish/storage";
+import {
+  HttpError,
+  assertSafeMutation,
+  clientHints,
+  jsonResponse,
+  requireUser,
+  toErrorResponse,
+} from "@/lib/auth/guard";
+import { consumeRateLimit } from "@/lib/auth/rate-limit";
+import { getRegistry } from "@/lib/registry/store";
+import { recordAudit, submitVersion } from "@/lib/registry/service";
 
 /**
- * Publish endpoint (serverization batch 1).
+ * Publish endpoint — submission only. **Uploading is not publishing.**
  *
- * POST /api/publish with a game pack JSON body. The pack must pass the same
- * `validateGame` every other content path uses, so an invalid pack can never
- * become a published version. The response carries the stable gameId, the
- * immutable content-derived versionId, and the public play link path.
+ * This endpoint used to be anonymous and keyed ownership on a client-chosen
+ * `game.id`, which let anyone append a version to someone else's work and
+ * repoint that work's default link at their own content. Four things changed:
  *
- * Protection set:
- *   - application/json only (415)
- *   - body size cap before parsing (413)
- *   - JSON parse + full pack validation (400)
- *   - invalid gameId (400)
- *   - identical re-publish is idempotent (200), conflicting content under an
- *     existing version is refused (409) - published versions are immutable
+ *  1. A session is required (401 otherwise). No anonymous write at all.
+ *  2. The `game.id` is claimed by the first submitter and is immutable
+ *     afterwards; another account gets 403 `game_id_taken` (404 is not used
+ *     here because the author legitimately needs to know the id is taken).
+ *  3. The pack is stored as a submission awaiting review. The response carries
+ *     NO public play link — only a preview path that requires a session.
+ *  4. Public reads resolve the registry's `publishedVersionId`, never "latest
+ *     written", so a new submission cannot change what players see.
+ *
+ * Body contract is unchanged (application/json, 256 KiB byte cap, full
+ * `validateGame`) so existing authors' clients keep working.
  */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_PACK_BYTES = 256 * 1024;
-
-function json(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
-  });
-}
+const SUBMIT_WINDOW_MS = 60 * 60 * 1000;
+const SUBMIT_MAX_PER_HOUR = 30;
 
 export async function POST(request: Request): Promise<Response> {
-  const contentType = request.headers.get("content-type") ?? "";
-  if (!contentType.toLowerCase().includes("application/json")) {
-    return json(415, { error: "unsupported_media_type", message: "请以 application/json 提交游戏包。" });
+  try {
+    return await handle(request);
+  } catch (error) {
+    if (error instanceof VersionConflictError) {
+      return jsonResponse(409, { error: "version_conflict", message: error.message });
+    }
+    if (error instanceof GameDataError) {
+      return jsonResponse(400, {
+        error: "invalid_pack",
+        message: "游戏包校验未通过。",
+        detail: error.message,
+      });
+    }
+    return toErrorResponse(error, "publish");
+  }
+}
+
+async function handle(request: Request): Promise<Response> {
+  // Guard order: session first. An unauthenticated caller must not be able to
+  // probe pack parsing behaviour or learn anything about existing works.
+  const auth = await requireUser(request);
+  assertSafeMutation(request);
+
+  const hints = clientHints(request);
+  const limit = consumeRateLimit({
+    key: `publish:${auth.user.id}`,
+    limit: SUBMIT_MAX_PER_HOUR,
+    windowMs: SUBMIT_WINDOW_MS,
+  });
+  if (!limit.allowed) {
+    return jsonResponse(
+      429,
+      { error: "rate_limited", message: "提交过于频繁，请稍后再试。" },
+      { "Retry-After": String(limit.retryAfterSeconds) },
+    );
   }
 
   const declaredLength = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(declaredLength) && declaredLength > MAX_PACK_BYTES) {
-    return json(413, { error: "pack_too_large", message: `游戏包超过 ${MAX_PACK_BYTES} 字节上限。` });
+    return jsonResponse(413, {
+      error: "pack_too_large",
+      message: `游戏包超过 ${MAX_PACK_BYTES} 字节上限。`,
+    });
   }
 
   let raw: string;
   try {
     raw = await request.text();
   } catch {
-    return json(400, { error: "unreadable_body", message: "无法读取请求内容。" });
+    return jsonResponse(400, { error: "unreadable_body", message: "无法读取请求内容。" });
   }
   if (Buffer.byteLength(raw, "utf8") > MAX_PACK_BYTES) {
-    // Byte-accurate: `raw.length` counts UTF-16 code units and would
-    // undercount multibyte content; it also catches missing or forged
-    // Content-Length headers that slipped past the declared-size check.
-    return json(413, { error: "pack_too_large", message: `游戏包超过 ${MAX_PACK_BYTES} 字节上限。` });
+    return jsonResponse(413, {
+      error: "pack_too_large",
+      message: `游戏包超过 ${MAX_PACK_BYTES} 字节上限。`,
+    });
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return json(400, { error: "invalid_json", message: "游戏包不是合法的 JSON。" });
+    return jsonResponse(400, { error: "invalid_json", message: "游戏包不是合法的 JSON。" });
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return json(400, { error: "invalid_pack", message: "游戏包必须是一个 JSON 对象。" });
+    return jsonResponse(400, { error: "invalid_pack", message: "游戏包必须是一个 JSON 对象。" });
   }
 
   const candidate = parsed as { id?: unknown };
   if (!isValidGameId(candidate.id)) {
-    return json(400, {
+    return jsonResponse(400, {
       error: "invalid_game_id",
-      message: "游戏 id 不合法：需为小写字母/数字开头，仅含小写字母、数字、点、下划线、连字符，最长 64 字符。",
+      message:
+        "游戏 id 不合法：需为小写字母/数字开头，仅含小写字母、数字、点、下划线、连字符，最长 64 字符。",
     });
   }
 
-  try {
-    const { game } = validateGame(parsed);
-    const versionId = await deriveVersionId(game);
-    const result = await getStore().publish({
-      gameId: game.id,
-      versionId,
-      title: game.title,
-      sceneCount: game.scenes.length,
-      // Canonical form: identical content serialises identically regardless
-      // of the client's key order, so re-publishing the same game after a
-      // re-import cannot collide with its own version object.
-      packJson: canonicalJson(game),
+  const { game } = validateGame(parsed);
+  const noteRaw = (parsed as { submissionNote?: unknown }).submissionNote;
+  const note = typeof noteRaw === "string" ? noteRaw.slice(0, 500) : null;
+
+  const actor = { user: auth.user, ipHash: hints.ipHash, uaHash: hints.uaHash };
+  const result = await submitVersion({
+    actor,
+    game,
+    packJson: raw,
+    noteFromAuthor: note,
+  });
+
+  if (result.idempotent) {
+    // Same bytes already submitted: say so instead of queueing a second review
+    // of identical content (which would let an author re-roll the dice).
+    await recordAudit(getRegistry(), {
+      actor,
+      action: "work.submit",
+      targetType: "version",
+      targetId: result.versionId,
+      after: { gameId: game.id, idempotent: true },
     });
-    return json(result.created ? 201 : 200, {
-      gameId: game.id,
-      versionId,
-      created: result.created,
-      latestVersionId: result.meta.latestVersionId,
-      playPath: `/select#cloud=${game.id}.${versionId}`,
-    });
-  } catch (error) {
-    if (error instanceof VersionConflictError) {
-      return json(409, { error: "version_conflict", message: error.message });
-    }
-    if (error instanceof GameDataError) {
-      return json(400, { error: "invalid_pack", message: "游戏包校验未通过。", detail: error.message });
-    }
-    // Never echo raw error text to the client: storage-layer messages can
-    // contain local paths or host internals. Log server-side instead.
-    console.error("[publish] 发布失败", error);
-    return json(500, { error: "publish_failed", message: "发布失败，请稍后重试。" });
   }
+
+  return jsonResponse(result.idempotent ? 200 : 201, {
+    gameId: game.id,
+    versionId: result.versionId,
+    reviewStatus: result.idempotent ? "already_submitted" : "pending",
+    workState: result.work.state,
+    /**
+     * Deliberately NOT `playPath`: there is no public link until a reviewer
+     * publishes. The preview route requires the owner (or staff) session.
+     */
+    previewPath: `/admin/works/${game.id}`,
+  });
 }

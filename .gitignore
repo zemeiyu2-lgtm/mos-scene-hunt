@@ -42,3 +42,10 @@ vitest.config.*.timestamp-*
 
 # 已发布游戏的本机存储（serverization batch 1）
 /.published-games/
+
+# 后台注册表（用户、作品、提交、审核、会话、审计）的本机存储。
+# 生产走 Vercel Blob（REGISTRY_STORE=blob），本目录只在本地开发/测试出现。
+/.registry/
+
+# 端到端验收的临时数据（可随时删除重跑）
+/.e2e/

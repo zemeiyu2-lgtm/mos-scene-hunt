@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import { SettingsProvider, useOnlineStatus } from "./providers";
 import { GpsProvider } from "./gps-provider";
 import { HuntProvider } from "./hunt-provider";
@@ -20,6 +21,14 @@ import { subscribeToCurrentAuthoredGame } from "@/lib/storage";
  */
 export function RootProviders({ children }: { children: React.ReactNode }) {
   const gameId = useActiveGameId();
+  const pathname = usePathname();
+
+  // The admin console must not mount the GPS/hunt stack: it would request a
+  // location permission for no reason and would keep a game pack resident on
+  // a page that never plays one. Everything under /admin is a plain document.
+  if (pathname?.startsWith("/admin")) {
+    return <>{children}</>;
+  }
 
   return (
     <SettingsProvider>
