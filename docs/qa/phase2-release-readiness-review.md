@@ -36,7 +36,8 @@
 | 项 | 实测值 | 命令/证据 |
 |---|---|---|
 | 当前分支 | `qa/phase2-20261029` | `git branch --show-current` |
-| HEAD（本轮结束时） | `0df4762` | `git log --oneline -1` |
+| HEAD（测试完成时） | `0df4762` | `git log --oneline -1` |
+| HEAD（报告提交后） | `dba6e4e` | 报告与 E2E 快照两次追加提交 |
 | HEAD（本轮开始时） | `0ed1e4e` | 与上一轮报告一致 |
 | 工作区 | 干净（仅 `.next/` 构建产物，已 gitignore） | `git status --porcelain` |
 | 远程 QA 分支 | **不存在** | `git ls-remote origin refs/heads/qa/phase2-20261029` → 空 |
@@ -284,7 +285,8 @@ P-4、P-6、P-7 建议等 P-1/P-3 完成后再单独批准；P-6 与 P-7 不应�
 |---|---|
 | `0ed1e4e` | 上一轮：测试包 + 发布闭环 + 备份恢复工具 |
 | `0df4762` | 本轮：发布可见性/引导/分支语义测试 + 两处防御修复 |
-| `HEAD` | 追加提交本报告 |
+| `1b9c321` | 本报告 |
+| `dba6e4e` | 玩家端 E2E 结果快照（40/40） |
 
 **测试日志**：`tests/e2e/artifacts/`（玩家端，含截图）、终端输出见第 3 节命令。
 
