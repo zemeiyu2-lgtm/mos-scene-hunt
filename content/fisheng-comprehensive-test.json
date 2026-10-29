@@ -1,0 +1,186 @@
+{
+  "_note": "菲圣综合测试游戏包。所有坐标为演示坐标（公开公园区域，非校园），现场使用前必须由授权人替换；本包未经授权不得发布到生产游戏中心。",
+  "id": "fisheng-comprehensive-test",
+  "language": "zh-CN",
+  "title": "菲圣综合测试 · 六站能力样本",
+  "description": "用于平台能力验收的综合测试包：覆盖分支与多结局、任务前置、物品门、关键词线索、限时挑战、反思式选择与四类奖励。所有坐标均为演示坐标。",
+  "author": "MOS Scene Hunt QA",
+  "version": "0.1.0",
+  "estimatedMinutes": 25,
+  "difficulty": "medium",
+  "startLocation": {
+    "lat": 14.5832,
+    "lng": 120.9794,
+    "name": "演示起点（广场入口）",
+    "radius": 30
+  },
+  "huntArea": {
+    "center": { "lat": 14.5843, "lng": 120.9794 },
+    "radiusMeters": 400,
+    "shape": "circle",
+    "name": "演示探索区"
+  },
+  "entrySceneId": "fs-s1",
+  "scenes": [
+    {
+      "id": "fs-s1",
+      "title": "第1站 · 起点辨认",
+      "story": "你站在广场入口。石阶上刻着一行看不清的字，旁边立着一块褪色的说明牌。",
+      "briefing": "先确认脚下的位置，再决定往哪边走。",
+      "location": { "lat": 14.5832, "lng": 120.9794, "radius": 15, "name": "广场入口" },
+      "nextSceneId": "fs-s2",
+      "challenge": {
+        "type": "choice",
+        "question": "说明牌上最先应该记录的是什么？",
+        "options": ["牌面文字与朝向", "牌子的颜色"],
+        "answer": 0,
+        "explanation": "先记可核对的细节：文字、朝向、位置。",
+        "hint": "想想哪些细节能在事后被复核。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "启程",
+        "value": "depart",
+        "description": "你把观察写进了笔记。",
+        "icon": "◎"
+      }
+    },
+    {
+      "id": "fs-s2",
+      "title": "第2站 · 碑文抄录",
+      "story": "第二块碑上刻着一个词，边缘被磨平了。空中有一阵风，把落叶推向台阶。",
+      "location": { "lat": 14.58375, "lng": 120.9794, "radius": 15, "name": "碑廊" },
+      "requires": ["fs-s1"],
+      "nextSceneId": "fs-s3",
+      "challenge": {
+        "type": "text",
+        "question": "碑文上写的是什么词？",
+        "answer": ["自由", "libertad", "freedom"],
+        "prompt": "只写一个词即可。",
+        "explanation": "碑文是西班牙语与中文并列的同一个词。",
+        "hintAfterAttempts": 2
+      },
+      "reward": {
+        "type": "item",
+        "title": "旧照片",
+        "value": "old-photo",
+        "description": "一张边角卷起的合影，背面写着年份。"
+      }
+    },
+    {
+      "id": "fs-s3",
+      "title": "第3站 · 岔路选择",
+      "story": "小路在此分成两条：一侧传来水声，另一侧树影更深。你只能先走一条。",
+      "location": { "lat": 14.5843, "lng": 120.9794, "radius": 15, "name": "岔路口" },
+      "requires": ["fs-s2"],
+      "nextSceneId": "fs-s4a",
+      "challenge": {
+        "type": "choice",
+        "question": "你想先走哪一边？",
+        "options": ["循水声向左", "沿树影向右"],
+        "reflective": true,
+        "branches": { "0": "fs-s4a", "1": "fs-s4b" },
+        "timeLimitSeconds": 60,
+        "explanation": "两边都通往同一处门，只是看到的线索不同。",
+        "hint": "没有错误答案，选你更想观察的一侧。"
+      },
+      "reward": {
+        "type": "story",
+        "title": "岔路片段",
+        "value": "fork-note",
+        "description": "你记下了选择的方向与理由。"
+      }
+    },
+    {
+      "id": "fs-s4a",
+      "title": "第4站A · 水边关键词",
+      "story": "水渠边的石栏上有一块铜牌，牌面只剩几个字母。水面上浮着一层薄光。",
+      "location": { "lat": 14.5843, "lng": 120.9801, "radius": 15, "name": "水渠石栏" },
+      "requires": ["fs-s3"],
+      "nextSceneId": "fs-s5",
+      "challenge": {
+        "type": "keyword",
+        "question": "铜牌上的词与什么有关？",
+        "answer": "水",
+        "acceptedKeywords": ["water", "水面"],
+        "timeLimitSeconds": 45,
+        "explanation": "铜牌写的是水位的刻度标记。",
+        "hint": "看看脚下的水面。"
+      },
+      "reward": {
+        "type": "item",
+        "title": "铜钥匙",
+        "value": "brass-key",
+        "description": "钥匙柄上刻着一道水纹。"
+      }
+    },
+    {
+      "id": "fs-s4b",
+      "title": "第4站B · 林地关键词",
+      "story": "树影里有一根钉在树干上的木牌，字迹被雨水冲淡，只剩一个偏旁。",
+      "location": { "lat": 14.5843, "lng": 120.9787, "radius": 15, "name": "林荫小径" },
+      "requires": ["fs-s3"],
+      "nextSceneId": "fs-s5",
+      "challenge": {
+        "type": "text",
+        "question": "木牌上残留的是哪个字？",
+        "answer": ["风", "wind", "風"],
+        "explanation": "木牌记录的是常年风向。",
+        "hint": "抬头看看树叶摆动的方向。"
+      },
+      "reward": {
+        "type": "item",
+        "title": "铜钥匙",
+        "value": "brass-key",
+        "description": "钥匙柄上刻着一道风纹。"
+      }
+    },
+    {
+      "id": "fs-s5",
+      "title": "第5站 · 双件物品门",
+      "story": "门在两面矮墙之间。门锁旁有两个凹槽：一个形状像照片，一个像钥匙。",
+      "location": { "lat": 14.5849, "lng": 120.9794, "radius": 15, "name": "内门" },
+      "requires": ["fs-s3"],
+      "requiresItems": ["brass-key", "old-photo"],
+      "nextSceneId": "fs-s6",
+      "challenge": {
+        "type": "choice",
+        "question": "两个凹槽该按什么顺序使用？",
+        "options": ["先钥匙后照片", "先照片后钥匙"],
+        "answer": 1,
+        "timeLimitSeconds": 30,
+        "explanation": "先放照片对齐纹路，再转动钥匙。",
+        "hint": "凹槽的深浅不一样。"
+      },
+      "reward": {
+        "type": "badge",
+        "title": "开门者",
+        "value": "gate-opener",
+        "description": "你带齐了两件物品并打开了内门。",
+        "icon": "▣"
+      }
+    },
+    {
+      "id": "fs-s6",
+      "title": "第6站 · 终点反思",
+      "story": "门后是一小片空地。地上散落着别人留下的纸条，写的都是各自看到的东西。",
+      "location": { "lat": 14.58545, "lng": 120.9794, "radius": 15, "name": "空地" },
+      "requires": ["fs-s5"],
+      "nextSceneId": null,
+      "challenge": {
+        "type": "choice",
+        "question": "这一路你更想带走什么？",
+        "options": ["一个可复述的细节", "一个还没想通的问题"],
+        "reflective": true,
+        "explanation": "两种带走方式都成立，写下来比选对更重要。"
+      },
+      "reward": {
+        "type": "badge",
+        "title": "完赛徽章",
+        "value": "finisher",
+        "description": "完成六站并作出自己的选择。",
+        "icon": "★"
+      }
+    }
+  ]
+}
