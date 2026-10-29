@@ -1,0 +1,219 @@
+{
+  "id": "acceptance-15m-check",
+  "language": "zh-CN",
+  "title": "收尾验收包 · 15 米半径与新增玩法自检",
+  "description": "仅用于本次收尾轮的端到端自检：所有场景触发半径均为 15 米，并覆盖后台发布→游戏中心发现→玩家游玩→完成领奖整条链路。坐标为占位示例，未经实地测量，正式使用前必须逐点现场核对。这不是正式公开内容。",
+  "author": "MOS Scene Hunt · 验收自检（非正式内容）",
+  "version": "0.1.0-acceptance",
+  "estimatedMinutes": 30,
+  "difficulty": "medium",
+  "startLocation": {
+    "lat": 14.5832,
+    "lng": 120.9794,
+    "radius": 15,
+    "name": "验收起点·待现场核对"
+  },
+  "huntArea": {
+    "center": {
+      "lat": 14.5832,
+      "lng": 120.9794
+    },
+    "radiusMeters": 300,
+    "shape": "circle",
+    "name": "验收探索区·待现场核对"
+  },
+  "entrySceneId": "acc-intro",
+  "scenes": [
+    {
+      "id": "acc-intro",
+      "title": "第 1 站 · 出发确认",
+      "story": "出发前先确认环境与同伴。真正的线索，往往藏在匆忙时不会注意的细节里。",
+      "briefing": "确认所有成员就位，并且在不妨碍通行的位置完成本站任务。",
+      "location": {
+        "lat": 14.5832,
+        "lng": 120.9794,
+        "radius": 15,
+        "name": "验收点1·起步区（待现场核对）"
+      },
+      "nextSceneId": "acc-timed",
+      "challenge": {
+        "type": "choice",
+        "question": "到达第 1 站后，第一件事应该做什么？",
+        "options": [
+          "先观察环境并确认安全",
+          "立刻跑向最远的点",
+          "不看路线直接开始"
+        ],
+        "answer": 0,
+        "hint": "好的探索从留心环境开始。",
+        "explanation": "先观察、安全行动，后面的站点才走得稳。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "出发口令",
+        "value": "acc-set-off"
+      }
+    },
+    {
+      "id": "acc-timed",
+      "title": "第 2 站 · 限时观察",
+      "story": "领队只给你 45 秒。请在这一站的范围内找出答案，并把关键词写下来。",
+      "briefing": "本站为限时挑战（45 秒）。超时后可以重试一次，界面会明确提示已超时。",
+      "location": {
+        "lat": 14.5839,
+        "lng": 120.9801,
+        "radius": 15,
+        "name": "验收点2·限时站（待现场核对）"
+      },
+      "requires": [
+        "acc-intro"
+      ],
+      "nextSceneId": "acc-fork",
+      "challenge": {
+        "type": "keyword",
+        "question": "在 45 秒内说出这个地点的关键词。",
+        "answer": "acc-clock",
+        "acceptedKeywords": [
+          "acc-clock",
+          "acc clock"
+        ],
+        "hint": "关键词就是本站标题里的英文部分。",
+        "explanation": "限时题答对后同样会发放奖励；超时只影响本题，不影响已获得的进度。",
+        "timeLimitSeconds": 45
+      },
+      "reward": {
+        "type": "item",
+        "title": "现场观察镜",
+        "value": "field-lens",
+        "description": "用于开启最后一站的物品门类。"
+      }
+    },
+    {
+      "id": "acc-fork",
+      "title": "第 3 站 · 路线分岔",
+      "story": "两条路都通往终点，但顺序不同。选一条，后面的站点会随之改变。",
+      "briefing": "这一站的选择会改写后续路线，用来检验分支多结局引擎是否正常。",
+      "location": {
+        "lat": 14.5846,
+        "lng": 120.9796,
+        "radius": 15,
+        "name": "验收点3·分岔口（待现场核对）"
+      },
+      "requires": [
+        "acc-timed"
+      ],
+      "nextSceneId": "acc-left",
+      "challenge": {
+        "type": "choice",
+        "question": "你打算先走哪一边？",
+        "options": [
+          "先走左边的记忆廊",
+          "先走右边的水池畔"
+        ],
+        "branches": {
+          "0": "acc-left",
+          "1": "acc-right"
+        },
+        "reflective": true,
+        "hint": "两条路最终都要走完，先走哪边都可以。",
+        "explanation": "选择会写入存档并与分享链接一起保存，回到日程时路线不会丢失。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "岔路口令",
+        "value": "acc-forked"
+      }
+    },
+    {
+      "id": "acc-left",
+      "title": "第 4 站 A · 记忆廊",
+      "story": "沿廊而行，把看到的三样东西记下来。",
+      "briefing": "本题为开放式作答，用于检验非选择题与「故事」类奖励。",
+      "location": {
+        "lat": 14.5851,
+        "lng": 120.9789,
+        "radius": 15,
+        "name": "验收点4A·记忆廊（待现场核对）"
+      },
+      "requires": [
+        "acc-fork"
+      ],
+      "nextSceneId": "acc-final",
+      "challenge": {
+        "type": "text",
+        "question": "写下你在记忆廊里注意到的一样东西。",
+        "answer": ["长廊", "柱子", "阳光"],
+        "hint": "写下任何一样真实看到的东西即可。"
+      },
+      "reward": {
+        "type": "story",
+        "title": "廊下的片段",
+        "value": "acc-corridor-note"
+      }
+    },
+    {
+      "id": "acc-right",
+      "title": "第 4 站 B · 水池畔",
+      "story": "水面会反光，也会藏住东西。请多绕一圈。",
+      "briefing": "即使分岔时没有选这一边，完成第 3 站后它依然会解锁。",
+      "location": {
+        "lat": 14.5843,
+        "lng": 120.9814,
+        "radius": 15,
+        "name": "验收点4B·水池畔（待现场核对）"
+      },
+      "requires": [
+        "acc-fork"
+      ],
+      "nextSceneId": "acc-final",
+      "challenge": {
+        "type": "text",
+        "question": "写下你在水池畔注意到的一样东西。",
+        "answer": ["水池", "倒影", "水面"],
+        "hint": "写下任何一样真实看到的东西即可。"
+      },
+      "reward": {
+        "type": "keyword",
+        "title": "水畔口令",
+        "value": "acc-poolside"
+      }
+    },
+    {
+      "id": "acc-final",
+      "title": "第 5 站 · 终点与收获",
+      "story": "所有路线都回到这里。清点你的收获，然后带着它们去见主持人。",
+      "briefing": "本站同时开启任务门（需先完成两条岔路）与物品门（需持有「现场观察镜」）。",
+      "location": {
+        "lat": 14.5856,
+        "lng": 120.9803,
+        "radius": 15,
+        "name": "验收点5·终点（待现场核对）"
+      },
+      "requires": [
+        "acc-left",
+        "acc-right"
+      ],
+      "requiresItems": [
+        "field-lens"
+      ],
+      "nextSceneId": null,
+      "challenge": {
+        "type": "choice",
+        "question": "到达终点后，奖品应当如何领取？",
+        "options": [
+          "按主持人在现场说明的方式当面领取",
+          "游戏会自动把奖品寄出",
+          "在软件里输入兑换码兑换"
+        ],
+        "answer": 0,
+        "hint": "本产品目前没有线上兑换功能。",
+        "explanation": "当前版本不提供线上核销与兑换码，最终奖励的兑现方式由组织者在帐篷游戏的最后一个场景里自行写明。"
+      },
+      "reward": {
+        "type": "badge",
+        "title": "走完全程徽章",
+        "value": "acc-finisher"
+      }
+    }
+  ]
+}
