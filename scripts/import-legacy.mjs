@@ -13,6 +13,9 @@
  *
  * Options:
  *   --apply          perform the import (without it, nothing is written)
+ *   --only a,b       restrict the run to exactly these gameIds (fail closed:
+ *                    empty/duplicated/malformed/unknown ids abort with an
+ *                    error instead of degrading into a full import)
  *   --limit N        stop after N games (useful for a first inspection)
  *   --json           print the raw report instead of a table
  *
@@ -28,6 +31,28 @@ const APPLY = args.includes("--apply");
 const JSON_OUT = args.includes("--json");
 const limitIndex = args.indexOf("--limit");
 const LIMIT = limitIndex >= 0 ? Number(args[limitIndex + 1]) : undefined;
+
+// --only may be repeated and/or comma-separated. Client-side checks are a
+// convenience; the server re-validates authoritatively (fail closed).
+const onlyRaw = [];
+for (let i = 0; i < args.length; i += 1) {
+  if (args[i] === "--only") {
+    const value = args[i + 1];
+    if (value === undefined) {
+      console.error("--only 需要一个值（逗号分隔的 gameId 列表）。");
+      process.exit(2);
+    }
+    onlyRaw.push(value);
+  }
+}
+let ONLY;
+if (onlyRaw.length > 0) {
+  ONLY = onlyRaw.flatMap((value) => value.split(",")).map((id) => id.trim());
+  if (ONLY.some((id) => id.length === 0)) {
+    console.error("--only 含空条目；已拒绝执行（fail-closed，绝不退化为全量迁移）。");
+    process.exit(2);
+  }
+}
 
 const rawBase = process.env.BASE_URL || "http://127.0.0.1:3000";
 const baseUrl = new URL(rawBase);
@@ -101,9 +126,11 @@ const session = cookiesFrom(login);
 const body = {};
 if (APPLY) body.apply = true;
 if (LIMIT && Number.isFinite(LIMIT)) body.limit = LIMIT;
+if (ONLY) body.only = ONLY;
 
 console.log(`\n=== 历史作品导入 @ ${BASE} ===`);
 console.log(APPLY ? "模式：APPLY（会写入 registry，但绝不修改历史对象）" : "模式：DRY RUN（只读，不写任何数据）");
+if (ONLY) console.log(`白名单：${ONLY.join(", ")}（仅处理这些 gameId）`);
 
 const res = await call("/api/admin/import-legacy", { method: "POST", body, cookie: session });
 if (res.status !== 200) {

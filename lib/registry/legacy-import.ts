@@ -74,6 +74,8 @@ export interface LegacyImportReport {
   /** Where the listing looked (a path or a blob prefix — never a credential). */
   location: string;
   applied: boolean;
+  /** The active whitelist, echoed for the audit trail; null = unrestricted. */
+  only: string[] | null;
   totals: {
     games: number;
     importPublished: number;
@@ -253,21 +255,90 @@ function toVersionRecord(plan: LegacyVersionPlan, ownerUserId: string, now: stri
   };
 }
 
+/**
+ * Thrown when an `only` whitelist is malformed or names a game that does not
+ * exist in the store. The caller must map it to a 4xx response — a bad
+ * whitelist must NEVER degrade into a full import.
+ */
+export class LegacyOnlyValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LegacyOnlyValidationError";
+  }
+}
+
+/**
+ * Validate an `only` whitelist strictly (fail closed): it must be a non-empty
+ * array of unique, well-formed gameIds. Any deviation throws — a typo must
+ * abort the migration, not silently widen or narrow its scope.
+ */
+export function parseOnlyWhitelist(value: unknown): Set<string> {
+  if (!Array.isArray(value)) {
+    throw new LegacyOnlyValidationError("only 必须是字符串数组。");
+  }
+  if (value.length === 0) {
+    throw new LegacyOnlyValidationError(
+      "only 不能为空数组：要么不传 only（保持默认全量行为），要么至少给出一个 gameId。",
+    );
+  }
+  const seen = new Set<string>();
+  for (const entry of value) {
+    if (typeof entry !== "string" || entry.length === 0) {
+      throw new LegacyOnlyValidationError("only 含非字符串或空条目，已拒绝执行。");
+    }
+    if (seen.has(entry)) {
+      throw new LegacyOnlyValidationError(`only 含重复 gameId：${entry}`);
+    }
+    seen.add(entry);
+  }
+  const invalid = [...seen].filter((id) => !isValidGameId(id));
+  if (invalid.length > 0) {
+    throw new LegacyOnlyValidationError(`only 含格式非法的 gameId：${invalid.join(", ")}`);
+  }
+  return seen;
+}
+
 export interface RunLegacyImportOptions {
   /** When false (default) nothing is written. */
   apply?: boolean;
   /** Stop after this many games — a guard for a first look at a big store. */
   limit?: number;
+  /**
+   * Whitelist: process (and, with `apply`, write) ONLY these gameIds. Must be
+   * present in the store; parsing happens before ANY storage access so a bad
+   * list can never degrade into a full migration. `limit`, if also given,
+   * applies to the whitelisted selection.
+   */
+  only?: string[];
 }
 
 export async function runLegacyImport(options: RunLegacyImportOptions = {}): Promise<LegacyImportReport> {
   const apply = options.apply === true;
+  // The whitelist is parsed BEFORE any storage access: a malformed list must
+  // fail closed here, never degrade into a full migration.
+  const onlySet = options.only === undefined ? null : parseOnlyWhitelist(options.only);
   const listing = await listLegacyGameIds();
+  if (onlySet) {
+    // Fail closed: with a whitelist we must be able to prove every named
+    // game exists. An incomplete listing cannot prove that, so we refuse.
+    if (!listing.complete) {
+      throw new LegacyOnlyValidationError(
+        `对象列表不完整（${listing.error ?? "原因未知"}），无法核验白名单中的 gameId 是否存在；已拒绝执行。`,
+      );
+    }
+    const unknown = [...onlySet].filter((id) => !listing.gameIds.includes(id));
+    if (unknown.length > 0) {
+      throw new LegacyOnlyValidationError(`only 包含存储中不存在的 gameId：${unknown.join(", ")}`);
+    }
+  }
   const registry = getRegistry();
   const publishStore = getPublishStore();
 
   const plans: LegacyGamePlan[] = [];
-  const limited = options.limit && options.limit > 0 ? listing.gameIds.slice(0, options.limit) : listing.gameIds;
+  // Whitelist first, then apply the pre-existing limit semantics to whatever
+  // selection remains — `limit` alone keeps its original meaning.
+  const selected = onlySet ? listing.gameIds.filter((id) => onlySet.has(id)) : listing.gameIds;
+  const limited = options.limit && options.limit > 0 ? selected.slice(0, options.limit) : selected;
 
   for (const gameId of limited) {
     if (!isValidGameId(gameId)) {
@@ -396,6 +467,7 @@ export async function runLegacyImport(options: RunLegacyImportOptions = {}): Pro
     listingError: listing.error,
     location: listing.location,
     applied: apply,
+    only: onlySet ? [...onlySet] : null,
     totals,
     games: plans,
   };

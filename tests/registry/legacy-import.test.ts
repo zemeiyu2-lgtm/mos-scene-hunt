@@ -230,3 +230,132 @@ describe("legacy import", () => {
     expect(work?.publishedVersionId).toBeNull();
   });
 });
+
+/**
+ * `only` whitelist tests: the whitelist must take effect BEFORE any
+ * processing/writing, must fail closed on any malformed input, and must never
+ * change the default (no `only`) behavior. All runs use the isolated local
+ * file registry + local published dir from `setupRegistryEnv` — nothing here
+ * can touch production data.
+ */
+describe("legacy import — only whitelist", () => {
+  // Seeds three games; "zzz-seminary-lab" sorts LAST on purpose so selecting
+  // it proves the whitelist is not just a prefix/limit cut.
+  async function seedThree(): Promise<void> {
+    await seedLegacy("alpha-one", "甲");
+    await seedLegacy("mid-two", "乙");
+    await seedLegacy("zzz-seminary-lab", "丙");
+  }
+
+  async function adminCookie(): Promise<string> {
+    const admin = await createUser({ email: "admin@test.local", role: "admin" });
+    return sessionCookieFor(admin);
+  }
+
+  it("selects exactly one game and writes only it", async () => {
+    await seedThree();
+    const before = await snapshotTree(process.env.PUBLISHED_GAMES_DIR!);
+    const cookie = await adminCookie();
+
+    const res = await importRequest(cookie, { apply: true, only: ["zzz-seminary-lab"] });
+    expect(res.status).toBe(200);
+    const report = (await res.json()) as {
+      applied: boolean;
+      only: string[] | null;
+      totals: { games: number; importPublished: number };
+      games: { gameId: string }[];
+    };
+    expect(report.applied).toBe(true);
+    expect(report.only).toEqual(["zzz-seminary-lab"]);
+    expect(report.totals.games).toBe(1);
+    expect(report.games.map((g) => g.gameId)).toEqual(["zzz-seminary-lab"]);
+
+    // Only the whitelisted work exists; the excluded two are untouched.
+    expect(await getRegistry().getWork("zzz-seminary-lab")).not.toBeNull();
+    expect(await getRegistry().getWork("alpha-one")).toBeNull();
+    expect(await getRegistry().getWork("mid-two")).toBeNull();
+    expect(await snapshotTree(process.env.PUBLISHED_GAMES_DIR!)).toEqual(before);
+  });
+
+  it("selects both official candidates in one run, excluding the rest", async () => {
+    await seedThree();
+    const cookie = await adminCookie();
+
+    const res = await importRequest(cookie, { apply: true, only: ["alpha-one", "zzz-seminary-lab"] });
+    expect(res.status).toBe(200);
+    const report = (await res.json()) as { totals: { games: number; importPublished: number }; games: { gameId: string }[] };
+    expect(report.totals.games).toBe(2);
+    expect(report.totals.importPublished).toBe(2);
+    expect(report.games.map((g) => g.gameId).sort()).toEqual(["alpha-one", "zzz-seminary-lab"]);
+
+    expect(await getRegistry().getWork("alpha-one")).not.toBeNull();
+    expect(await getRegistry().getWork("zzz-seminary-lab")).not.toBeNull();
+    expect(await getRegistry().getWork("mid-two")).toBeNull();
+  });
+
+  it("dry run with only reports just the selection and writes nothing", async () => {
+    await seedThree();
+    const before = await snapshotTree(process.env.PUBLISHED_GAMES_DIR!);
+    const cookie = await adminCookie();
+
+    const res = await importRequest(cookie, { only: ["mid-two"] });
+    expect(res.status).toBe(200);
+    const report = (await res.json()) as { applied: boolean; totals: { games: number }; games: { gameId: string }[] };
+    expect(report.applied).toBe(false);
+    expect(report.totals.games).toBe(1);
+    expect(report.games[0]?.gameId).toBe("mid-two");
+
+    for (const id of ["alpha-one", "mid-two", "zzz-seminary-lab"]) {
+      expect(await getRegistry().getWork(id)).toBeNull();
+    }
+    expect(await snapshotTree(process.env.PUBLISHED_GAMES_DIR!)).toEqual(before);
+  });
+
+  it.each([
+    ["unknown id", ["nope-not-here"]],
+    ["invalid id format", ["../escape"]],
+    ["duplicated ids", ["alpha-one", "alpha-one"]],
+    ["empty array", []],
+    ["non-array value", "alpha-one"],
+    ["non-string entry", [42]],
+  ])("fails closed on %s — never degrades to a full import", async (_label, only) => {
+    await seedThree();
+    const before = await snapshotTree(process.env.PUBLISHED_GAMES_DIR!);
+    const cookie = await adminCookie();
+
+    const res = await importRequest(cookie, { apply: true, only: only as unknown });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("invalid_only");
+
+    // Nothing was written: no works, no legacy object touched.
+    for (const id of ["alpha-one", "mid-two", "zzz-seminary-lab"]) {
+      expect(await getRegistry().getWork(id)).toBeNull();
+    }
+    expect(await snapshotTree(process.env.PUBLISHED_GAMES_DIR!)).toEqual(before);
+  });
+
+  it("keeps the default behavior when only is absent", async () => {
+    await seedThree();
+    const cookie = await adminCookie();
+
+    const res = await importRequest(cookie, {});
+    expect(res.status).toBe(200);
+    const report = (await res.json()) as { only: string[] | null; totals: { games: number } };
+    expect(report.only).toBeNull();
+    expect(report.totals.games).toBe(3);
+  });
+
+  it("applies limit to the whitelisted selection, not the raw listing", async () => {
+    await seedThree();
+    const cookie = await adminCookie();
+
+    const res = await importRequest(cookie, { apply: true, only: ["alpha-one", "mid-two"], limit: 1 });
+    expect(res.status).toBe(200);
+    const report = (await res.json()) as { totals: { games: number }; games: { gameId: string }[] };
+    expect(report.totals.games).toBe(1);
+    expect(report.games[0]?.gameId).toBe("alpha-one");
+    expect(await getRegistry().getWork("alpha-one")).not.toBeNull();
+    expect(await getRegistry().getWork("mid-two")).toBeNull();
+  });
+});
