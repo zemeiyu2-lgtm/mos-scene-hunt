@@ -9,21 +9,25 @@
  * a single place where hint escalation lives.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
+import { useEffect } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { Screen, StatusChip } from "@/components/ui";
 import { matchTextAnswer } from "@/lib/game/answers";
 import { playSound } from "@/components/sound";
 import { MediaGallery } from "@/components/media-gallery";
 import { nextSceneIdOf } from "@/lib/game/state";
+import { ChallengeExpiredPanel, ChallengeTimerBar, useAttemptClock } from "@/components/challenge-timer";
+import { attemptNumber, formatLimit, timeLimitMs } from "@/lib/game/timed-challenge";
 
 export default function ChallengePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
   const { sceneId } = use(params);
   const router = useRouter();
-  const { game, state, submitAnswer, distances, current } = useHunt();
+  const { game, state, submitAnswer, distances, current, openChallenge, expireAttempt, retryAttempt } =
+    useHunt();
 
   const scene = game?.scenes.find((s) => s.id === sceneId) ?? null;
   const progress = state?.scenes[sceneId] ?? null;
@@ -38,6 +42,38 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
 
   const attempts = progress?.attempts ?? 0;
   const alreadyComplete = progress?.status === "completed";
+
+  // ---- 限时挑战（V1.0）------------------------------------------------
+  // The countdown is derived from the persisted attempt stamp, never from a
+  // local "time left" variable. That is what makes a re-render, a route change
+  // or a page reload continue the same attempt instead of restarting it.
+  const limitMs = timeLimitMs(challenge);
+  const startedAt = progress?.attemptStartedAt ?? null;
+  const timedOutAt = progress?.timedOutAt ?? null;
+
+  // Start the clock the moment the question is answerable. OPEN_CHALLENGE only
+  // stamps when no attempt is running and none has expired, so reaching this
+  // screen again (deep link, back button) can never hand out a fresh window.
+  useEffect(() => {
+    if (!scene || !state || !challenge) return;
+    if (limitMs === null) return;
+    if (progress?.status === "completed") return;
+    if (startedAt !== null || timedOutAt !== null) return;
+    openChallenge(scene.id);
+  }, [scene, state, challenge, limitMs, progress?.status, startedAt, timedOutAt, openChallenge]);
+
+  const onExpire = useCallback(() => {
+    if (scene) expireAttempt(scene.id);
+  }, [scene, expireAttempt]);
+
+  const clock = useAttemptClock({
+    startedAt,
+    limitMs,
+    active: limitMs !== null && !alreadyComplete && !solved && timedOutAt === null,
+    onExpire,
+  });
+
+  const expired = limitMs !== null && (timedOutAt !== null || clock.expired);
 
   const hintVisible = useMemo(() => {
     if (!challenge) return false;
@@ -89,6 +125,9 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
 
   const submit = () => {
     if (submitting) return;
+    // A timed-out attempt can never be graded. The engine enforces the same rule
+    // from the stored deadline, so a stale screen cannot slip an answer through.
+    if (expired) return;
     if (challenge.type === "choice") {
       if (selected === null) return;
       // Verify locally so the screen can distinguish "wrong" from "correct"
@@ -140,6 +179,32 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       subtitle={scene.location.name ?? "任务"}
       headerRight={<StatusChip status={progress?.status ?? "challenging"} />}
     >
+      {/* 限时挑战：倒计时与超时重试。无时限题目整块不渲染，保持原有玩法。 */}
+      {limitMs !== null ? (
+        expired ? (
+          <ChallengeExpiredPanel
+            attempt={attempts}
+            limitLabel={formatLimit(challenge)}
+            onRetry={() => {
+              // A fresh attempt starts from a clean slate: no option still
+              // selected, no text left over from the round that timed out.
+              setSelected(null);
+              setText("");
+              setFeedback("none");
+              setSubmitting(false);
+              retryAttempt(scene.id);
+            }}
+          />
+        ) : (
+          <ChallengeTimerBar
+            remainingMs={clock.remainingMs}
+            attempt={attemptNumber(progress)}
+            limitLabel={formatLimit(challenge)}
+            ready={clock.ready}
+          />
+        )
+      ) : null}
+
       {/* The player may have stepped out of the ring mid-question. Warn, but do
           not block: the challenge stays open once opened. */}
       {!inRange ? (
@@ -172,6 +237,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
               <button
                 key={option}
                 type="button"
+                disabled={expired}
                 onClick={() => {
                   setSelected(index);
                   setFeedback("none");
@@ -198,6 +264,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
             id="answer-input"
             className="input"
             value={text}
+            disabled={expired}
             onChange={(e) => {
               setText(e.target.value);
               setFeedback("none");
@@ -245,9 +312,13 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
           type="button"
           className="btn btn-primary btn-block"
           onClick={submit}
-          disabled={submitting || (challenge.type === "choice" ? selected === null : text.trim().length === 0)}
+          disabled={
+            submitting ||
+            expired ||
+            (challenge.type === "choice" ? selected === null : text.trim().length === 0)
+          }
         >
-          {submitting ? "完成中…" : "提交答案"}
+          {submitting ? "完成中…" : expired ? "已超时" : "提交答案"}
         </button>
         <button
           type="button"

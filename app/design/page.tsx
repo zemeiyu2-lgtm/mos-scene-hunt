@@ -35,7 +35,7 @@ import {
   importGamePackageChecked,
   readAuthoredGame,
 } from "@/lib/content";
-import type { Game, HuntArea, Scene } from "@/lib/game/types";
+import type { Game, HuntArea, Reward, Scene } from "@/lib/game/types";
 import {
   addChoiceOption,
   answerLines,
@@ -51,6 +51,25 @@ import {
   canOptionBranch,
   withAnswerLines,
 } from "@/lib/game/challenge-edit";
+import {
+  itemKindsProducedBy,
+  REWARD_TYPE_LABEL,
+  switchSceneRewardType,
+  toggleSceneRequiresItems,
+} from "@/lib/game/reward-edit";
+import {
+  danglingRequiresRefs,
+  isEntryScene,
+  normalizeEntryRequires,
+  removeRequiresRefsTo,
+  requirableSceneOptions,
+  toggleSceneRequires,
+} from "@/lib/game/dependency-edit";
+import {
+  parseTimeLimitInput,
+  timeLimitInputValue,
+  withTimeLimitSeconds,
+} from "@/lib/game/timed-challenge";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
 import {
   isPointInPolygon,
@@ -102,6 +121,18 @@ export default function DesignPage() {
   const [blankMessage, setBlankMessage] = useState<string | null>(null);
   // The intro is secondary to the map, so it stays collapsed until asked for.
   const [infoOpen, setInfoOpen] = useState(false);
+
+  const [rewardNotice, setRewardNotice] = useState<string | null>(null);
+
+  const [requiresNotice, setRequiresNotice] = useState<string | null>(null);
+
+  // 限时输入的中转草稿：允许作者在输入框里停留在非法值（如 "0"、"-"）并看到
+  // 提示，而不是被模型值强行回弹。sceneId 用来在切换场景时丢弃旧草稿。
+  const [timeLimitDraft, setTimeLimitDraft] = useState<{
+    sceneId: string;
+    text: string;
+    error: string | null;
+  } | null>(null);
   // 问题 4：地图视野归设计者所有。只有显式「重置视野」才重新取景；选站、
   // 拖动标记、开关面板都不会再自动重置缩放。
   const [fitToken, setFitToken] = useState(0);
@@ -375,24 +406,42 @@ export default function DesignPage() {
     const scenes = [...working.scenes];
     [scenes[index], scenes[target]] = [scenes[target], scenes[index]];
     for (let i = 0; i < scenes.length; i++) scenes[i] = { ...scenes[i], nextSceneId: i < scenes.length - 1 ? scenes[i + 1].id : null };
-    setDraft({ ...working, scenes, entrySceneId: scenes[0]?.id, version: bumpVersion(working.version) });
+    // The first scene becomes the entry: an entry with prerequisites could never
+    // open, so those are cleared and the author is told.
+    const normalized = normalizeEntryRequires(scenes);
+    setDraft({ ...working, scenes: normalized.scenes, entrySceneId: normalized.scenes[0]?.id, version: bumpVersion(working.version) });
     setSelectedId(sceneId);
     setSaved(false);
+    if (normalized.clearedTitle) {
+      setRequiresNotice(`「${normalized.clearedTitle}」已排到第一位并成为起点，已移除它的前置场景设置。`);
+    }
   };
 
   const deleteSelected = () => {
     if (!selected || working.scenes.length <= 1) return;
+    const deletedId = selected.id;
     const nextId = selected.nextSceneId;
     const scenes = working.scenes
-      .filter((scene) => scene.id !== selected.id)
+      .filter((scene) => scene.id !== deletedId)
       .map((scene) =>
-        scene.nextSceneId === selected.id ? { ...scene, nextSceneId: nextId } : scene,
+        scene.nextSceneId === deletedId ? { ...scene, nextSceneId: nextId } : scene,
       );
+    // Deleting a scene others declare as a prerequisite would leave dangling
+    // ids that make the whole pack fail validation (and vanish on reload), so
+    // those references are removed and the author is told which scenes changed.
+    const cleaned = removeRequiresRefsTo({ ...working, scenes }, deletedId);
     const entrySceneId =
-      working.entrySceneId === selected.id ? scenes[0]?.id : working.entrySceneId;
-    setDraft({ ...working, scenes, entrySceneId, version: bumpVersion(working.version) });
+      working.entrySceneId === deletedId ? cleaned.game.scenes[0]?.id : working.entrySceneId;
+    setDraft({ ...cleaned.game, entrySceneId, version: bumpVersion(working.version) });
     setSelectedId(scenes[0]?.id ?? null);
     setSaved(false);
+    setRequiresNotice(
+      cleaned.affected.length
+        ? `已删除「${selected.title}」，并移除 ${cleaned.affected
+            .map((a) => `「${a.title}」`)
+            .join("、")} 对它的前置依赖。`
+        : null,
+    );
   };
 
   /* ---------------------------------------------------------------- ④ 保存 */
@@ -1136,6 +1185,65 @@ export default function DesignPage() {
                             </button>
                           );
                         })()}
+
+            {(() => {
+              const entry = isEntryScene(working, selected.id);
+              const options = requirableSceneOptions(working, selected.id);
+              const dangling = danglingRequiresRefs(working);
+              const chosen = selected.requires ?? [];
+              return (
+                <div className="mb-3 rounded-xl bg-[var(--surface)] p-3">
+                  <p className="text-xs font-semibold">前置场景（可选）</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">
+                    {entry
+                      ? "这是起点场景，玩家一开局就要能到这里，因此不能设置前置场景。"
+                      : "勾选后，玩家必须按顺序完成这些场景，本场景才会解锁（勾选会替代「路线顺序」的默认解锁条件）。"}
+                  </p>
+                  {!entry && options.length ? (
+                    <div className="mt-2 grid gap-1.5">
+                      {options.map((option) => (
+                        <label key={option.id} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs ${option.wouldCycle ? "opacity-50" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={option.selected}
+                            disabled={option.wouldCycle}
+                            onChange={() => {
+                              setRequiresNotice(null);
+                              const result = toggleSceneRequires(working, selected.id, option.id);
+                              if ("error" in result) {
+                                setRequiresNotice(result.error);
+                                return;
+                              }
+                              updateScene(selected.id, { requires: result.scene.requires });
+                            }}
+                          />
+                          <span className="font-medium">{option.position}. {option.title}</span>
+                          <span className="text-[10.5px] text-[var(--muted)]">
+                            {option.selected ? "已设为前置" : option.wouldCycle ? "（会形成循环依赖）" : ""}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : null}
+                  {!entry && chosen.length ? (
+                    <p className="mt-2 text-[11px] text-[var(--muted)]">
+                      需先完成 {chosen.length} 个前置场景，本场景才会出现：{chosen
+                        .map((id) => working.scenes.find((s) => s.id === id)?.title ?? id)
+                        .join("、")}
+                    </p>
+                  ) : null}
+                  {requiresNotice ? (
+                    <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">{requiresNotice}</div>
+                  ) : null}
+                  {dangling.length ? (
+                    <div className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[11.5px] leading-relaxed text-red-800">
+                      发现失效的前置引用（{dangling.map((d) => d.missingId).join("、")}），保存会被校验拦下。请取消对应勾选后重试。
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })()}
+
             <label className="block text-xs font-semibold">场景名称<input className="input mt-1" value={selected.title} onChange={(e) => updateScene(selected.id, { title: e.target.value })} /></label>
             <label className="mt-3 block text-xs font-semibold">现场名称<input className="input mt-1" value={selected.location.name ?? ""} onChange={(e) => updateScene(selected.id, { location: { ...selected.location, name: e.target.value } })} /></label>
             <label className="mt-3 block text-xs font-semibold">到达后故事<textarea className="input mt-1 min-h-28" value={selected.story} onChange={(e) => updateScene(selected.id, { story: e.target.value })} /></label>
@@ -1263,6 +1371,40 @@ export default function DesignPage() {
                     <label className="mt-2 block text-xs">可接受的答案（每行一个）<textarea className="input mt-1 min-h-16" value={answerLines(challenge)} onChange={(e) => updateScene(selected.id, { challenge: withAnswerLines(challenge, e.target.value) })} /></label>
                   )}
                   <label className="mt-2 block text-xs">答案说明<textarea className="input mt-1 min-h-16" value={challenge.explanation ?? ""} onChange={(e) => updateScene(selected.id, { challenge: { ...challenge, explanation: e.target.value } })} /></label>
+                  <label className="mt-2 block text-xs">
+                    限时（秒，留空为不限时）
+                    <input
+                      className="input mt-1"
+                      inputMode="numeric"
+                      placeholder="例如 90"
+                      aria-label="限时秒数"
+                      value={
+                        timeLimitDraft?.sceneId === selected.id
+                          ? timeLimitDraft.text
+                          : timeLimitInputValue(challenge)
+                      }
+                      onChange={(e) => {
+                        const parsed = parseTimeLimitInput(e.target.value);
+                        setTimeLimitDraft({
+                          sceneId: selected.id,
+                          text: e.target.value,
+                          error: parsed.error,
+                        });
+                        if (!parsed.error) {
+                          updateScene(selected.id, {
+                            challenge: withTimeLimitSeconds(challenge, parsed.seconds),
+                          });
+                        }
+                      }}
+                    />
+                  </label>
+                  {timeLimitDraft?.sceneId === selected.id && timeLimitDraft.error ? (
+                    <p className="mt-1 text-[10.5px] leading-snug text-red-700">{timeLimitDraft.error}</p>
+                  ) : challenge.timeLimitSeconds ? (
+                    <p className="mt-1 text-[10.5px] leading-snug text-[var(--muted)]">
+                      进入题目即开始计时；超时后本次作答作废，可重试，每次重试重新获得完整时限。
+                    </p>
+                  ) : null}
                   <MediaEditor media={challenge.media} onChange={(media) => updateScene(selected.id, { challenge: { ...challenge, media } })} />
                 </>
               ) : (
@@ -1281,9 +1423,84 @@ export default function DesignPage() {
 
             <div className="mt-4 rounded-xl bg-[var(--surface)] p-3">
               <p className="text-xs font-semibold">奖励</p>
-              <label className="mt-2 block text-xs">奖励名称<input className="input mt-1" value={selected.reward?.title ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, title: e.target.value } : { type: "keyword", title: e.target.value, value: e.target.value } })} /></label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <label className="block text-xs">奖励类型
+                  <select
+                    className="input mt-1"
+                    value={selected.reward?.type ?? "keyword"}
+                    onChange={(e) => {
+                      setRewardNotice(null);
+                      const result = switchSceneRewardType(working, selected.id, e.target.value as Reward["type"]);
+                      setDraft({ ...result.game, version: bumpVersion(working.version) });
+                      setSaved(false);
+                      if (result.warnings.length) setRewardNotice(result.warnings.join("；"));
+                    }}
+                  >
+                    {(Object.keys(REWARD_TYPE_LABEL) as Array<Reward["type"]>).map((type) => (
+                      <option key={type} value={type}>{REWARD_TYPE_LABEL[type]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs">奖励名称<input className="input mt-1" value={selected.reward?.title ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, title: e.target.value } : { type: "keyword", title: e.target.value, value: e.target.value } })} /></label>
+              </div>
               <label className="mt-2 block text-xs">奖励内容<input className="input mt-1" value={selected.reward?.value ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, value: e.target.value } : undefined })} /></label>
+              {rewardNotice ? (
+                <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">{rewardNotice}</div>
+              ) : null}
+              {selected.reward?.type === "item" ? (
+                <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">
+                  物品奖励会进入玩家背包，可用于其他场景的「物品门控」。
+                </p>
+              ) : null}
             </div>
+
+            {(() => {
+              const kinds = itemKindsProducedBy(working);
+              if (!kinds.length) return null;
+              const current = selected.requiresItems ?? [];
+              return (
+                <div className="mt-3 rounded-xl bg-[var(--surface)] p-3">
+                  <p className="text-xs font-semibold">物品门控（收集解锁）</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">
+                    勾选后，玩家必须先在别处集齐这些物品，本场景才会解锁。适合「收集+合成」玩法。
+                  </p>
+                  <div className="mt-2 grid gap-1.5">
+                    {kinds.map(({ kind, producerIds }) => {
+                      const selfOnly = producerIds.every((id) => id === selected.id);
+                      const checked = current.includes(kind);
+                      return (
+                        <label key={kind} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs ${selfOnly ? "opacity-50" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={selfOnly}
+                            onChange={() => {
+                              setRewardNotice(null);
+                              const result = toggleSceneRequiresItems(selected, working, kind);
+                              if ("error" in result) {
+                                setRewardNotice(result.error);
+                                return;
+                              }
+                              updateScene(selected.id, { requiresItems: result.scene.requiresItems });
+                            }}
+                          />
+                          <span className="font-medium">{kind}</span>
+                          <span className="text-[10.5px] text-[var(--muted)]">
+                            来自：{producerIds.map((id) => working.scenes.find((s) => s.id === id)?.title ?? id).join("、")}
+                            {selfOnly ? "（本场景自己产出，不可用于本场景门控）" : ""}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {current.length ? (
+                    <p className="mt-2 text-[11px] text-[var(--muted)]">
+                      已勾选 {current.length} 项：集齐后本场景才会出现。
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })()}
 
             <button type="button" className="mt-4 text-xs font-semibold text-red-700 underline" onClick={deleteSelected} disabled={working.scenes.length <= 1}>
               删除这个场景

@@ -81,6 +81,15 @@ export interface Challenge {
   explanation?: string;
   /** Max attempts before the hint is revealed automatically. 0 = unlimited. */
   hintAfterAttempts?: number;
+  /**
+   * Optional time limit for one attempt, in seconds.
+   *
+   * Omit it for an untimed question - that keeps the V0.1 behaviour exactly, so
+   * existing packs are unaffected. When set, the clock starts the moment the
+   * question becomes answerable, a late submission is never graded, and 重试
+   * grants a fresh full window (see `lib/game/timed-challenge.ts`).
+   */
+  timeLimitSeconds?: number;
 }
 
 /** A remote or local character that can speak in a scene (future AI hook). */
@@ -516,6 +525,23 @@ function validateChallenge(
   }
   if (typeof c.question !== "string" || !c.question) err(`${base}.question`, "必须是非空字符串");
 
+  // Optional, so untimed questions stay valid. When present it must be a
+  // positive number of seconds; anything else would silently disable the clock
+  // (timeLimitMs() returns null) and the author would never learn why.
+  if (c.timeLimitSeconds !== undefined) {
+    if (
+      typeof c.timeLimitSeconds !== "number" ||
+      !Number.isFinite(c.timeLimitSeconds) ||
+      c.timeLimitSeconds <= 0
+    ) {
+      err(`${base}.timeLimitSeconds`, "限时必须大于 0（单位：秒）");
+    } else if (!Number.isInteger(c.timeLimitSeconds)) {
+      warn(`${base}.timeLimitSeconds`, "限时建议填写整数秒");
+    } else if (c.timeLimitSeconds < 5) {
+      warn(`${base}.timeLimitSeconds`, "限时少于 5 秒，玩家可能来不及作答");
+    }
+  }
+
   if (c.type === "choice") {
     if (!Array.isArray(c.options) || c.options.length < 2) {
       err(`${base}.options`, "选择题至少需要 2 个选项");
@@ -734,7 +760,14 @@ function detectUnopenableScenes(
         );
       const hasTaskSource =
         !!declared || scene.id === entryId || (preds.get(scene.id) ?? []).length > 0;
-      if ((hasTaskSource ? taskGate : true) && itemGate) {
+      // Mirrors `sceneGateOpen` exactly: a scene with NO task-gate source at all
+      // opens only when it declares `requiresItems` (the item condition is then
+      // its whole gate). Treating it as openable regardless - as this fixpoint
+      // used to - hid a real deadlock: an entry scene that declares `requires`
+      // is never offered by the engine at game start, yet every prerequisite
+      // looked "openable" through this branch, so nothing was reported.
+      const hasItems = !!required && required.length > 0;
+      if ((hasTaskSource ? taskGate : hasItems) && itemGate) {
         openable.add(scene.id);
         changed = true;
       }
