@@ -1,3 +1,5 @@
+import { GAME_ID_PATTERN } from "@/lib/publish/version";
+
 export type CloudGameStatus = "published" | "draft" | "unlisted" | "archived";
 
 export interface CloudGameEntry {
@@ -78,7 +80,9 @@ export function packUrl(entry: CloudGameEntry): string {
   // Registry-backed entries are served by the public read endpoint, which
   // refuses anything that is not published — the same gate the share link uses.
   if (entry.source === "registry") {
-    if (!/^[a-zA-Z0-9._-]+$/.test(entry.id)) {
+    // Reuse the platform's authoritative id rule instead of a local lookalike:
+    // `/^[a-zA-Z0-9._-]+$/` accepted `..`, which URL-normalises to `/api`.
+    if (!GAME_ID_PATTERN.test(entry.id)) {
       throw new Error("云端游戏包路径无效");
     }
     return `/api/games/${encodeURIComponent(entry.id)}`;

@@ -105,6 +105,21 @@ try {
   const redRestoreAllowed = await restoreBackup({ manifestPath: path.join(outRedacted, "manifest.json"), targetDir: path.join(workRoot, "restored-redacted"), allowRedactedUsers: true });
   check("允许脱敏备份做结构演练", redRestoreAllowed.ok && redRestoreAllowed.stage === "dry-run");
 
+  // 恢复目标守卫：即使目标为空，也不许把生产数据副本恢复进工作树
+  const intoRepo = await restoreBackup({
+    manifestPath: path.join(outFull, "manifest.json"),
+    targetDir: path.join(repoRoot, "restore-should-fail"),
+    repoRoot,
+  });
+  check("拒绝恢复到仓库内目录（防被提交/打包）", !intoRepo.ok && intoRepo.stage === "precheck" && /仓库/.test(intoRepo.problems.join(" ")));
+
+  const intoPublic = await restoreBackup({
+    manifestPath: path.join(outFull, "manifest.json"),
+    targetDir: path.join(repoRoot, "public", "restore-should-fail"),
+    repoRoot,
+  });
+  check("拒绝恢复到 public/", !intoPublic.ok && intoPublic.stage === "precheck");
+
   // 篡改检出
   await writeFile(path.join(outFull, "objects", "works", "game-a.json"), JSON.stringify({ gameId: "game-a", state: "withdrawn" }));
   const tampered = await verifyBackup(path.join(outFull, "manifest.json"));

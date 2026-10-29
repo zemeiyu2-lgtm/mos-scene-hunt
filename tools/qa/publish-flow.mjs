@@ -85,8 +85,10 @@ check("按版本号可读（?v=）", readVersion.status === 200, `status=${readV
 // 7. 目录可见
 const catalog = await fetch(`${BASE}/content/cloud/catalog.json`);
 const catalogBody = await json(catalog);
-const listed = (catalogBody.games ?? []).some((g) => g.id === gameId);
-check("游戏中心目录包含该作品", catalog.status === 200 && listed, `status=${catalog.status}, total=${(catalogBody.games ?? []).length}`);
+const listedEntry = (catalogBody.games ?? []).find((g) => g.id === gameId);
+check("游戏中心目录包含该作品", catalog.status === 200 && !!listedEntry, `status=${catalog.status}, total=${(catalogBody.games ?? []).length}`);
+check("目录条目声明为 registry 来源（走 /api/games 取包）", listedEntry?.source === "registry" && listedEntry?.packFile === "", `source=${listedEntry?.source}, packFile=${JSON.stringify(listedEntry?.packFile)}`);
+check("目录同时保留内置包", (catalogBody.games ?? []).some((g) => g.id === "rizal-park-discovery"));
 
 // 8. 重复提交幂等
 const dup = await post("/api/publish", game, cookie);
@@ -98,10 +100,14 @@ const withdraw = await post(`/api/admin/works/${gameId}/withdraw`, {}, cookie);
 check("撤下成功", withdraw.status === 200, `status=${withdraw.status}`);
 const afterWithdraw = await fetch(`${BASE}/api/games/${gameId}`);
 check("撤下后公开 404", afterWithdraw.status === 404, `status=${afterWithdraw.status}`);
+const catalogAfterWithdraw = await json(await fetch(`${BASE}/content/cloud/catalog.json`));
+check("撤下后目录不再广告该作品", !(catalogAfterWithdraw.games ?? []).some((g) => g.id === gameId));
 const restore = await post(`/api/admin/works/${gameId}/restore`, {}, cookie);
 check("恢复成功", restore.status === 200, `status=${restore.status}`);
 const afterRestore = await fetch(`${BASE}/api/games/${gameId}`);
 check("恢复后公开 200", afterRestore.status === 200, `status=${afterRestore.status}`);
+const catalogAfterRestore = await json(await fetch(`${BASE}/content/cloud/catalog.json`));
+check("恢复后目录重新出现该作品", (catalogAfterRestore.games ?? []).some((g) => g.id === gameId));
 
 // 10. 审计留痕（页面渲染层，抓文本）
 const audit = await fetch(`${BASE}/admin/audit`, { headers: { Cookie: cookie } });

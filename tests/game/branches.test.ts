@@ -320,6 +320,39 @@ describe("compatibility and validation", () => {
     expect(validateGame(combo).issues.filter((i) => i.severity === "error")).toEqual([]);
   });
 
+  it("treats `requires` as a gate, not an exclusive router", () => {
+    // 语义锁定（2026-10-29 复核）：`requires` 只回答「前置是否完成」，
+    // 它不参与「选了 A 就排除 B」的路由决策。两条支线的 requires 同时满足时，
+    // 两条都会 available —— 即使 routes.entry 只记录了其中一条。
+    // 若产品需要真互斥路线，必须新增排他字段，不能靠 requires 表达。
+    const twinGates: Game = {
+      ...branchGame,
+      id: "twin-gate-hunt",
+      scenes: [
+        scene("entry", {
+          nextSceneId: null,
+          challenge: choice({ reflective: true, branches: { "0": "left", "1": "right" } }),
+        }),
+        scene("left", { requires: ["entry"], reward: { type: "keyword", title: "l", value: "l" } }),
+        scene("right", { requires: ["entry"], reward: { type: "keyword", title: "r", value: "r" } }),
+      ],
+    };
+
+    const s = submit(twinGates, fresh(twinGates), "entry", { selectedIndex: 0 });
+    expect(s.routes?.entry).toBe("left");
+    expect(statusOf(twinGates, s, "left")).toBe("available");
+    // 关键断言：未选中的一侧并未被锁死
+    expect(statusOf(twinGates, s, "right")).toBe("available");
+    expect(availableSceneIds(twinGates, s).sort()).toEqual(["left", "right"]);
+
+    // 前置未满足时两边都关着，说明 requires 本身确实在门控
+    const beforeEntry = fresh(twinGates);
+    expect(statusOf(twinGates, beforeEntry, "left")).toBe("locked");
+    expect(statusOf(twinGates, beforeEntry, "right")).toBe("locked");
+
+    expect(validateGame(twinGates).issues.filter((i) => i.severity === "error")).toEqual([]);
+  });
+
   it("does not double-grant rewards on revisit after branching", () => {
     const s1 = submit(branchGame, fresh(), "entry", { selectedIndex: 0 });
     const again = submit(branchGame, s1, "entry", { selectedIndex: 1 }, T + 1);

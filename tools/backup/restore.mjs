@@ -11,6 +11,8 @@
  *  - redacted 备份缺 passwordHash/passwordSalt：默认拒绝恢复 users/（避免造出无法登录的账号），
  *    除非显式 --allow-redacted-users（仅用于结构演练）。
  *  - 目标目录必须不存在或为空；--apply 前会把每个对象路径做穿越检查。
+ *  - 目标目录不得位于仓库、public/、.next/、node_modules/ 内：即使为空，
+ *    把生产数据恢复到工作树里也可能被 git add / 打包上传带出去。
  *  - 不删除目标目录内既有文件，不做覆盖（存在同名即失败），便于回滚判断。
  */
 import { mkdir, readFile, writeFile, access, readdir } from "node:fs/promises";
@@ -29,12 +31,33 @@ function parseArgs(argv) {
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
 
-export async function restoreBackup({ manifestPath, targetDir, apply = false, allowRedactedUsers = false }) {
+/**
+ * 目标目录守卫（与 export.mjs 的 guardOutDir 对称）。
+ * 恢复产物是生产数据副本：一旦落进仓库或 public/，就可能被提交或被打包分发。
+ */
+function guardTargetDir(targetDir, repoRoot) {
+  const abs = path.resolve(targetDir);
+  const rel = path.relative(path.resolve(repoRoot), abs);
+  if (!rel.startsWith("..") && !path.isAbsolute(rel)) {
+    throw new Error(`恢复目标位于仓库内（${abs}）。生产数据副本不得写入工作树。`);
+  }
+  if (/[\\/](public|\.next|node_modules)[\\/]/.test(`${abs}${path.sep}`)) {
+    throw new Error(`恢复目标命中公开/构建目录：${abs}`);
+  }
+  return abs;
+}
+
+export async function restoreBackup({ manifestPath, targetDir, apply = false, allowRedactedUsers = false, repoRoot = process.cwd() }) {
   const { ok, problems, manifest } = await verifyBackup(manifestPath);
   if (!ok) return { ok: false, stage: "verify", problems };
 
   const sourceRoot = path.dirname(path.resolve(manifestPath));
-  const target = path.resolve(targetDir);
+  let target;
+  try {
+    target = guardTargetDir(targetDir, repoRoot);
+  } catch (error) {
+    return { ok: false, stage: "precheck", problems: [error instanceof Error ? error.message : String(error)] };
+  }
   if (await exists(target)) {
     const entries = await readdir(target);
     if (entries.length > 0) return { ok: false, stage: "precheck", problems: [`目标目录非空：${target}`] };
@@ -84,6 +107,7 @@ if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`) {
     targetDir: args["target-dir"],
     apply: Boolean(args.apply),
     allowRedactedUsers: Boolean(args["allow-redacted-users"]),
+    repoRoot: args["repo-root"] ?? process.cwd(),
   });
   if (!result.ok) {
     console.log(`FAIL 阶段=${result.stage}`);
