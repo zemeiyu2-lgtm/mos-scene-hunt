@@ -37,7 +37,7 @@
 |---|---|---|
 | 当前分支 | `qa/phase2-20261029` | `git branch --show-current` |
 | HEAD（测试完成时） | `0df4762` | `git log --oneline -1` |
-| HEAD（报告提交后） | `dba6e4e` | 报告与 E2E 快照两次追加提交 |
+| HEAD（报告提交后） | 见 §10 提交清单 | 报告与 E2E 快照为两次追加提交 |
 | HEAD（本轮开始时） | `0ed1e4e` | 与上一轮报告一致 |
 | 工作区 | 干净（仅 `.next/` 构建产物，已 gitignore） | `git status --porcelain` |
 | 远程 QA 分支 | **不存在** | `git ls-remote origin refs/heads/qa/phase2-20261029` → 空 |
