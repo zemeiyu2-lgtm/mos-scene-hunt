@@ -52,3 +52,6 @@ vitest.config.*.timestamp-*
 
 # 构建目录被环境批量删除保护拦下时，改用改名备份；不要提交
 /.next.bak-*/
+
+.vercel
+.env*
