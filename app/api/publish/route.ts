@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth/guard";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { getRegistry } from "@/lib/registry/store";
+import { isPubliclyReadable } from "@/lib/registry/types";
 import { recordAudit, submitVersion } from "@/lib/registry/service";
 
 /**
@@ -147,6 +148,14 @@ async function handle(request: Request): Promise<Response> {
     versionId: result.versionId,
     reviewStatus: result.idempotent ? "already_submitted" : "pending",
     workState: result.work.state,
+    /**
+     * The ONE version the public can actually read, or null while nothing is
+     * published. Clients may only offer a public share link when this equals
+     * `versionId` — otherwise they would hand out a link to stale content.
+     */
+    publishedVersionId: isPubliclyReadable(result.work.state)
+      ? result.work.publishedVersionId
+      : null,
     /**
      * Deliberately NOT `playPath`: there is no public link until a reviewer
      * publishes. The preview route requires the owner (or staff) session.

@@ -11,6 +11,12 @@ export interface CloudGameEntry {
   sceneCount: number;
   status: CloudGameStatus;
   packFile: string;
+  /**
+   * Where the bytes live. Absent means `"repo"` and preserves the pre-existing
+   * behaviour (a static file under /content). `"registry"` means the pack is
+   * served by the admin-review read endpoint, which enforces publication state.
+   */
+  source?: "repo" | "registry";
 }
 
 export interface CloudCatalog {
@@ -69,6 +75,14 @@ export function publishedGames(catalog: CloudCatalog): CloudGameEntry[] {
 }
 
 export function packUrl(entry: CloudGameEntry): string {
+  // Registry-backed entries are served by the public read endpoint, which
+  // refuses anything that is not published — the same gate the share link uses.
+  if (entry.source === "registry") {
+    if (!/^[a-zA-Z0-9._-]+$/.test(entry.id)) {
+      throw new Error("云端游戏包路径无效");
+    }
+    return `/api/games/${encodeURIComponent(entry.id)}`;
+  }
   // The catalog is trusted platform data, but reject path traversal defensively.
   const file = entry.packFile.trim();
   if (!/^[a-zA-Z0-9._-]+\.json$/.test(file)) {

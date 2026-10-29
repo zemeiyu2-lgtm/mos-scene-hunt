@@ -440,3 +440,47 @@ export async function worksForOwner(userId: string): Promise<WorkRecord[]> {
   const works = await getRegistry().listWorks();
   return works.filter((w) => w.ownerUserId === userId);
 }
+
+/**
+ * Public catalog entries for works the registry marks `published`.
+ *
+ * This is what closes the loop between "the admin published a game" and "the
+ * game centre can find it": before this, `/content/cloud/catalog.json` was a
+ * hardcoded constant, so an admin-published pack was reachable only by its
+ * direct share link and invisible in `/games`.
+ *
+ * Deliberately metadata-only: no pack bytes are read here, and `author` is the
+ * stable owner label rather than an email, so no personal data leaks into a
+ * response that carries no authentication.
+ */
+export async function publishedCatalogEntries(): Promise<
+  Array<{
+    id: string;
+    title: string;
+    author: string;
+    description: string;
+    language: string;
+    sceneCount: number;
+    status: "published";
+    updatedAt: string;
+  }>
+> {
+  const works = await getRegistry().listWorks();
+  const entries = [];
+  for (const work of works) {
+    // `unlisted` stays link-only: it must not be advertised in the catalogue.
+    if (work.state !== "published" || !work.publishedVersionId) continue;
+    const version = work.versions.find((v) => v.versionId === work.publishedVersionId);
+    entries.push({
+      id: work.gameId,
+      title: work.title,
+      author: "MOS Scene Hunt · 平台注册作者",
+      description: `${version?.sceneCount ?? 0} 个地点的游戏包，已通过后台审核并发布。`,
+      language: work.language || "zh-CN",
+      sceneCount: version?.sceneCount ?? 0,
+      status: "published" as const,
+      updatedAt: work.updatedAt,
+    });
+  }
+  return entries.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+}

@@ -14,6 +14,7 @@ import { useState } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { EmptyState, ProgressBar, Screen, StatusChip } from "@/components/ui";
 import { formatDistance, resolveRadius } from "@/lib/location";
+import { describeSceneLock, heldItemKindsFrom, sceneLockReason } from "@/lib/game/lock-reason";
 import { TabBar } from "@/components/tab-bar";
 
 export default function QuestPage() {
@@ -33,6 +34,12 @@ export default function QuestPage() {
   }
 
   const completedCount = statuses.filter((s) => s.status === "completed").length;
+  // 解锁原因必须从 packs 的真实门禁算出来，而不是「列表里的上一行」：
+  // 声明式前置（requires）可以指向任意场景，物品门（requiresItems）根本不是任务。
+  const completedSceneIds = new Set(
+    statuses.filter((s) => s.status === "completed").map((s) => s.scene.id),
+  );
+  const heldItemKinds = heldItemKindsFrom(state.inventory);
 
   return (
     <>
@@ -131,7 +138,10 @@ export default function QuestPage() {
                       </p>
                     ) : isLocked ? (
                       <p className="mt-2 text-[12px] text-[var(--muted)]">
-                        完成「{statuses[index - 1]?.scene.title ?? "前一个地点"}」后解锁
+                        {describeSceneLock(
+                          sceneLockReason(row.scene, game.scenes, completedSceneIds, heldItemKinds),
+                          `完成「${statuses[index - 1]?.scene.title ?? "前一个地点"}」后解锁`,
+                        )}
                       </p>
                     ) : null}
 

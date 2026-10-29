@@ -529,18 +529,45 @@ export default function DesignPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(game),
       });
-      const body = (await response.json().catch(() => null)) as
-        | { gameId?: string; versionId?: string; created?: boolean; playPath?: string; message?: string; detail?: string }
+      const publishPayload = (await response.json().catch(() => null)) as
+        | {
+            gameId?: string;
+            versionId?: string;
+            reviewStatus?: string;
+            workState?: string;
+            publishedVersionId?: string | null;
+            previewPath?: string;
+            message?: string;
+            detail?: string;
+          }
         | null;
-      if (!response.ok || !body?.playPath) {
-        throw new Error(body?.detail || body?.message || `发布失败（HTTP ${response.status}）`);
+
+      // 401: 发布即「提交审核」，账号是必需的组成部分，不是可选项。
+      if (response.status === 401) {
+        throw new Error("发布需要先登录后台账号。请先登录，再回来发布。");
       }
-      const url = createPublishedGameUrl(body.gameId!, body.versionId!);
-      setShareUrl(url);
+      if (!response.ok || !publishPayload?.gameId || !publishPayload?.versionId) {
+        throw new Error(
+          publishPayload?.detail || publishPayload?.message || `发布失败（HTTP ${response.status}）`,
+        );
+      }
+
+      // 只有当接口明确说「这一版就是对外可见的那一版」时才给出分享链接；
+      // 否则分享出去的会是未审核或旧版本的内容。
+      if (publishPayload.publishedVersionId === publishPayload.versionId) {
+        const url = createPublishedGameUrl(publishPayload.gameId, publishPayload.versionId);
+        setShareUrl(url);
+        setShareMessage(
+          `线上已是这一版（版本 ${publishPayload.versionId}），链接和二维码已生成，可复制或扫码分享。`,
+        );
+        return;
+      }
+
+      setShareUrl(null);
       setShareMessage(
-        body.created
-          ? `已发布到线上（版本 ${body.versionId}）。链接和二维码已生成，可复制或扫码分享。`
-          : `内容未变化，线上已是该版本（${body.versionId}），无需重复发布。`,
+        publishPayload.reviewStatus === "already_submitted"
+          ? `这一版已提交过（版本 ${publishPayload.versionId}），无需重复提交。后台审核通过后才会对外可见，可在「后台 · 我的作品」查看进度。`
+          : `已提交审核（版本 ${publishPayload.versionId}）。为保证内容安全，需后台审核通过后才会对外可见，届时可在后台作品页生成分享链接。`,
       );
     } catch (error) {
       setShareMessage(error instanceof Error ? error.message : "发布到线上失败");

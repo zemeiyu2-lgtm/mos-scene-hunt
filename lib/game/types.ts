@@ -359,13 +359,13 @@ export function validateGame(raw: unknown): { game: Game; issues: ValidationIssu
           } else if (r < 10) {
             warn(
               `${base}.location.radius`,
-              `半径 ${r}m 小于建议下限 20m，真实 GPS 误差下可能难以触发`,
+              `半径 ${r}m 小于建议下限 10m，真实 GPS 误差下可能难以触发`,
             );
           } else if (r > 500) {
             warn(`${base}.location.radius`, `半径 ${r}m 偏大，可能提前触发，建议不超过 300m`);
           }
         } else {
-          warn(`${base}.location.radius`, "未设置半径，将使用默认 50m");
+          warn(`${base}.location.radius`, "未设置半径，将使用默认 15m");
         }
       }
 
