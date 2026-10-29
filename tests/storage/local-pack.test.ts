@@ -134,6 +134,33 @@ describe("本机游戏包盘点", () => {
     const current = measureLocalPacks().packs.find((pack) => pack.isCurrent);
     expect(current?.id).toBe("current-b");
   });
+
+  it("配额已满（写入被拒）时仍能认出当前游戏", () => {
+    saveAuthoredGameChecked(makeGame("full-a"));
+    saveAuthoredGameChecked(makeGame("full-b"));
+    markCurrentAuthoredGame("full-b");
+
+    // 空间满了以后，任何探测写入都会失败——这正是不该依赖探测型读取的原因。
+    const base = window.localStorage;
+    const readOnly = {
+      get length() {
+        return base.length;
+      },
+      clear: () => base.clear(),
+      getItem: (key: string) => base.getItem(key),
+      key: (index: number) => base.key(index),
+      removeItem: (key: string) => base.removeItem(key),
+      setItem: () => {
+        throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+      },
+    } as Storage;
+    Object.defineProperty(window, "localStorage", { configurable: true, value: readOnly });
+    try {
+      expect(measureLocalPacks().packs.find((pack) => pack.isCurrent)?.id).toBe("full-b");
+    } finally {
+      Object.defineProperty(window, "localStorage", { configurable: true, value: base });
+    }
+  });
 });
 
 describe("只删除本机副本", () => {

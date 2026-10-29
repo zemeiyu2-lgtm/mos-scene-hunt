@@ -24,7 +24,6 @@ import {
   clearCachedGameContent,
   clearCurrentAuthoredGameId,
   clearGameState,
-  getCurrentAuthoredGameId,
   pruneDuplicatedContentCache,
   removeHuntIndexEntry,
 } from "./index";
@@ -40,6 +39,29 @@ export const AUTHORING_PREFIX = "mos-scene-hunt:authoring:";
 
 export function authoringKey(gameId: string): string {
   return `${AUTHORING_PREFIX}${gameId}`;
+}
+
+/**
+ * Must stay byte-identical to `CURRENT_AUTHORED_KEY` in `lib/storage/index.ts`.
+ *
+ * Read directly here instead of through `getCurrentAuthoredGameId()`, because
+ * that path goes through the defensive storage adapter, which probes with a
+ * write. When the quota is already full the probe fails, the adapter falls back
+ * to its in-memory map, and the pointer would look absent - exactly in the
+ * situation this panel exists for. "当前" is decoration; getting it wrong here
+ * would also skip resetting a pointer that really does point at the pack.
+ */
+const CURRENT_AUTHORED_KEY = "mos-scene-hunt:current-authored-game";
+
+function peekCurrentAuthoredGameId(ls: Storage): string | null {
+  try {
+    const raw = ls.getItem(CURRENT_AUTHORED_KEY);
+    if (typeof raw !== "string") return null;
+    const id = raw.trim();
+    return id.length > 0 ? id : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface LocalPackInfo {
@@ -162,7 +184,7 @@ export function measureLocalPacks(): LocalPackInventory {
     return empty;
   }
 
-  const currentId = getCurrentAuthoredGameId();
+  const currentId = peekCurrentAuthoredGameId(ls);
   const packs: LocalPackInfo[] = [];
   try {
     const ids: string[] = [];
