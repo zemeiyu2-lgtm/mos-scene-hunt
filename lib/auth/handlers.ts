@@ -21,6 +21,7 @@ import {
 import { hashPassword, isPasswordAcceptable, verifyPassword } from "./password";
 import { consumeRateLimit } from "./rate-limit";
 import {
+  credentialEpochOf,
   hashHeader,
   issueSession,
   sha256Hex,
@@ -29,7 +30,7 @@ import {
 import { sessionCookie, clearedSessionCookie, sessionCookieCandidates } from "./cookie";
 import { getRegistry } from "../registry/store";
 import { recordAudit } from "../registry/service";
-import { toPublicUser, type UserRecord } from "../registry/types";
+import { toPublicUser, type SessionRecord, type UserRecord } from "../registry/types";
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_PER_IP = 20;
@@ -154,6 +155,7 @@ export async function loginHandler(request: Request): Promise<Response> {
   const { token } = await issueSession(registry, {
     userId: refreshed.id,
     role: refreshed.role,
+    credentialEpoch: credentialEpochOf(refreshed),
     ipHash: hints.ipHash,
     uaHash: hints.uaHash,
     now,
@@ -282,31 +284,90 @@ export async function changePasswordHandler(request: Request): Promise<Response>
   }
 
   const fields = await hashPassword(newPassword);
-  await registry.putUser({
-    ...user,
-    passwordHash: fields.passwordHash,
-    passwordSalt: fields.passwordSalt,
-  });
 
-  // Revoke every session of this user, including the current one.
-  const sessions = await registry.listSessionsByUser(user.id);
-  const now = new Date().toISOString();
-  let revoked = 0;
-  for (const session of sessions) {
-    if (session.revokedAt !== null) continue;
-    await registry.revokeSession(session.tokenHash, now);
-    revoked += 1;
+  // Everything that can fail without changing anything happens BEFORE the
+  // credential is committed. The session list is the expensive part on Blob
+  // (list + one read per record), so reading it first means a slow or failing
+  // store aborts the request with the password untouched — instead of leaving
+  // a rotated credential next to a set of sessions nobody has enumerated.
+  let sessions: SessionRecord[];
+  try {
+    sessions = await registry.listSessionsByUser(user.id);
+  } catch (error) {
+    console.error("[auth] 改密前会话清单读取失败（密码未修改）", error);
+    return jsonResponse(503, {
+      error: "session_lookup_failed",
+      passwordChanged: false,
+      retryable: true,
+      message: "无法读取会话清单，密码未修改。请稍后重试。",
+    });
   }
 
-  await recordAudit(registry, {
+  // Commit point. From here the password IS changed; every response below
+  // says so, and none of them may claim the change failed.
+  const nextEpoch = credentialEpochOf(user) + 1;
+  try {
+    await registry.putUser({
+      ...user,
+      passwordHash: fields.passwordHash,
+      passwordSalt: fields.passwordSalt,
+      credentialEpoch: nextEpoch,
+    });
+  } catch (error) {
+    console.error("[auth] 改密写入失败（密码未修改）", error);
+    return jsonResponse(503, {
+      error: "password_write_failed",
+      passwordChanged: false,
+      retryable: true,
+      message: "密码写入失败，密码未修改。请稍后重试。",
+    });
+  }
+
+  // Past the commit point the credential generation has already advanced, so
+  // every session issued before this request is dead by construction
+  // (verifySession compares epochs). The pass below is cleanup: failed or
+  // partial revocation leaves stale records behind, never a usable session.
+  const revokedAt = new Date().toISOString();
+  let revoked = 0;
+  let revokeFailed = 0;
+  for (const session of sessions) {
+    if (session.revokedAt !== null) continue;
+    try {
+      await registry.revokeSession(session.tokenHash, revokedAt);
+      revoked += 1;
+    } catch (error) {
+      revokeFailed += 1;
+      console.error("[auth] 会话撤销失败（凭证世代已推进，该会话仍不可用）", error);
+    }
+  }
+
+  const auditRecorded = await recordAudit(registry, {
     actor: { user, ipHash: hints.ipHash, uaHash: hints.uaHash },
     action: "auth.password_change",
     targetType: "user",
     targetId: user.id,
-    after: { sessionsRevoked: revoked },
+    after: {
+      sessionsRevoked: revoked,
+      sessionsFailed: revokeFailed,
+      credentialEpoch: nextEpoch,
+    },
   });
 
-  return jsonResponse(200, { ok: true, relogin: true, sessionsRevoked: revoked }, {
-    "Set-Cookie": clearedSessionCookie(),
-  });
+  const complete = revokeFailed === 0 && auditRecorded;
+  return jsonResponse(
+    200,
+    {
+      ok: true,
+      passwordChanged: true,
+      relogin: true,
+      sessionsRevoked: revoked,
+      sessionsFailed: revokeFailed,
+      auditRecorded,
+      status: complete ? "complete" : "partial",
+      message: complete
+        ? "密码已修改，请使用新密码重新登录。"
+        : "密码已修改，旧会话已全部失效。但会话清理或审计留痕未完全成功，已记录异常供运维核查。请直接用新密码重新登录，不要再用旧密码重复提交。",
+    },
+    { "Set-Cookie": clearedSessionCookie() },
+  );
 }

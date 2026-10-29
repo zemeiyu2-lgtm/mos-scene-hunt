@@ -32,6 +32,8 @@ const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || "admin@e2e.test";
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || "e2e-admin-password-2026";
 const CREATOR_EMAIL = `creator-${Date.now()}@e2e.test`;
 const CREATOR_PASSWORD = "e2e-creator-password-2026";
+/** Used by step 14 to prove the credential actually rotated. */
+const NEW_CREATOR_PASSWORD = "e2e-creator-password-rotated-2026";
 
 let passed = 0;
 let failed = 0;
@@ -435,6 +437,67 @@ async function main() {
   check("创作者登出成功", logout.status === 200, `HTTP ${logout.status}`);
   const meAfterLogout = await call("/api/auth/me", { cookie: creatorCookie });
   check("登出后会话失效（401）", meAfterLogout.status === 401, `HTTP ${meAfterLogout.status}`);
+
+  // 14. Self-service password change — real HTTP, real cookies.
+  //     Everything above proves the admin loop; this proves the credential
+  //     loop the P1 fix introduced, including that a policy rejection changes
+  //     nothing and that the old password stops working afterwards.
+  const relogin = await call("/api/auth/login", {
+    method: "POST",
+    body: { email: CREATOR_EMAIL, password: CREATOR_PASSWORD },
+  });
+  check("改密前创作者可重新登录", relogin.status === 200, `HTTP ${relogin.status}`);
+  const creatorCookie2 = cookieFrom(relogin);
+
+  const weakChange = await call("/api/auth/password", {
+    method: "POST",
+    cookie: creatorCookie2,
+    body: { currentPassword: CREATOR_PASSWORD, newPassword: "short1!" },
+  });
+  check(
+    "弱密码被服务端策略拒绝（400 weak_password）",
+    weakChange.status === 400 && weakChange.json?.error === "weak_password",
+    `HTTP ${weakChange.status} ${weakChange.json?.error}`,
+  );
+  const stillAlive = await call("/api/auth/me", { cookie: creatorCookie2 });
+  check("被拒绝的改密不改动任何状态（会话仍有效）", stillAlive.status === 200, `HTTP ${stillAlive.status}`);
+
+  const changed = await call("/api/auth/password", {
+    method: "POST",
+    cookie: creatorCookie2,
+    body: { currentPassword: CREATOR_PASSWORD, newPassword: NEW_CREATOR_PASSWORD },
+  });
+  check(
+    "改密成功且声明 passwordChanged=true（200）",
+    changed.status === 200 && changed.json?.passwordChanged === true,
+    `HTTP ${changed.status} ${changed.text.slice(0, 140)}`,
+  );
+  check("改密结果标记为 complete", changed.json?.status === "complete", String(changed.json?.status));
+  check(
+    "改密报告撤销了全部会话且无失败",
+    changed.json?.sessionsRevoked >= 1 && changed.json?.sessionsFailed === 0,
+    JSON.stringify({ revoked: changed.json?.sessionsRevoked, failed: changed.json?.sessionsFailed }),
+  );
+
+  const deadSession = await call("/api/auth/me", { cookie: creatorCookie2 });
+  check("改密后原会话立即失效（401）", deadSession.status === 401, `HTTP ${deadSession.status}`);
+  const oldLogin = await call("/api/auth/login", {
+    method: "POST",
+    body: { email: CREATOR_EMAIL, password: CREATOR_PASSWORD },
+  });
+  check("旧密码不再能登录（401）", oldLogin.status === 401, `HTTP ${oldLogin.status}`);
+  const newLogin = await call("/api/auth/login", {
+    method: "POST",
+    body: { email: CREATOR_EMAIL, password: NEW_CREATOR_PASSWORD },
+  });
+  check("新密码可以登录（200）", newLogin.status === 200, `HTTP ${newLogin.status}`);
+
+  const auditAfterChange = await call("/admin/audit", { cookie: adminCookie });
+  check(
+    "审计页出现改密记录",
+    auditAfterChange.text.includes("修改密码"),
+    "审计页未出现「修改密码」",
+  );
 
   console.log(`\n=== 结果：${passed} 通过 / ${failed} 失败 ===`);
   if (failed > 0) {

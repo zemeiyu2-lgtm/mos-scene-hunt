@@ -45,10 +45,19 @@ export interface AuditInput {
   after?: Record<string, unknown> | null;
 }
 
+/**
+ * Append one audit record.
+ *
+ * Returns `true` when the record was persisted. The caller decides what to do
+ * with `false`: most mutations only log it, but a security-critical one (a
+ * password change) reports it to the client instead of pretending the trail
+ * is complete. The mutation itself is never rolled back here — by the time
+ * this runs the state change has already happened.
+ */
 export async function recordAudit(
   store: RegistryStore,
   input: AuditInput,
-): Promise<void> {
+): Promise<boolean> {
   const now = new Date().toISOString();
   const record: AuditRecord = {
     id: randomUUID(),
@@ -65,8 +74,10 @@ export async function recordAudit(
   };
   try {
     await store.appendAudit(record);
+    return true;
   } catch (error) {
     console.error("[registry] 审计写入失败（状态已生效，不回滚）", error);
+    return false;
   }
 }
 

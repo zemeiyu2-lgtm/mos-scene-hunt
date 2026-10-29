@@ -55,6 +55,14 @@ export interface UserRecord {
   /** Consecutive failed logins; reset on success. Drives the lockout window. */
   failedLoginCount: number;
   lockedUntil: string | null;
+  /**
+   * Credential generation. Bumped on every password change; sessions issued
+   * under an older generation are dead even if their revocation flag was
+   * never written (a partial failure or timeout must not leave a usable
+   * session behind). Absent on records created before this field existed and
+   * treated as 0, so existing users are not logged out by the upgrade.
+   */
+  credentialEpoch?: number;
 }
 
 /** Everything a client or a page is allowed to see about a user. */
@@ -88,6 +96,13 @@ export interface SessionRecord {
   createdAt: string;
   expiresAt: string;
   revokedAt: string | null;
+  /**
+   * Credential generation this session was issued under. A session whose
+   * epoch does not match its user's current epoch is treated as revoked
+   * (see `verifySession`), which is what makes "password changed" defeat a
+   * revocation pass that failed or was cut short. Absent = 0.
+   */
+  credentialEpoch?: number;
   /** Truncated hashes only; raw IP/UA are not persisted. */
   ipHash: string;
   uaHash: string;

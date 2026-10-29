@@ -21,6 +21,7 @@ import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { get, list, put, BlobNotFoundError } from "@vercel/blob";
 import { GAME_ID_PATTERN } from "../publish/version";
+import { resolveBlobPrefix } from "../storage/namespace-guard";
 import {
   REGISTRY_SCHEMA_VERSION,
   type AuditRecord,
@@ -578,7 +579,9 @@ export function getRegistry(): RegistryStore {
   if (cached) return cached;
   const kind = process.env.REGISTRY_STORE?.trim().toLowerCase();
   if (kind === "blob") {
-    const prefix = process.env.REGISTRY_BLOB_PREFIX?.trim() || "registry";
+    // Preview and Production share one Blob store; the prefix must therefore
+    // be explicit in Preview or the guard throws (see namespace-guard.ts).
+    const prefix = resolveBlobPrefix({ store: "registry", prefix: process.env.REGISTRY_BLOB_PREFIX });
     cached = createBlobRegistry(prefix);
   } else {
     const dir =

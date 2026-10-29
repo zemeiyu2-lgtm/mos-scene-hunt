@@ -176,3 +176,212 @@ describe("POST /api/auth/password", () => {
     expect(last).toBe(429);
   });
 });
+
+/**
+ * Failure-mode tests for the change-password commit sequence.
+ *
+ * The property that matters is not "the happy path returns 200" but "a store
+ * failure can never leave a rotated password next to a usable old session,
+ * and the client is never told the wrong thing about what happened". Each test
+ * injects a fault into the real store adapter (same temp registry, no mocks of
+ * the handler logic) and then observes the credential and the sessions.
+ *
+ * The injected faults are cleared automatically because `setupRegistryEnv`
+ * resets the adapter cache before every test.
+ */
+describe("POST /api/auth/password — partial-failure semantics", () => {
+  const store = () => getRegistry();
+
+  it("aborts with nothing changed when the session list cannot be read", async () => {
+    const user = await createUser({ email: "f1@test.dev" });
+    const cookie = await sessionCookieFor(user);
+    store().listSessionsByUser = async () => {
+      throw new Error("registry read failed");
+    };
+
+    const response = await call(cookie, {
+      currentPassword: TEST_PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+    expect(response.status).toBe(503);
+    const payload = (await response.json()) as { error?: string; passwordChanged?: boolean };
+    expect(payload.passwordChanged).toBe(false);
+    expect(payload.error).toBe("session_lookup_failed");
+
+    // Nothing moved: old password still works, session still alive.
+    expect((await login("f1@test.dev", TEST_PASSWORD)).status).toBe(200);
+    expect((await me(cookie)).status).toBe(200);
+  });
+
+  it("reports failure when the credential write itself fails, and keeps the old password", async () => {
+    const user = await createUser({ email: "f2@test.dev" });
+    const cookie = await sessionCookieFor(user);
+    const original = store().putUser.bind(getRegistry());
+    store().putUser = async () => {
+      throw new Error("blob write failed");
+    };
+
+    const response = await call(cookie, {
+      currentPassword: TEST_PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+    expect(response.status).toBe(503);
+    const payload = (await response.json()) as { error?: string; passwordChanged?: boolean };
+    expect(payload.error).toBe("password_write_failed");
+    expect(payload.passwordChanged).toBe(false);
+
+    // Heal the injected fault first: login also writes the user record, so a
+    // still-broken putUser would mask the property under test.
+    store().putUser = original;
+    expect((await login("f2@test.dev", TEST_PASSWORD)).status).toBe(200);
+  });
+
+  it("keeps every old session dead when the whole revocation pass fails", async () => {
+    const user = await createUser({ email: "f3@test.dev" });
+    const cookieA = await sessionCookieFor(user);
+    const cookieB = await sessionCookieFor(user);
+    store().revokeSession = async () => {
+      throw new Error("revoke failed");
+    };
+
+    const response = await call(cookieA, {
+      currentPassword: TEST_PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+    // The password DID change, so this must not be reported as a failure.
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      passwordChanged?: boolean;
+      sessionsRevoked?: number;
+      sessionsFailed?: number;
+      auditRecorded?: boolean;
+      status?: string;
+    };
+    expect(payload.passwordChanged).toBe(true);
+    expect(payload.status).toBe("partial");
+    expect(payload.sessionsRevoked).toBe(0);
+    expect(payload.sessionsFailed).toBe(2);
+
+    // The authoritative defence: both un-revoked sessions are still dead,
+    // because the credential generation moved past them.
+    expect((await me(cookieA)).status).toBe(401);
+    expect((await me(cookieB)).status).toBe(401);
+    expect((await login("f3@test.dev", TEST_PASSWORD)).status).toBe(401);
+    expect((await login("f3@test.dev", NEW_PASSWORD)).status).toBe(200);
+  });
+
+  it("keeps every old session dead when revocation fails mid-way", async () => {
+    const user = await createUser({ email: "f4@test.dev" });
+    const cookieA = await sessionCookieFor(user);
+    const cookieB = await sessionCookieFor(user);
+    const original = store().revokeSession.bind(getRegistry());
+    let calls = 0;
+    store().revokeSession = async (tokenHash, at) => {
+      calls += 1;
+      if (calls > 1) throw new Error("revoke failed on second session");
+      return original(tokenHash, at);
+    };
+
+    const response = await call(cookieA, {
+      currentPassword: TEST_PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      sessionsRevoked?: number;
+      sessionsFailed?: number;
+      status?: string;
+    };
+    expect(payload.status).toBe("partial");
+    expect(payload.sessionsRevoked).toBe(1);
+    expect(payload.sessionsFailed).toBe(1);
+    expect((await me(cookieA)).status).toBe(401);
+    expect((await me(cookieB)).status).toBe(401);
+  });
+
+  it("reports the change as partial when the audit write fails", async () => {
+    const user = await createUser({ email: "f5@test.dev" });
+    const cookie = await sessionCookieFor(user);
+    store().appendAudit = async () => {
+      throw new Error("audit append failed");
+    };
+
+    const response = await call(cookie, {
+      currentPassword: TEST_PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      passwordChanged?: boolean;
+      auditRecorded?: boolean;
+      sessionsFailed?: number;
+      status?: string;
+    };
+    expect(payload.passwordChanged).toBe(true);
+    expect(payload.auditRecorded).toBe(false);
+    expect(payload.sessionsFailed).toBe(0);
+    expect(payload.status).toBe("partial");
+    // The credential really moved, even though the trail is incomplete.
+    expect((await login("f5@test.dev", NEW_PASSWORD)).status).toBe(200);
+  });
+
+  // 30 sessions = the realistic worst case for one account (7-day creator TTL,
+  // and nothing prunes session records). This also measures the cost that makes
+  // a serverless timeout plausible: every session is one list entry + one read
+  // + one write on Blob. Explicit timeout because the default 5s is tight when
+  // the whole suite runs in parallel — the number itself is the evidence, so it
+  // is printed rather than silently absorbed.
+  it("revokes a large session fan-out and reports exact counts", async () => {
+    const user = await createUser({ email: "f6@test.dev" });
+    const cookies: string[] = [];
+    for (let i = 0; i < 30; i += 1) cookies.push(await sessionCookieFor(user));
+
+    const startedAt = Date.now();
+    const response = await call(cookies[0], {
+      currentPassword: TEST_PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+    const elapsed = Date.now() - startedAt;
+    console.log(`[password-change] 30 会话的改密耗时：${elapsed}ms（本地文件存储）`);
+    expect(elapsed).toBeLessThan(30_000);
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      sessionsRevoked?: number;
+      sessionsFailed?: number;
+      status?: string;
+    };
+    expect(payload.sessionsRevoked).toBe(30);
+    expect(payload.sessionsFailed).toBe(0);
+    expect(payload.status).toBe("complete");
+    for (const cookie of cookies) {
+      expect((await me(cookie)).status).toBe(401);
+    }
+  }, 30_000);
+
+  it("rejects a pre-change session that was never revoked (credential generation guard)", async () => {
+    const user = await createUser({ email: "f7@test.dev" });
+    const cookie = await sessionCookieFor(user);
+    expect((await me(cookie)).status).toBe(200);
+
+    // Simulate the worst case: the generation advanced but the revocation
+    // pass never ran (timeout / crash between the two steps).
+    await getRegistry().putUser({ ...user, credentialEpoch: 1 });
+    expect((await me(cookie)).status).toBe(401);
+  });
+
+  it("records the new credential generation and failure counters in the audit", async () => {
+    const user = await createUser({ email: "f8@test.dev" });
+    const cookie = await sessionCookieFor(user);
+
+    await call(cookie, { currentPassword: TEST_PASSWORD, newPassword: NEW_PASSWORD });
+
+    const audit = await getRegistry().listAudit(50);
+    const change = audit.find(
+      (record) => record.action === "auth.password_change" && record.targetId === user.id,
+    );
+    expect(change).toBeDefined();
+    expect(JSON.stringify(change!.after)).toContain("credentialEpoch");
+    expect(JSON.stringify(change!.after)).toContain("sessionsFailed");
+    expect(JSON.stringify(audit)).not.toContain(NEW_PASSWORD);
+  });
+});

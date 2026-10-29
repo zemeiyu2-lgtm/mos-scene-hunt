@@ -27,6 +27,7 @@
  */
 
 import { BlobNotFoundError, get, put } from "@vercel/blob";
+import { resolveBlobPrefix } from "../storage/namespace-guard";
 import { GAME_ID_PATTERN, VERSION_ID_PATTERN } from "./version";
 import {
   VersionConflictError,
@@ -38,17 +39,22 @@ import {
 
 export type { PublishedGameStore } from "./storage";
 
-const DEFAULT_PREFIX = "published-games";
-
 export interface VercelBlobStoreOptions {
   /** Root prefix for all keys inside the blob store. */
   prefix?: string;
 }
 
 export function createVercelBlobStore(options: VercelBlobStoreOptions = {}): PublishedGameStore {
-  const prefix = (
-    options.prefix ?? (process.env.PUBLISHED_GAMES_BLOB_PREFIX?.trim() || DEFAULT_PREFIX)
-  ).replace(/^\/+|\/+$/g, "");
+  // Preview deployments share the production store, so the namespace must be
+  // explicit there (see `lib/storage/namespace-guard.ts`). An injected prefix
+  // (tests) bypasses the environment lookup entirely.
+  const resolved =
+    options.prefix ??
+    resolveBlobPrefix({
+      store: "published-games",
+      prefix: process.env.PUBLISHED_GAMES_BLOB_PREFIX,
+    });
+  const prefix = resolved.replace(/^\/+|\/+$/g, "");
 
   const versionPath = (gameId: string, versionId: string) =>
     `${prefix}/${gameId}/versions/${versionId}.json`;

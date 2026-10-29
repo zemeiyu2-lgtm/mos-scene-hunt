@@ -53,7 +53,14 @@ export interface IssueSessionInput {
   role: Role;
   ipHash: string;
   uaHash: string;
+  /** Credential generation of the user at issue time (see UserRecord). */
+  credentialEpoch?: number;
   now?: Date;
+}
+
+/** Generation of a user/session record; absent fields are generation 0. */
+export function credentialEpochOf(record: { credentialEpoch?: number }): number {
+  return typeof record.credentialEpoch === "number" ? record.credentialEpoch : 0;
 }
 
 export async function issueSession(
@@ -69,6 +76,7 @@ export async function issueSession(
     createdAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + SESSION_TTL_MS[input.role]).toISOString(),
     revokedAt: null,
+    credentialEpoch: input.credentialEpoch ?? 0,
     ipHash: input.ipHash,
     uaHash: input.uaHash,
   };
@@ -99,6 +107,11 @@ export async function verifySession(
   if (user.status !== "active") return null;
   // A role change must take effect immediately, not at next login.
   if (user.role !== record.role) return null;
+  // A password change bumps the user's credential generation. Comparing it
+  // here makes the password change authoritative on its own: even if the
+  // post-change revocation pass failed, timed out or was cut short, a session
+  // issued under the previous generation can never be used again.
+  if (credentialEpochOf(user) !== credentialEpochOf(record)) return null;
 
   return { session: record, user };
 }
