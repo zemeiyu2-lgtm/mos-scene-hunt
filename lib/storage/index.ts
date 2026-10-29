@@ -13,6 +13,7 @@
  */
 
 import { get as idbGet, set as idbSet, del as idbDel, createStore } from "idb-keyval";
+import { utf8ByteLength } from "./bytes";
 import type { GameState } from "../game/state";
 import type { Game } from "../game/types";
 
@@ -293,6 +294,19 @@ export function upsertHuntIndex(entry: HuntIndexEntry): void {
   writeRaw(SAVE_INDEX_KEY, JSON.stringify(index.slice(0, 50)));
 }
 
+/**
+ * Drop one game's row from the multi-hunt index.
+ *
+ * Called when a local pack is deleted: the row describes progress that no
+ * longer exists, and leaving it would keep a deleted game listed.
+ */
+export function removeHuntIndexEntry(gameId: string): void {
+  const index = readHuntIndex();
+  const next = index.filter((entry) => entry.gameId !== gameId);
+  if (next.length === index.length) return;
+  writeRaw(SAVE_INDEX_KEY, JSON.stringify(next));
+}
+
 /* ------------------------------------------------------------------ */
 /* Settings                                                           */
 /* ------------------------------------------------------------------ */
@@ -324,23 +338,79 @@ const contentStore =
  * Cache a validated content pack so the hunt is playable with no network.
  * Called after every successful load, and re-read on startup when the fetch
  * fails - this is the mechanism behind spec section 13.
+ *
+ * Only ONE copy is written when IndexedDB is available.
+ *
+ * This used to mirror every pack into localStorage as well, "because a demo
+ * pack is small enough". On iOS Safari it is not a free choice: localStorage
+ * has a fixed per-origin budget that iOS never raises (~5 MB), while
+ * IndexedDB is governed by the much larger storage quota. Mirroring meant
+ * every played network pack was charged twice against the *scarce* budget,
+ * which is the same budget authored packs need - the "浏览器没有空间" report.
+ * The mirror is now a fallback for environments where IndexedDB is blocked
+ * (some private modes), not a second copy.
  */
 export async function cacheGameContent(game: Game): Promise<void> {
   const payload = { cachedAt: Date.now(), game };
+  const key = `${CONTENT_CACHE_PREFIX}${game.id}`;
   try {
     if (contentStore) {
-      await idbSet(`${CONTENT_CACHE_PREFIX}${game.id}`, payload, contentStore);
+      await idbSet(key, payload, contentStore);
+      return;
     }
   } catch {
     /* IndexedDB unavailable - localStorage is the fallback below */
   }
   try {
-    // Mirrored into localStorage as well: small enough for a demo pack, and it
-    // survives environments where IndexedDB is blocked (some private modes).
-    writeRaw(`${CONTENT_CACHE_PREFIX}${game.id}`, JSON.stringify(payload));
+    writeRaw(key, JSON.stringify(payload));
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * Drop localStorage mirrors of packs that IndexedDB already holds.
+ *
+ * Historical builds wrote every cached pack to both stores. Removing the
+ * mirror loses nothing - the authoritative copy is still in IndexedDB and the
+ * pack is re-fetchable from the network - but it returns real bytes to the
+ * scarce localStorage budget. A key whose IndexedDB copy is missing is left
+ * alone: that mirror may be the only offline copy in the browser.
+ */
+export async function pruneDuplicatedContentCache(): Promise<{
+  removedIds: string[];
+  freedBytes: number;
+}> {
+  const removedIds: string[] = [];
+  let freedBytes = 0;
+  if (!contentStore || typeof window === "undefined") return { removedIds, freedBytes };
+
+  const keys: string[] = [];
+  try {
+    const ls = window.localStorage;
+    for (let i = 0; i < ls.length; i++) {
+      const key = ls.key(i);
+      if (key?.startsWith(CONTENT_CACHE_PREFIX)) keys.push(key);
+    }
+  } catch {
+    return { removedIds, freedBytes };
+  }
+
+  for (const key of keys) {
+    const gameId = key.slice(CONTENT_CACHE_PREFIX.length);
+    try {
+      const authoritative = await idbGet(key, contentStore);
+      if (!authoritative) continue;
+      const raw = window.localStorage.getItem(key);
+      if (raw === null) continue;
+      window.localStorage.removeItem(key);
+      freedBytes += utf8ByteLength(raw);
+      removedIds.push(gameId);
+    } catch {
+      /* Leave an unreadable key in place rather than guessing. */
+    }
+  }
+  return { removedIds, freedBytes };
 }
 
 export async function readCachedGameContent(

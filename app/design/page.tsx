@@ -19,6 +19,7 @@
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { GameQr } from "@/components/game-qr";
+import { LocalPackPanel } from "@/components/local-pack-panel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapView } from "@/components/map-view";
@@ -105,6 +106,9 @@ export default function DesignPage() {
   // 问题 4：地图视野归设计者所有。只有显式「重置视野」才重新取景；选站、
   // 拖动标记、开关面板都不会再自动重置缩放。
   const [fitToken, setFitToken] = useState(0);
+  // 本机存储面板的重新测量信号：每次成功保存后 +1，让面板里的占用数字
+  // 立刻反映刚写入的这份游戏包，而不是停留在打开页面时的快照。
+  const [storageVersion, setStorageVersion] = useState(0);
 
   // 「继续设计」 deep link from the games centre (/design?game=<id>). Without
   // this the designer would land on whatever pack happens to be active - often
@@ -601,6 +605,7 @@ export default function DesignPage() {
     markCurrentAuthoredGame(working.id);
     setDraft(working);
     setSaved(true);
+    setStorageVersion((version) => version + 1);
     return true;
   };
 
@@ -1365,6 +1370,9 @@ export default function DesignPage() {
             ) : null}
             {saveFailure.hidden > 0 ? <p className="mt-1">还有 {saveFailure.hidden} 处未列出。</p> : null}
             <p className="mt-1">本机上的旧存档没有被改动，修正后即可正常保存。</p>
+            <p className="mt-1">
+              如果提示浏览器存储空间不足，可以在下方「本机存储」里删除不再需要的本地副本，或减少游戏包内嵌的图片与文件。
+            </p>
           </div>
         ) : null}
         <div className="mt-3 grid gap-2">
@@ -1418,6 +1426,24 @@ export default function DesignPage() {
           <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>恢复官方示范内容</button>
         </div>
       </section>
+
+      {/* 本机存储：容量、单包大小、线上状态与「删除本地副本」。
+          放在保存区之后，是因为「保存失败 → 先清出空间」是作者的真实动线；
+          折叠在卡片内，避免挤占上文的地图与体验点列表。 */}
+      <LocalPackPanel
+        title="本机存储"
+        defaultOpen={false}
+        refreshKey={storageVersion}
+        onDeleted={(result) => {
+          // 删掉的正好是编辑器里这一份时，不能继续拿内存草稿当"已保存"，
+          // 否则下一次保存会把刚删除的游戏又写回去。
+          if (working?.id === result.id) {
+            setDraft(null);
+            setSaved(false);
+            void reloadContent(true);
+          }
+        }}
+      />
     </Screen>
   );
 }
