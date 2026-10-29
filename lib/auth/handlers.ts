@@ -12,11 +12,13 @@
 
 import {
   HttpError,
+  assertSafeMutation,
   clientHints,
   jsonResponse,
   readCookie,
+  requireUser,
 } from "./guard";
-import { hashPassword, verifyPassword } from "./password";
+import { hashPassword, isPasswordAcceptable, verifyPassword } from "./password";
 import { consumeRateLimit } from "./rate-limit";
 import {
   hashHeader,
@@ -204,5 +206,107 @@ export async function meHandler(request: Request): Promise<Response> {
   return jsonResponse(200, {
     user: toPublicUser(context.user),
     expiresAt: context.session.expiresAt,
+  });
+}
+
+/**
+ * POST /api/auth/password  { currentPassword, newPassword }
+ *
+ * Self-service password change for any signed-in user. Policy:
+ *  - the caller must present a live session AND the current password, so a
+ *    hijacked tab cannot silently rotate the credential without knowing it;
+ *  - the new password passes the same server-side policy as account creation;
+ *  - EVERY session of this user is revoked, including the one that performed
+ *    the change — the browser gets a cleared cookie and must log in again.
+ *    "Other devices stay logged in" would be the weaker choice;
+ *  - the audit record carries no secret material, only the session count.
+ */
+export async function changePasswordHandler(request: Request): Promise<Response> {
+  const auth = await requireUser(request);
+  assertSafeMutation(request);
+
+  const hints = clientHints(request);
+  const limit = consumeRateLimit({
+    key: `password-change:${auth.user.id}`,
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!limit.allowed) {
+    return jsonResponse(
+      429,
+      { error: "rate_limited", message: "操作过于频繁，请稍后再试。" },
+      { "Retry-After": String(limit.retryAfterSeconds) },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    throw new HttpError(400, "invalid_json", "请求体不是合法 JSON。");
+  }
+  const payload = (body ?? {}) as { currentPassword?: unknown; newPassword?: unknown };
+  const currentPassword = typeof payload.currentPassword === "string" ? payload.currentPassword : "";
+  const newPassword = typeof payload.newPassword === "string" ? payload.newPassword : "";
+  if (!currentPassword || !newPassword) {
+    throw new HttpError(400, "missing_fields", "请填写当前密码与新密码。");
+  }
+  if (currentPassword.length > 256 || newPassword.length > 256) {
+    throw new HttpError(400, "invalid_password", "密码过长。");
+  }
+
+  const registry = getRegistry();
+  // Re-read from the store: the session context may predate a concurrent
+  // change (e.g. an admin demotion), and verifySession's role/status check
+  // already gated requireUser — this re-read only refreshes credential fields.
+  const user = await registry.getUser(auth.user.id);
+  if (!user || user.status !== "active") {
+    throw new HttpError(401, "unauthenticated", "会话已失效，请重新登录。");
+  }
+
+  const currentOk = await verifyPassword(currentPassword, user.passwordHash, user.passwordSalt);
+  if (!currentOk) {
+    await recordAudit(registry, {
+      actor: { user, ipHash: hints.ipHash, uaHash: hints.uaHash },
+      action: "auth.password_change_failed",
+      targetType: "user",
+      targetId: user.id,
+      after: { reason: "wrong_current_password" },
+    });
+    throw new HttpError(400, "wrong_current_password", "当前密码不正确。");
+  }
+
+  const acceptable = isPasswordAcceptable(newPassword);
+  if (!acceptable.ok) {
+    throw new HttpError(400, "weak_password", acceptable.reason ?? "密码不符合要求。");
+  }
+
+  const fields = await hashPassword(newPassword);
+  await registry.putUser({
+    ...user,
+    passwordHash: fields.passwordHash,
+    passwordSalt: fields.passwordSalt,
+  });
+
+  // Revoke every session of this user, including the current one.
+  const sessions = await registry.listSessionsByUser(user.id);
+  const now = new Date().toISOString();
+  let revoked = 0;
+  for (const session of sessions) {
+    if (session.revokedAt !== null) continue;
+    await registry.revokeSession(session.tokenHash, now);
+    revoked += 1;
+  }
+
+  await recordAudit(registry, {
+    actor: { user, ipHash: hints.ipHash, uaHash: hints.uaHash },
+    action: "auth.password_change",
+    targetType: "user",
+    targetId: user.id,
+    after: { sessionsRevoked: revoked },
+  });
+
+  return jsonResponse(200, { ok: true, relogin: true, sessionsRevoked: revoked }, {
+    "Set-Cookie": clearedSessionCookie(),
   });
 }

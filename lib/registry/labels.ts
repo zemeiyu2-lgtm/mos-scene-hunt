@@ -57,6 +57,8 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   "auth.login": "登录",
   "auth.login_failed": "登录失败",
   "auth.logout": "登出",
+  "auth.password_change": "修改密码",
+  "auth.password_change_failed": "修改密码失败",
   "user.create": "创建用户",
   "user.role_change": "变更角色",
   "user.status_change": "变更状态",

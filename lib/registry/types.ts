@@ -186,6 +186,8 @@ export type AuditAction =
   | "auth.login"
   | "auth.login_failed"
   | "auth.logout"
+  | "auth.password_change"
+  | "auth.password_change_failed"
   | "user.create"
   | "user.role_change"
   | "user.status_change"

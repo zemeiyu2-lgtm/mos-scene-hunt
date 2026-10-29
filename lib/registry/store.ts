@@ -50,6 +50,12 @@ export interface RegistryStore {
   getSession(tokenHash: string): Promise<SessionRecord | null>;
   putSession(session: SessionRecord): Promise<StoreWriteResult>;
   revokeSession(tokenHash: string, at: string): Promise<void>;
+  /**
+   * All sessions ever issued for a user (including revoked/expired ones).
+   * Callers filter; the store stays a dumb listing. Used by the password
+   * change flow to revoke every live session in one sweep.
+   */
+  listSessionsByUser(userId: string): Promise<SessionRecord[]>;
 
   getWork(gameId: string): Promise<WorkRecord | null>;
   listWorks(): Promise<WorkRecord[]>;
@@ -242,6 +248,29 @@ export function createFileRegistry(root: string): RegistryStore {
       } catch {
         /* a corrupt session record is already unusable */
       }
+    },
+
+    async listSessionsByUser(userId) {
+      if (!USER_ID_PATTERN.test(userId)) return [];
+      const out: SessionRecord[] = [];
+      let names: string[];
+      try {
+        names = await readdir(dirs.sessions);
+      } catch {
+        return [];
+      }
+      for (const name of names) {
+        if (!name.endsWith(".json")) continue;
+        const raw = await readJson(path.join(dirs.sessions, name));
+        if (!raw) continue;
+        try {
+          const session = JSON.parse(raw) as SessionRecord;
+          if (session.userId === userId) out.push(session);
+        } catch {
+          /* skip corrupt records; they are unusable as sessions anyway */
+        }
+      }
+      return out;
     },
 
     async getWork(gameId) {
@@ -444,6 +473,24 @@ export function createBlobRegistry(prefix: string): RegistryStore {
       } catch {
         /* ignore */
       }
+    },
+
+    async listSessionsByUser(userId) {
+      if (!USER_ID_PATTERN.test(userId)) return [];
+      const out: SessionRecord[] = [];
+      const keys = await listKeys(`sessions/`);
+      for (const key of keys) {
+        if (!key.endsWith(".json")) continue;
+        const raw = await readText(key.slice(base.length + 1));
+        if (!raw) continue;
+        try {
+          const session = JSON.parse(raw) as SessionRecord;
+          if (session.userId === userId) out.push(session);
+        } catch {
+          /* skip corrupt records */
+        }
+      }
+      return out;
     },
 
     async getWork(gameId) {

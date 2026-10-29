@@ -17,6 +17,7 @@ const ITEMS: NavItem[] = [
   { href: "/admin/works", label: "作品", min: "creator" },
   { href: "/admin/users", label: "用户与角色", min: "admin" },
   { href: "/admin/audit", label: "审计日志", min: "admin" },
+  { href: "/admin/account", label: "账号与密码", min: "creator" },
 ];
 
 const RANK: Record<Role, number> = { creator: 1, reviewer: 2, admin: 3 };
