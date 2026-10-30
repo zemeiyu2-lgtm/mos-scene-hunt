@@ -135,15 +135,12 @@ async function publishPack(
 /* ------------------------------ tests ------------------------------ */
 
 describe("catalog: repo baseline", () => {
-  it("always ships the built-in pack even with an empty registry", async () => {
+  it("empty registry yields an empty catalogue (built-in showcase list intentionally empty)", async () => {
+    // 决策变更（3331715）：内置精选不进目录，游戏中心只展示 registry 中
+    // state=published 的官方示范；内置包数据文件仍在仓库，需要重新上架时
+    // 把条目加回 route 的 repoCatalog.games 即可。这里钉住「不偷偷回退」。
     const catalog = await readCatalog();
-    const ids = catalog.games.map((g) => g.id);
-    expect(ids).toContain("rizal-park-discovery");
-    const repoEntry = catalog.games.find((g) => g.id === "rizal-park-discovery")!;
-    expect(repoEntry.source).toBe("repo");
-    expect(repoEntry.status).toBe("published");
-    // repo 包走静态文件，packUrl 必须给出 /content/<file>
-    expect(packUrl(repoEntry)).toBe("/content/rizal-park-discovery.json");
+    expect(catalog.games).toEqual([]);
   });
 
   it("does not advertise anything that is not published", async () => {
@@ -205,16 +202,18 @@ describe("catalog: publish makes a work visible", () => {
     expect(body.scenes).toHaveLength(2);
   });
 
-  it("keeps the catalogue entry id unique when a registry id shadows a repo id", async () => {
+  it("republishing a work still yields exactly one catalogue entry", async () => {
     const fixture = await seedUsers();
-    await publishPack(fixture, game("rizal-park-discovery", 1, "Shadow Pack"));
+    await publishPack(fixture, game("rizal-park-discovery", 1, "First Version"));
+    // 同一 id 再发一版：目录里仍只能有一条（最新已发布版本）
+    await publishPack(fixture, game("rizal-park-discovery", 2, "Second Version"));
 
     const catalog = await readCatalog();
     const matches = catalog.games.filter((g) => g.id === "rizal-park-discovery");
     expect(matches).toHaveLength(1);
-    // 内置包优先：不允许注册作者顶替官方包的下载来源
-    expect(matches[0].source).toBe("repo");
-    expect(packUrl(matches[0])).toBe("/content/rizal-park-discovery.json");
+    expect(matches[0].source).toBe("registry");
+    // 字节由审核感知读端点提供，不指向静态目录
+    expect(packUrl(matches[0])).toBe("/api/games/rizal-park-discovery");
   });
 });
 

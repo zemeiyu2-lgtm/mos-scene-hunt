@@ -27,7 +27,7 @@ afterEach(() => {
 });
 
 describe("catalog degradation", () => {
-  it("falls back to the built-in catalogue instead of returning 500", async () => {
+  it("falls back gracefully instead of returning 500", async () => {
     failing.mode = "throw";
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -38,8 +38,10 @@ describe("catalog degradation", () => {
       version: string;
       games: Array<{ id: string; source: string }>;
     };
-    expect(body.games.map((g) => g.id)).toEqual(["rizal-park-discovery"]);
-    expect(body.games[0].source).toBe("repo");
+    // 3331715 起游戏中心只展示 registry 中 state=published 的作品，内置精选
+    // 列表为空（内置包仍在仓库中，但不进目录）。registry 不可用时目录为空，
+    // 但必须是 200 —— 不能因为后台读失败把整个游戏中心打挂。
+    expect(body.games).toEqual([]);
     // 降级必须留下痕迹，否则线上目录变短没人会发现
     expect(errors).toHaveBeenCalled();
   });

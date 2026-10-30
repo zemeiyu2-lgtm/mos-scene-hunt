@@ -21,7 +21,6 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { GameQr } from "@/components/game-qr";
 import { LocalPackPanel } from "@/components/local-pack-panel";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { MapView } from "@/components/map-view";
 import { useSettings } from "@/components/providers";
 import { Screen } from "@/components/ui";
@@ -92,7 +91,6 @@ const MICRO_PRESETS = [30, 50, 75, 100, 150, 250];
 const MIN_POLYGON_POINTS = 3;
 
 export default function DesignPage() {
-  const router = useRouter();
   const { game, loading, loadError, reloadContent } = useHunt();
   const { settings } = useSettings();
   const [draft, setDraft] = useState<Game | null>(null);

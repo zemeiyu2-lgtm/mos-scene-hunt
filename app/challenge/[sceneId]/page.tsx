@@ -120,7 +120,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       window.clearTimeout(highlight);
       window.clearTimeout(fire);
     };
-  }, [demoActive, scene, challenge, state, progress?.status, limitMs, expired, solved, submitting, submitAnswer, router]);
+  }, [demoActive, demoFactor, scene, challenge, state, progress?.status, limitMs, expired, solved, submitting, submitAnswer, router]);
 
   const distance = scene ? distances[scene.id] ?? null : null;
   const inRange = distance?.inRange ?? false;

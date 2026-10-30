@@ -23,7 +23,7 @@
  * player save namespace.
  */
 
-import { isDemoActive, urlRequestsDemo } from "../demo/autopilot";
+import { isDemoActive, isDemoSupported, urlRequestsDemo } from "../demo/autopilot";
 
 export type RuntimeMode = "player" | "demo" | "preview";
 
@@ -76,11 +76,17 @@ export function urlRequestsPreview(search: string | null | undefined): boolean {
  * Demo wins over preview when both markers are present: a kiosk deep link
  * (`?demo=1`) is an explicit stakeholder-facing entry and must not be
  * hijacked by a stale preview flag. Unknown inputs resolve to "player".
+ *
+ * Demo mode additionally requires this build to support the demo at all
+ * (`isDemoSupported()`). Without that guard, opening `?demo=1` on a build with
+ * no demo capability would silently run the hunt in the demo namespace: the
+ * player would see a normal game whose progress never persists. Falling
+ * through to player mode is the safe, expectable behaviour there.
  */
 export function resolveRuntimeMode(search?: string | null): RuntimeMode {
   if (typeof window === "undefined") return "player";
   const s = search === undefined ? (typeof window.location === "undefined" ? null : window.location.search) : search;
-  if (urlRequestsDemo(s) || isDemoActive()) return "demo";
+  if ((urlRequestsDemo(s) || isDemoActive()) && isDemoSupported()) return "demo";
   if (urlRequestsPreview(s) || isPreviewActive()) return "preview";
   return "player";
 }

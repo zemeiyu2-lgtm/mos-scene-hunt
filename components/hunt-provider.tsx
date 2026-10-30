@@ -203,7 +203,7 @@ export function HuntProvider({
         setLoading(false);
       }
     },
-    [gameId],
+    [gameId, getRuntimeMode],
   );
 
   useEffect(() => {

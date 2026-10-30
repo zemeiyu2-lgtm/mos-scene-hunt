@@ -64,14 +64,14 @@
 | --- | --- | --- |
 | A 基线审计 | 生产/分支/代码架构/基线测试 | **COMPLETED**（本文件 §3-6） |
 | 管理体系 | MASTER-PLAN/DECISIONS/CURRENT-STATE | **COMPLETED** |
-| B 运行模式与存档隔离 | RuntimeMode + demo/preview 独立存储 | IN_PROGRESS |
-| C GPS 安全治理 | 演示与开发模拟解耦、玩家模式拒绝模拟 fix | IN_PROGRESS |
-| D 自动演示产品化 | 上一站/速度/结束页/异常恢复 | NOT_STARTED |
-| E 多端适配 | 平板/大屏断点、演示条布局 | NOT_STARTED |
-| F 示范包与母版核查 | 包关系/坐标清单/FIELD_CALIBRATION_PENDING | NOT_STARTED |
-| G 后台/存储稳定性 | registry 数据源/误删保护/后台回归 | NOT_STARTED |
-| H 完整测试 | 全量回归 + 新增隔离/安全/异常测试 | NOT_STARTED |
-| I 整合与 RC | 合并 qa/phase2、发布候选文件 | NOT_STARTED |
+| B 运行模式与存档隔离 | RuntimeMode + demo/preview 独立存储 | **VERIFIED**（单测 14 项 + 隔离探针 7/7） |
+| C GPS 安全治理 | 演示与开发模拟解耦、玩家模式拒绝模拟 fix | **VERIFIED**（门控测试 4 项 + 隔离探针；生产环境变量移除待授权） |
+| D 自动演示产品化 | 速度档/结束页/异常恢复（上一站与指定站起播经评估暂缓） | **VERIFIED**（E2E 演示链路 + 探针完整跑完） |
+| E 多端适配 | 平板/大屏断点、演示条布局、全屏 | **COMPLETED**（CSS 断点 + 全屏按钮；真机走查待现场） |
+| F 示范包与母版核查 | 包关系/坐标清单/FIELD_CALIBRATION_PENDING | **COMPLETED**（生产包 v1.1.0 核对，最小间距 27.1m） |
+| G 后台/存储稳定性 | registry 数据源/误删保护/后台回归 | **IN_PROGRESS**（后台 E2E 待跑） |
+| H 完整测试 | 全量回归 + 新增隔离/安全/异常测试 | **IN_PROGRESS**（798/798 单测；E2E 39/40 基线等价；探针 7/7） |
+| I 整合与 RC | 合并 qa/phase2、发布候选文件 | **IN_PROGRESS**（已合并 74c2a10；RC/回滚文档撰写中） |
 
 ## 9. 依赖关系
 

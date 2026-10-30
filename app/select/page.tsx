@@ -15,7 +15,6 @@ import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
 import { findManifestEntry } from "@/lib/content";
 import { readSharedGameOutcome } from "@/lib/content/share";
-import { isSimulatorAvailable } from "@/lib/location";
 import { enableDemo, isDemoSupported } from "@/lib/demo/autopilot";
 import { clearGameStateForMode } from "@/lib/storage";
 import { disablePreview } from "@/lib/runtime/mode";
