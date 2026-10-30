@@ -69,9 +69,9 @@
 | D 自动演示产品化 | 速度档/结束页/异常恢复（上一站与指定站起播经评估暂缓） | **VERIFIED**（E2E 演示链路 + 探针完整跑完） |
 | E 多端适配 | 平板/大屏断点、演示条布局、全屏 | **COMPLETED**（CSS 断点 + 全屏按钮；真机走查待现场） |
 | F 示范包与母版核查 | 包关系/坐标清单/FIELD_CALIBRATION_PENDING | **COMPLETED**（生产包 v1.1.0 核对，最小间距 27.1m） |
-| G 后台/存储稳定性 | registry 数据源/误删保护/后台回归 | **IN_PROGRESS**（后台 E2E 待跑） |
-| H 完整测试 | 全量回归 + 新增隔离/安全/异常测试 | **IN_PROGRESS**（798/798 单测；E2E 39/40 基线等价；探针 7/7） |
-| I 整合与 RC | 合并 qa/phase2、发布候选文件 | **IN_PROGRESS**（已合并 74c2a10；RC/回滚文档撰写中） |
+| G 后台/存储稳定性 | registry 数据源/误删保护/后台回归 | **VERIFIED**（后台 E2E 59/59） |
+| H 完整测试 | 全量回归 + 新增隔离/安全/异常测试 | **VERIFIED**（798/798 单测、tsc 0、E2E 40/40、后台 E2E 59/59、隔离探针 7/7；真机项另行标注） |
+| I 整合与 RC | 合并 qa/phase2、发布候选文件 | **COMPLETED**（合并 74c2a10；八份交付文件已齐；生产部署未执行） |
 
 ## 9. 依赖关系
 
@@ -81,11 +81,17 @@ B（模式+存储路由）是 C/D/H 的地基；C 依赖 B 的模式判定；D �
 
 （随进度追加，含分支/commit/文件清单）
 
-- 2026-10-30：创建分支 `v1.0/platform-optimization`（基于 3331715），尚无新代码提交。
+- 2d8d507 运行模式隔离：lib/runtime/mode.ts 新增；storage 模式路由；hunt-provider 接线；demo 注入通道；预览入口与预览条；单测 753/753
+- cf8b6ec 演示速度档/结束页 + 平板/大屏断点 + 地图全屏
+- 104cb40 ARCHITECTURE/AUDIT 报告 + 模拟能力门控测试（4 项）
+- d41777a 演示隔离 E2E 探针（7 项）
+- 74c2a10 合并 qa/phase2-20261029（唯一冲突：测试产物 JSON）
+- 2a492af 演示能力守卫（?demo=1 在不支持构建回落 player）、目录契约测试更新、lint 清理
 
 ## 11. 测试结果汇总
 
-- 基线：739/739 vitest + tsc 0 错误（v10 worktree @ 3331715）。
+- 最终：798/798 vitest（62 文件）+ tsc 0 错误 + ESLint 0/0 + 生产构建成功 + 玩家端 E2E 40/40 + 后台 E2E 59/59 + 隔离探针 7/7（详见 TEST-REPORT）。
+- 基线：739/739 vitest + tsc 0 错误（v10 worktree @ 3331715）；E2E 基线 39/40（雷达项，历史遗留）。
 - （后续结果随进度追加，详见 TEST-REPORT）
 
 ## 12. 未解决问题
@@ -112,4 +118,7 @@ B（模式+存储路由）是 C/D/H 的地基；C 依赖 B 的模式判定；D �
 
 ## 15. 发布候选信息
 
-（I 模块完成后填写：分支、commit SHA、变更摘要、回滚点）
+- 分支：`v1.0/platform-optimization` @ `2a492af`（本地，未推送）
+- 变更摘要 / 关键文件 / 风险 / 部署清单：见 RELEASE-CANDIDATE
+- 回滚点（部署前）：`dpl_DuvsvoRuTkrBTJECHiEJXaqZ3LMr`（gi2t5r4xs），上一稳定 `kcc5lwyok`
+- **生产部署未执行**，等待用户验收与授权
