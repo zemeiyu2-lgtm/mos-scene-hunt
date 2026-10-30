@@ -723,3 +723,12 @@ body {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ---- 自动演示模式（body[data-demo-autopilot="1"]）--------------------- */
+/* 顶部 44px 演示进度条的空间；DEV 模拟器面板在演示中隐藏，保持画面简单。 */
+body[data-demo-autopilot="1"] .app-shell {
+  padding-top: 44px;
+}
+body[data-demo-autopilot="1"] .simulator-panel-root {
+  display: none;
+}

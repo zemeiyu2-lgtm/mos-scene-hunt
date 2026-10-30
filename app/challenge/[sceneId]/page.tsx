@@ -9,7 +9,7 @@
  * a single place where hint escalation lives.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 import { useEffect } from "react";
@@ -21,6 +21,7 @@ import { MediaGallery } from "@/components/media-gallery";
 import { nextSceneIdOf } from "@/lib/game/state";
 import { ChallengeExpiredPanel, ChallengeTimerBar, useAttemptClock } from "@/components/challenge-timer";
 import { attemptNumber, formatLimit, timeLimitMs } from "@/lib/game/timed-challenge";
+import { isDemoActive } from "@/lib/demo/autopilot";
 
 export default function ChallengePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -81,6 +82,43 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
     if (threshold <= 0) return false;
     return attempts >= threshold;
   }, [challenge, attempts]);
+
+  // ---- 自动演示（sessionStorage 演示标记）-----------------------------
+  // 演示模式下本题自动作答：先高亮选项再走与手动提交完全相同的正确分支，
+  // 观众看到的是真实的选中、音效与跳转动画。仅限非限时选择题；文本题
+  // 演示时留给人工输入，自动流程绝不猜测文本答案。
+  const demoAutoRef = useRef(false);
+  const demoActive = useMemo(() => isDemoActive(), []);
+  useEffect(() => {
+    if (!demoActive || demoAutoRef.current) return;
+    if (!scene || !challenge || !state) return;
+    if (challenge.type !== "choice") return;
+    if (limitMs !== null || expired || solved || submitting) return;
+    if (progress?.status !== "challenging") return;
+    demoAutoRef.current = true;
+    const pick = challenge.reflective
+      ? 0
+      : typeof challenge.answer === "number"
+        ? challenge.answer
+        : 0;
+    const highlight = window.setTimeout(() => setSelected(pick), 3_200);
+    const fire = window.setTimeout(() => {
+      setSelected(pick);
+      const isCorrect = Boolean(challenge.reflective) || pick === challenge.answer;
+      submitAnswer(scene.id, { selectedIndex: pick });
+      if (isCorrect) {
+        setSolved(true);
+        setSubmitting(true);
+        setFeedback("correct");
+        playSound("success");
+        window.setTimeout(() => router.push(`/reward/${scene.id}`), 620);
+      }
+    }, 4_800);
+    return () => {
+      window.clearTimeout(highlight);
+      window.clearTimeout(fire);
+    };
+  }, [demoActive, scene, challenge, state, progress?.status, limitMs, expired, solved, submitting, submitAnswer, router]);
 
   const distance = scene ? distances[scene.id] ?? null : null;
   const inRange = distance?.inRange ?? false;

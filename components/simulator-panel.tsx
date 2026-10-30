@@ -140,7 +140,7 @@ export function SimulatorPanel({ activeSceneId }: { activeSceneId?: string | nul
   const enabled = settings.simulatorEnabled && coord !== null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[600] p-3">
+    <div className="simulator-panel-root pointer-events-none absolute inset-x-0 bottom-0 z-[600] p-3">
       <div className="pointer-events-auto mx-auto w-full max-w-[480px]">
         {open ? (
           <div className="card p-3 shadow-sheet">

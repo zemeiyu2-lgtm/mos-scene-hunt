@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { SettingsProvider, useOnlineStatus } from "./providers";
 import { GpsProvider } from "./gps-provider";
 import { HuntProvider } from "./hunt-provider";
+import { DemoAutopilot } from "./demo-autopilot";
 import { resolveActiveGameId } from "@/lib/content";
 import { subscribeToCurrentAuthoredGame } from "@/lib/storage";
 
@@ -38,6 +39,7 @@ export function RootProviders({ children }: { children: React.ReactNode }) {
             once per identity, so a switch from the bundled demo to a freshly
             authored pack must build a new one rather than patch the old. */}
         <HuntProvider key={gameId} gameId={gameId}>
+          <DemoAutopilot />
           {children}
         </HuntProvider>
       </GpsProvider>

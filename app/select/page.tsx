@@ -10,11 +10,13 @@
  */
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
 import { findManifestEntry } from "@/lib/content";
 import { readSharedGameOutcome } from "@/lib/content/share";
+import { isSimulatorAvailable } from "@/lib/location";
+import { enableDemo } from "@/lib/demo/autopilot";
 import {
   getSharedGameLibraryState,
   saveSharedGameToLibrary,
@@ -95,6 +97,15 @@ export default function SelectPage() {
   };
 
   const completedCount = statuses.filter((s) => s.status === "completed").length;
+
+  // 自动演示入口：仅在有 GPS 模拟器的环境（开发版或显式开启的部署）出现，
+  // 玩家正式环境完全不渲染，避免误导。演示不写存档以外的任何数据。
+  const demoAvailable = useMemo(() => isSimulatorAvailable(), []);
+  const beginDemo = () => {
+    enableDemo();
+    startHunt();
+    router.push("/map");
+  };
 
   const hasProgress = Boolean(state && state.inventory.length > 0);
 
@@ -293,6 +304,11 @@ export default function SelectPage() {
         <button type="button" className="btn btn-primary btn-block" onClick={begin}>
           {hasProgress ? "继续寻宝" : "开始寻宝"}
         </button>
+        {demoAvailable ? (
+          <button type="button" className="btn btn-secondary btn-block" onClick={beginDemo}>
+            ▶ 自动演示（模拟定位走完全程）
+          </button>
+        ) : null}
         <button
           type="button"
           className="btn btn-ghost btn-block"

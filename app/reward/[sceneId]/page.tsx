@@ -7,7 +7,7 @@
  * makes the newly unlocked next location immediately actionable.
  */
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 import { useHunt } from "@/components/hunt-provider";
@@ -16,6 +16,7 @@ import { ProgressBar, Screen } from "@/components/ui";
 import { formatDistance } from "@/lib/location";
 import { playSound } from "@/components/sound";
 import { nextSceneIdOf } from "@/lib/game/state";
+import { isDemoActive } from "@/lib/demo/autopilot";
 
 export default function RewardPage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -38,6 +39,15 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
   const isBsop = game?.id === "bsop-eight-secrets";
 
   useEffect(() => { if (granted) playSound(nextScene ? "reward" : "finish"); }, [granted, nextScene]);
+
+  // ---- 自动演示：奖励页停留数秒后回地图，继续下一站 --------------------
+  // 最后一站也回地图：演示进度条会显示「演示结束」。
+  const demoActive = useMemo(() => isDemoActive(), []);
+  useEffect(() => {
+    if (!demoActive || !granted) return;
+    const timer = window.setTimeout(() => router.push("/map"), 6_000);
+    return () => window.clearTimeout(timer);
+  }, [demoActive, granted, router]);
 
   if (!scene || !state) {
     return (
