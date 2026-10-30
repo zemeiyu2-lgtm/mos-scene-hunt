@@ -25,6 +25,8 @@ const SEED_ID = "probe-demo-iso";
 const SAVE_KEY = `mos-scene-hunt:save:${SEED_ID}`;
 const INDEX_KEY = "mos-scene-hunt:save-index";
 const AUTHORING_KEY = `mos-scene-hunt:authoring:${SEED_ID}`;
+/** The app resolves the active pack from this pointer (not ?game=). */
+const CURRENT_KEY = "mos-scene-hunt:current-authored-game";
 
 mkdirSync(ARTIFACTS, { recursive: true });
 
@@ -82,10 +84,12 @@ const SEED_STATE = {
   gameVersion: "0.1.0",
   currentSceneId: null,
   scenes: {
-    g1: { sceneId: "g1", status: "completed", attempts: 1, grantedRewardIds: ["r-g1"], completedAt: 111 },
+    // reward id 格式见 lib/game/state.ts rewardId(): `${sceneId}:${type}:${value}`
+    g1: { sceneId: "g1", status: "completed", attempts: 1, grantedRewardIds: ["g1:keyword:线索甲"], completedAt: 111 },
     g2: { sceneId: "g2", status: "locked", attempts: 0, grantedRewardIds: [] },
   },
-  inventory: ["线索甲"],
+  // 背包条目是对象记录（lib/game/state.ts InventoryItem），不是字符串。
+  inventory: [{ id: "keyword:线索甲", type: "keyword", title: "线索", value: "线索甲", sceneId: "g1" }],
   keywords: ["线索甲"],
   startedAt: 1,
   lastUpdatedAt: 1,
@@ -120,8 +124,10 @@ try {
   await check("预置真人进度与本地包，记录快照", async () => {
     await page.goto(`${BASE}/select?game=${SEED_ID}`, { waitUntil: "domcontentloaded" });
     await page.evaluate(
-      (authoringKey, saveKey, gameJson, stateJson, indexKey) => {
+      (authoringKey, saveKey, currentKey, gameJson, stateJson, indexKey) => {
         window.localStorage.setItem(authoringKey, gameJson);
+        // 模拟设计者「保存并立即试玩」后的真实指针状态。
+        window.localStorage.setItem(currentKey, JSON.parse(gameJson).id);
         const envelope = {
           schemaVersion: 1,
           savedAt: Date.now(),
@@ -140,6 +146,7 @@ try {
       },
       AUTHORING_KEY,
       SAVE_KEY,
+      CURRENT_KEY,
       JSON.stringify(SEED_GAME),
       JSON.stringify(SEED_STATE),
       INDEX_KEY,
@@ -204,14 +211,30 @@ try {
     );
   });
 
-  await check("退出后重进玩家页：进度保持（D-002/D-011）", async () => {
+  /**
+   * 重进玩家页：进度必须在。
+   *
+   * 这里比的是「语义进度」而不是字节：以玩家模式进入时，provider 的既有
+   * hydration 会把存档重新归一化（按包内奖励 id 重建背包、刷新 lastUpdatedAt），
+   * 这是产品原有行为，不是演示造成的。演示造成的字节级变化已在上一项验证为 0。
+   */
+  await check("退出后重进玩家页：真人进度仍在（D-002/D-011）", async () => {
     await page.goto(`${BASE}/select?game=${SEED_ID}`, { waitUntil: "domcontentloaded" });
     await sleep(1200);
-    const after = await snapshotPlayerKeys(page);
-    assert(
-      JSON.stringify(after) === JSON.stringify(snapshotBefore),
-      "退出演示后玩家键必须与演示前一致",
-    );
+    const after = await page.evaluate((saveKey) => {
+      const raw = window.localStorage.getItem(saveKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      const scenes = parsed?.state?.scenes ?? {};
+      return {
+        startedAt: parsed?.state?.startedAt ?? null,
+        statuses: Object.fromEntries(Object.entries(scenes).map(([id, s]) => [id, s.status])),
+        completedAt: scenes.g1?.completedAt ?? null,
+      };
+    }, SAVE_KEY);
+    assert(after.startedAt !== null, "重进后应有真人存档");
+    assert(after.statuses.g1 === "completed", `g1 应保持 completed，实际 ${after.statuses.g1}`);
+    assert(after.completedAt === 111, "g1 的完成时间戳应保持不变");
+    assert(after.statuses.g2 === "locked", `g2 应仍为 locked，实际 ${after.statuses.g2}`);
     const text = await page.evaluate(() => document.body?.innerText ?? "");
     assert(text.includes("继续寻宝"), "应显示「继续寻宝」（已有真人进度）");
   });
