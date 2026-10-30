@@ -561,6 +561,9 @@ export default function MapPage() {
         ) : null}
 
         {simulatorAvailable ? <SimulatorPanel activeSceneId={current?.id ?? null} /> : null}
+
+        {/* 大屏/投影：全屏进出（V1.0 模块 E）。手机/平板不渲染（.kiosk-only）。 */}
+        <KioskFullscreenButton />
       </div>
       <TabBar />
     </>
@@ -576,4 +579,46 @@ function bearingDegrees(from: { lat: number; lng: number }, to: { lat: number; l
   const y = Math.sin(dLng) * Math.cos(lat2);
   const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+/**
+ * Kiosk fullscreen toggle (V1.0 module E).
+ *
+ * Only rendered visible on large screens (`.kiosk-only` in globals.css):
+ * classrooms / halls project the map, and a reliable way in AND out of
+ * fullscreen matters more than any extra control. State tracks the browser's
+ * fullscreenchange event so the label stays truthful even when the user exits
+ * fullscreen with Escape or a system gesture.
+ */
+function KioskFullscreenButton() {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggle = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {
+        /* exiting fullscreen can fail if the document already left it */
+      });
+      return;
+    }
+    void document.documentElement.requestFullscreen().catch(() => {
+      /* Fullscreen API can be blocked; the map stays usable either way. */
+    });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="kiosk-only items-center gap-1.5 rounded-full bg-[var(--card,#ffffff)]/92 px-3.5 py-2 text-[12px] font-semibold text-[var(--ink-700,#374151)] shadow-lg ring-1 ring-black/5 hover:bg-[var(--card,#ffffff)]"
+      style={{ position: "absolute", right: 16, bottom: 16, zIndex: 500 }}
+    >
+      {isFullscreen ? "退出全屏" : "全屏展示"}
+    </button>
+  );
 }

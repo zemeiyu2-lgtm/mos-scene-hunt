@@ -21,7 +21,7 @@ import { MediaGallery } from "@/components/media-gallery";
 import { nextSceneIdOf } from "@/lib/game/state";
 import { ChallengeExpiredPanel, ChallengeTimerBar, useAttemptClock } from "@/components/challenge-timer";
 import { attemptNumber, formatLimit, timeLimitMs } from "@/lib/game/timed-challenge";
-import { isDemoActive } from "@/lib/demo/autopilot";
+import { demoSpeedFactor, isDemoActive } from "@/lib/demo/autopilot";
 
 export default function ChallengePage({ params }: { params: Promise<{ sceneId: string }> }) {
   // Next.js 15 hands dynamic route params to a client component as a Promise.
@@ -89,6 +89,8 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
   // 演示时留给人工输入，自动流程绝不猜测文本答案。
   const demoAutoRef = useRef(false);
   const demoActive = useMemo(() => isDemoActive(), []);
+  // Demo playback speed scales every demo wait (see lib/demo/autopilot.ts).
+  const demoFactor = demoActive ? demoSpeedFactor() : 1;
   useEffect(() => {
     if (!demoActive || demoAutoRef.current) return;
     if (!scene || !challenge || !state) return;
@@ -101,7 +103,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       : typeof challenge.answer === "number"
         ? challenge.answer
         : 0;
-    const highlight = window.setTimeout(() => setSelected(pick), 3_200);
+    const highlight = window.setTimeout(() => setSelected(pick), 3_200 * demoFactor);
     const fire = window.setTimeout(() => {
       setSelected(pick);
       const isCorrect = Boolean(challenge.reflective) || pick === challenge.answer;
@@ -111,9 +113,9 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
         setSubmitting(true);
         setFeedback("correct");
         playSound("success");
-        window.setTimeout(() => router.push(`/reward/${scene.id}`), 620);
+        window.setTimeout(() => router.push(`/reward/${scene.id}`), 620 * demoFactor);
       }
-    }, 4_800);
+    }, 4_800 * demoFactor);
     return () => {
       window.clearTimeout(highlight);
       window.clearTimeout(fire);

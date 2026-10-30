@@ -732,3 +732,49 @@ body[data-demo-autopilot="1"] .app-shell {
 body[data-demo-autopilot="1"] .simulator-panel-root {
   display: none;
 }
+
+/* ------------------------------------------------------------------ */
+/* 平板 / 大屏适配（V1.0 模块 E）                                       */
+/* 手机壳布局是基线；这里只放宽宽度与提升可读性，不改变手机端样式。       */
+/* ------------------------------------------------------------------ */
+
+/* 预览模式条（/select）占据的顶部空间。 */
+body[data-preview-bar="1"] .app-shell {
+  padding-top: 44px;
+}
+
+/* 平板（≥768px）：页面放宽，横向内容不再局促。 */
+@media (min-width: 768px) {
+  .page {
+    max-width: 640px;
+    padding-inline: 24px;
+  }
+}
+
+/* 大屏 / 投影（≥1280px，16:9 常见）：进一步放宽并放大故事正文字号，
+   保证教室/礼堂后排可读；演示条同步放宽。 */
+@media (min-width: 1280px) {
+  .page {
+    max-width: 760px;
+    padding-inline: 32px;
+  }
+  .page p,
+  .page dd,
+  .page dt {
+    font-size: 15.5px;
+    line-height: 1.75;
+  }
+  .demo-bar-inner {
+    max-width: 720px;
+  }
+}
+
+/* 仅大屏显示（如地图页的全屏按钮）；手机/平板不渲染额外控件。 */
+.kiosk-only {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .kiosk-only {
+    display: flex;
+  }
+}
