@@ -40,22 +40,11 @@ interface CatalogGame {
 
 const repoCatalog = {
   version: "1.2",
-  updatedAt: "2026-10-29",
-  games: [
-    {
-      id: "rizal-park-discovery",
-      title: "黎刹公园：寻找最后的宝藏",
-      author: "MOS Scene Hunt · 官方母版",
-      description: "观察、图片线索、团队挑战与最终宝藏兑现的轻量户外寻宝示范。坐标需由设计者现场确认。",
-      language: "zh-CN",
-      estimatedMinutes: 25,
-      difficulty: "easy",
-      sceneCount: 5,
-      status: "published",
-      packFile: "rizal-park-discovery.json",
-      source: "repo",
-    },
-  ],
+  updatedAt: "2026-10-30",
+  // 游戏中心只保留官方示范（registry 中 state=published 的作品）。
+  // 内置精选包暂不展示：黎刹公园示范已由官方示范包取代；需要重新上架时
+  // 把条目加回这个数组即可（数据文件 content/cloud/*.json 仍在仓库里）。
+  games: [],
 };
 
 export async function GET(): Promise<NextResponse> {
