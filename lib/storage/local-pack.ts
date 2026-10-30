@@ -297,7 +297,20 @@ export async function deleteLocalPack(gameId: string): Promise<DeleteLocalPackRe
   await clearCachedGameContent(gameId).catch(() => undefined);
   clearGameState(gameId);
   removeHuntIndexEntry(gameId);
-  if (wasCurrent) clearCurrentAuthoredGameId();
+  if (wasCurrent) {
+    // Remove the pointer key directly: at a full quota the defensive adapter's
+    // probe write fails and `clearCurrentAuthoredGameId()` would only clear its
+    // in-memory mirror, leaving the real pointer pointing at a deleted pack.
+    // removeItem needs no quota. The call below still fires the listeners and
+    // cleans the adapter's memory fallback.
+    try {
+      window.localStorage.removeItem(CURRENT_AUTHORED_KEY);
+    } catch {
+      /* the clear call below reports nothing either way - the pointer degrades
+         safely to the demo pack on next boot (resolveActiveGameId) */
+    }
+    clearCurrentAuthoredGameId();
+  }
 
   return {
     ok: true,

@@ -260,6 +260,38 @@ describe("只删除本机副本", () => {
     }
     expect(window.localStorage.getItem(authoringKey("locked"))).not.toBeNull();
   });
+
+  it("配额写满时删除当前包，真实播放指针仍被清掉（不能只清内存镜像）", async () => {
+    saveAuthoredGameChecked(makeGame("quota-del-a"));
+    saveAuthoredGameChecked(makeGame("quota-del-b"));
+    markCurrentAuthoredGame("quota-del-b");
+
+    // setItem 抛配额错：防御适配器的探测写会失败，若指针复位走适配器，
+    // 只会清内存映射，真实 localStorage 里的指针会残留并指向已删除的包。
+    const base = window.localStorage;
+    const readOnly = {
+      get length() {
+        return base.length;
+      },
+      clear: () => base.clear(),
+      getItem: (key: string) => base.getItem(key),
+      key: (index: number) => base.key(index),
+      removeItem: (key: string) => base.removeItem(key),
+      setItem: () => {
+        throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+      },
+    } as Storage;
+    Object.defineProperty(window, "localStorage", { configurable: true, value: readOnly });
+    let result: Awaited<ReturnType<typeof deleteLocalPack>>;
+    try {
+      result = await deleteLocalPack("quota-del-b");
+    } finally {
+      Object.defineProperty(window, "localStorage", { configurable: true, value: base });
+    }
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.wasCurrent).toBe(true);
+    expect(window.localStorage.getItem("mos-scene-hunt:current-authored-game")).toBeNull();
+  });
 });
 
 describe("容量估算的降级", () => {

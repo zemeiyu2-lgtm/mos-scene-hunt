@@ -376,6 +376,11 @@ export async function cacheGameContent(game: Game): Promise<void> {
  * pack is re-fetchable from the network - but it returns real bytes to the
  * scarce localStorage budget. A key whose IndexedDB copy is missing is left
  * alone: that mirror may be the only offline copy in the browser.
+ *
+ * "Exists" is not enough: the IndexedDB copy must actually carry a `game`
+ * payload (`readCachedGameContent` rejects anything else). Deleting the
+ * mirror on the strength of a corrupt IndexedDB value could destroy the only
+ * readable offline copy, so an unreadable copy counts as missing here too.
  */
 export async function pruneDuplicatedContentCache(): Promise<{
   removedIds: string[];
@@ -399,8 +404,11 @@ export async function pruneDuplicatedContentCache(): Promise<{
   for (const key of keys) {
     const gameId = key.slice(CONTENT_CACHE_PREFIX.length);
     try {
-      const authoritative = await idbGet(key, contentStore);
-      if (!authoritative) continue;
+      const authoritative = await idbGet<{ game?: unknown }>(key, contentStore);
+      // Only a structurally valid copy proves the mirror is redundant. A
+      // missing OR unreadable IndexedDB value leaves the mirror untouched -
+      // deleting on a guess could remove the only playable copy.
+      if (!authoritative || typeof authoritative !== "object" || !authoritative.game) continue;
       const raw = window.localStorage.getItem(key);
       if (raw === null) continue;
       window.localStorage.removeItem(key);

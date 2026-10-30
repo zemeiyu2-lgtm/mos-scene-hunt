@@ -17,7 +17,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readAuthoredGame, saveAuthoredGameChecked } from "@/lib/content";
+import {
+  getActiveAuthoredGameId,
+  markCurrentAuthoredGame,
+  readAuthoredGame,
+  saveAuthoredGameChecked,
+} from "@/lib/content";
 import type { Game } from "@/lib/game/types";
 import { formatBytes, utf8ByteLength } from "@/lib/storage/bytes";
 
@@ -185,6 +190,24 @@ describe("空间不足", () => {
     expect(result.ok).toBe(false);
     expect(window.localStorage.getItem(KEY_PREFIX + game.id)).toBe(previous);
     expect(readAuthoredGame(game.id)?.scenes[0].media).toBeUndefined();
+  });
+
+  it("保存失败时，原有数据和播放指针均保持不变", () => {
+    useStorage(new BudgetedStorage(200_000));
+    const game = makeGame("quota-pointer");
+    expect(saveAuthoredGameChecked(game).ok).toBe(true);
+    markCurrentAuthoredGame("quota-pointer");
+    expect(getActiveAuthoredGameId()).toBe("quota-pointer");
+
+    const result = saveAuthoredGameChecked(withPhoto(game, 300_000));
+
+    expect(result.ok).toBe(false);
+    // 数据：旧版逐字节原样。
+    expect(window.localStorage.getItem(KEY_PREFIX + "quota-pointer")).toBe(
+      JSON.stringify(game),
+    );
+    // 指针：仍然指向这份旧版，不会因为保存失败被清掉或改指别的包。
+    expect(getActiveAuthoredGameId()).toBe("quota-pointer");
   });
 
   it("提示里说清：满了、这一份多大、旧版没被动过、下一步怎么做", () => {
