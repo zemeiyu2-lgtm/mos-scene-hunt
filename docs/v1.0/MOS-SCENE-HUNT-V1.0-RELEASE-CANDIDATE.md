@@ -1,6 +1,6 @@
 # MOS Scene Hunt V1.0 · 发布候选（RELEASE CANDIDATE）
 
-- 生成：2026-10-30 12:50 GMT+8
+- 生成：2026-10-30 12:50 GMT+8 ｜ **复核修订：2026-10-30 13:55 GMT+8（验收复核轮，见 §8）**
 - **状态：具备 V1.0 发布候选条件（有条件）—— 生产部署未执行，等待用户验收与授权。**
 
 ## 1. 版本标识
@@ -8,11 +8,11 @@
 | 项 | 值 |
 | --- | --- |
 | 分支 | `v1.0/platform-optimization` |
-| HEAD commit | `2a492af`（RC 生成时点；后续文档提交见 `git log`） |
+| HEAD commit | `a191c89` + 复核轮提交（见 §8；代码以最新 commit 为准） |
 | 基线 | `integration/20261030-admin-storage` @ `3331715`（= 当前生产内容） |
 | 合并 | 已并入 `qa/phase2-20261029` @ `66810f3`（`74c2a10`），唯一冲突为测试产物 JSON，保留最新快照 |
 | worktree | `D:\WorkBuddyData\WorkBuddy\2026-10-04-09-08-00\scene-hunt-v10` |
-| 远端 | **未推送**（无推送授权，按纪律保留本地） |
+| 远端 | **未推送**（无推送授权，按纪律保留本地；复核轮经 `git ls-remote` 再确认） |
 
 ## 2. 变更摘要
 
@@ -60,7 +60,7 @@
 | `app/globals.css` | 平板/大屏断点、预览条空间 |
 | `app/map/page.tsx` | 全屏切换按钮 |
 | `tests/runtime/mode.test.ts`、`tests/demo/demo-isolation.test.ts`、`tests/location/simulator-gate.test.ts` | 新增 18 项单测 |
-| `tests/e2e/probe-demo-isolation.mjs` | 新增 7 项隔离探针 |
+| `tests/e2e/probe-demo-isolation.mjs` | 新增 7 项隔离探针（A 项 SHA-256 字节级 + B 项语义级 + 归一化记录） |
 
 ## 4. 测试结论（详见 TEST-REPORT）
 
@@ -81,7 +81,7 @@
 | 1 | **生产仍开着 `NEXT_PUBLIC_ENABLE_GPS_SIMULATOR`**（11:18 设置）：生产玩家可用 DEV 模拟面板 | **P0（需授权）** | 部署 V1.0 时必须同时移除该变量、改设 `NEXT_PUBLIC_ENABLE_AUTO_DEMO=1`。代码侧已解耦，变量不改则修复无效。 |
 | 2 | 现场 GPS 校准未做 | 现场项 | `FIELD_CALIBRATION_PENDING`，不得宣称实地验收 |
 | 3 | iPhone Safari 配额清单 9 项未走真机 | 现场项 | 今晨遗留，需真机 |
-| 4 | 平板/大屏仅代码层适配 | 中 | 需真机/投影观感确认 |
+| 4 | 平板/大屏仅代码层适配 | 中 | 模拟环境（3 档视口截图）已通过（TEST-REPORT §8.4），真机/投影观感待现场确认 |
 | 5 | 预览条只在 /select 出现（进入 /map 后不可见） | 低 | 下一轮可在地图页加常驻标记 |
 | 6 | 「上一站」「从指定站起播」未实现 | 低 | 经评估复杂度高、价值有限，本版暂缓（任务书允许） |
 | 7 | 客户端信任边界（无法防开发者工具伪造） | 结构性 | 已如实写入 ARCHITECTURE §4，服务端验证列入演进 |
@@ -108,3 +108,13 @@
 | `d41777a` | 演示隔离探针 |
 | `74c2a10` | 合并 qa/phase2 |
 | `2a492af` | 演示能力守卫 + 目录契约测试 + lint 清理 |
+
+## 8. 验收复核轮（2026-10-30 13:37–13:55）
+
+按用户复核指令执行，全部只读/隔离环境，**零生产写入**。详细证据见 TEST-REPORT §8。
+
+1. **真人存档隔离（复核指令 §一）**：A 项（演示期间，不重进玩家、不触发 hydration）以原始内容 + SHA-256 取证，**逐字节一致通过**；B 项（重进玩家，语义级）有效进度零丢失，`lastUpdatedAt` 归一化已如实记录。探针升级后 7/7 复跑通过。
+2. **GPS 门控（复核指令 §二）**：代码层 URL/localStorage 均无法开启开发模拟器；演示走独立注入通道且服务端无奖励写入路径。生产旧变量仍存在（只读确认），P0 风险属环境问题，部署时须按 §6 处置。
+3. **生产边界（复核指令 §三）**：Alias/Deployment 与复核前一致（`dpl_DuvsvoRuTkrBTJECHiEJXaqZ3LMr`）；分支未推送；无其他分支覆盖生产。
+4. **多端模拟（复核指令 §四）**：3 档视口 × 4 类页面共 12 张截图证据（`tests/e2e/artifacts/responsive/`），演示条、全屏按钮断点行为符合设计；真机走查待现场。
+5. 复核基于 **a191c89 重新构建**的产物（消除此前构建早于 2a492af 的疑点）；新增 `tests/e2e/probe-responsive.mjs`。

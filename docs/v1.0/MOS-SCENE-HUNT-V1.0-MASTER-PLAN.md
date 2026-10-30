@@ -118,7 +118,7 @@ B（模式+存储路由）是 C/D/H 的地基；C 依赖 B 的模式判定；D �
 
 ## 15. 发布候选信息
 
-- 分支：`v1.0/platform-optimization` @ `2a492af`（本地，未推送）
+- 分支：`v1.0/platform-optimization` @ 复核轮收尾提交（本地，未推送；开发线至 a191c89，详见 CURRENT-STATE）
 - 变更摘要 / 关键文件 / 风险 / 部署清单：见 RELEASE-CANDIDATE
 - 回滚点（部署前）：`dpl_DuvsvoRuTkrBTJECHiEJXaqZ3LMr`（gi2t5r4xs），上一稳定 `kcc5lwyok`
 - **生产部署未执行**，等待用户验收与授权
