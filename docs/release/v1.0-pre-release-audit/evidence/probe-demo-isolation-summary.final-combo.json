@@ -1,0 +1,46 @@
+{
+  "probe": "demo-isolation",
+  "ranAt": "2026-10-30T06:13:43.515Z",
+  "pass": 7,
+  "total": 7,
+  "ok": true,
+  "results": [
+    {
+      "name": "预置真人进度与本地包，记录快照",
+      "ok": true
+    },
+    {
+      "name": "快照玩家键（演示前）：原始内容 + SHA-256",
+      "ok": true
+    },
+    {
+      "name": "运行完整自动演示至结束页（≤3 分钟）",
+      "ok": true
+    },
+    {
+      "name": "A·演示后真人存档逐字节一致（原始内容 + SHA-256，D-001）",
+      "ok": true
+    },
+    {
+      "name": "演示状态只在 demo 命名空间（D-012）",
+      "ok": true
+    },
+    {
+      "name": "退出演示回到游戏中心",
+      "ok": true
+    },
+    {
+      "name": "B·重进玩家页：有效进度完整 + 记录归一化（D-002/D-011）",
+      "ok": true
+    }
+  ],
+  "evidence": {
+    "saveSha256Before": "42cc5ca0cbb456ce1c9615220834dc1089fd90ff4442124667c0604b5cb7efc1",
+    "saveSha256After": "42cc5ca0cbb456ce1c9615220834dc1089fd90ff4442124667c0604b5cb7efc1",
+    "reenteredLastUpdatedAt": {
+      "before": 1,
+      "after": 1793340822180,
+      "changed": true
+    }
+  }
+}

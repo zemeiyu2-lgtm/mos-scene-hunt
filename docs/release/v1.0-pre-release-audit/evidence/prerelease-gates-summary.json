@@ -1,0 +1,35 @@
+{
+  "probe": "prerelease-gates",
+  "ranAt": "2026-10-30T06:12:16.300Z",
+  "build": "a79e058 @ final combo (no GPS_SIMULATOR, AUTO_DEMO=1)",
+  "pass": 5,
+  "total": 6,
+  "ok": false,
+  "results": [
+    {
+      "name": "关键路由全部 200",
+      "ok": false,
+      "error": "/api/games/mos-classic-01 → 404"
+    },
+    {
+      "name": "DEV 模拟器面板不存在（构建期门控）",
+      "ok": true
+    },
+    {
+      "name": "localStorage 篡改 simulatorEnabled 无效",
+      "ok": true
+    },
+    {
+      "name": "URL 参数无法开启模拟器",
+      "ok": true
+    },
+    {
+      "name": "?demo=1 演示入口正常（AUTO_DEMO=1）",
+      "ok": true
+    },
+    {
+      "name": "真人 GPS 代码路径：授权+坐标后应用消费 geolocation fix",
+      "ok": true
+    }
+  ]
+}

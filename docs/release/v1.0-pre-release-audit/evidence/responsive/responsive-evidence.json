@@ -1,0 +1,59 @@
+[
+  {
+    "viewport": "phone-portrait",
+    "size": "390x844",
+    "sceneTextHead": "复核站点一 | 站点一 | 🔊 | 已到达 | 这是一段用于检查故事排版在各类屏幕上的可读性的示例文本，长度刻意略长，覆盖多行折行与字号表现。 | 开始任务 → | 稍后再做",
+    "demo": {
+      "demoFlag": "1",
+      "barText": "自动演示第 1 / 2 站已到达 · 复核站点一正常暂停下一站退出 |       1 |        |      |       2 |        |      |               |      |        |      |               |               |            复核站点一100 m Leaflet | © OpenStr"
+    },
+    "fullscreenButton": {
+      "present": true,
+      "display": "none"
+    },
+    "screenshots": [
+      "tests\\e2e\\artifacts\\responsive\\phone-portrait-select.png",
+      "tests\\e2e\\artifacts\\responsive\\phone-portrait-scene.png",
+      "tests\\e2e\\artifacts\\responsive\\phone-portrait-map.png",
+      "tests\\e2e\\artifacts\\responsive\\phone-portrait-map-demo.png"
+    ]
+  },
+  {
+    "viewport": "tablet-landscape",
+    "size": "1024x768",
+    "sceneTextHead": "复核站点一 | 站点一 | 🔊 | 已到达 | 这是一段用于检查故事排版在各类屏幕上的可读性的示例文本，长度刻意略长，覆盖多行折行与字号表现。 | 开始任务 → | 稍后再做",
+    "demo": {
+      "demoFlag": "1",
+      "barText": "自动演示第 1 / 2 站已到达 · 复核站点一正常暂停下一站退出 |       1 |        |      |       2 |        |      |               |      |        |      |               |               |            复核站点一100 m Leaflet | © OpenStr"
+    },
+    "fullscreenButton": {
+      "present": true,
+      "display": "flex"
+    },
+    "screenshots": [
+      "tests\\e2e\\artifacts\\responsive\\tablet-landscape-select.png",
+      "tests\\e2e\\artifacts\\responsive\\tablet-landscape-scene.png",
+      "tests\\e2e\\artifacts\\responsive\\tablet-landscape-map.png",
+      "tests\\e2e\\artifacts\\responsive\\tablet-landscape-map-demo.png"
+    ]
+  },
+  {
+    "viewport": "large-screen",
+    "size": "1600x900",
+    "sceneTextHead": "复核站点一 | 站点一 | 🔊 | 已到达 | 这是一段用于检查故事排版在各类屏幕上的可读性的示例文本，长度刻意略长，覆盖多行折行与字号表现。 | 开始任务 → | 稍后再做",
+    "demo": {
+      "demoFlag": "1",
+      "barText": "自动演示第 1 / 2 站已到达 · 复核站点一正常暂停下一站退出 |       1 |        |      |       2 |        |      |               |      |        |      |               |               |            复核站点一100 m Leaflet | © OpenStr"
+    },
+    "fullscreenButton": {
+      "present": true,
+      "display": "flex"
+    },
+    "screenshots": [
+      "tests\\e2e\\artifacts\\responsive\\large-screen-select.png",
+      "tests\\e2e\\artifacts\\responsive\\large-screen-scene.png",
+      "tests\\e2e\\artifacts\\responsive\\large-screen-map.png",
+      "tests\\e2e\\artifacts\\responsive\\large-screen-map-demo.png"
+    ]
+  }
+]

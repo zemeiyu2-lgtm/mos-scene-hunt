@@ -118,3 +118,12 @@
 3. **生产边界（复核指令 §三）**：Alias/Deployment 与复核前一致（`dpl_DuvsvoRuTkrBTJECHiEJXaqZ3LMr`）；分支未推送；无其他分支覆盖生产。
 4. **多端模拟（复核指令 §四）**：3 档视口 × 4 类页面共 12 张截图证据（`tests/e2e/artifacts/responsive/`），演示条、全屏按钮断点行为符合设计；真机走查待现场。
 5. 复核基于 **a191c89 重新构建**的产物（消除此前构建早于 2a492af 的疑点）；新增 `tests/e2e/probe-responsive.mjs`。
+
+## 9. 生产发布准备核查轮（2026-10-30 14:05–14:32，增量追加）
+
+按《V1.0-PRE-RELEASE-AUDIT-01》指令完成只读核查，结论 **PASS WITH CONDITIONS**，全套报告见 `docs/release/v1.0-pre-release-audit/`（01–06 + evidence/）。要点：
+
+- 应用代码自 `2a492af` 至候选零变更（`git diff` 证明）；最终组合（无 SIMULATOR + AUTO_DEMO=1）在独立临时 worktree 构建成功并通过门控/隔离/后台/多端全部关键测试（40 项 E2E 未在候选 SHA 完整复跑，差异已标注，已列入部署前可选严格项）。
+- 生产旧变量 14:08 只读核实仍存在 → 部署前置条件不变（§6 清单）。
+- 回滚评估：今晨生产部署均构建于 SIMULATOR=1 期间，**回滚=重新引入模拟定位暴露**，必须按 05 号文档标记安全状态。
+- 本轮未执行任何生产写入；分支仍未推送。
