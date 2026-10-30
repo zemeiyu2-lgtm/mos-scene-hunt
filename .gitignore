@@ -42,3 +42,6 @@ vitest.config.*.timestamp-*
 
 # 已发布游戏的本机存储（serverization batch 1）
 /.published-games/
+
+.vercel
+.env*
