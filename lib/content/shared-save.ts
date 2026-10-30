@@ -90,7 +90,10 @@ export function saveSharedGameToLibrary(game: Game): SharedGameSaveOutcome {
 
   // Read back the exact bytes we intended to store. `hasAuthoredGame` only
   // proves the key exists; this proves the content actually round-tripped.
-  const expected = JSON.stringify(game);
+  // The payload is reused from the save result: re-serialising a large pack a
+  // second time only to compare it is wasted work on the exact path where the
+  // biggest packs arrive.
+  const expected = result.serialized ?? JSON.stringify(game);
   let storedRaw: string | null = null;
   try {
     storedRaw = window.localStorage.getItem(`${AUTHORING_PREFIX}${game.id}`);

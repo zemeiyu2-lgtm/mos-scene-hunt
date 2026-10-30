@@ -11,6 +11,7 @@ import {
 import { readSharedGameFromUrl } from "./share";
 import { unwrapGamePackage, validateGamePackage } from "../game/package";
 import { getSharedGameLibraryState } from "./shared-save";
+import { formatBytes, utf8ByteLength } from "../storage/bytes";
 import {
   cacheGameContent,
   clearCurrentAuthoredGameId,
@@ -33,6 +34,48 @@ export interface SaveAuthoredResult {
   errors: ValidationIssue[];
   /** Non-blocking remarks; a save with warnings still succeeds. */
   warnings: ValidationIssue[];
+  /** UTF-8 bytes written, when `ok` is true. */
+  bytes?: number;
+  /**
+   * The exact payload that was written.
+   *
+   * Callers that must prove a byte-exact round-trip (import, share-save) would
+   * otherwise `JSON.stringify` a multi-megabyte pack a second time. Returning
+   * the bytes we already serialised removes that duplicate work on exactly the
+   * path where the biggest packs arrive.
+   */
+  serialized?: string;
+}
+
+/**
+ * Above this size a single pack deserves a warning before the author keeps
+ * adding photos. It is NOT a limit: the browser owns the real limit and can
+ * change it, so this only ever adds a non-blocking warning.
+ */
+const PACK_SIZE_NOTICE_BYTES = 1.5 * 1024 * 1024;
+
+/** Bytes of `data:` URLs in a pack - the part an author can actually shrink. */
+function embeddedMediaBytes(game: Game): number {
+  let bytes = 0;
+  const visit = (media: Game["scenes"][number]["media"]) => {
+    if (!Array.isArray(media)) return;
+    for (const item of media) {
+      if (typeof item?.url === "string" && item.url.startsWith("data:")) bytes += item.url.length;
+    }
+  };
+  for (const scene of game.scenes ?? []) {
+    visit(scene.media);
+    visit(scene.challenge?.media);
+  }
+  return bytes;
+}
+
+function isQuotaError(error: unknown): boolean {
+  if (typeof DOMException !== "undefined" && error instanceof DOMException) {
+    // Safari uses QuotaExceededError for a full quota AND for private browsing.
+    return error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED";
+  }
+  return /quota|exceeded/i.test(error instanceof Error ? error.message : String(error));
 }
 
 /**
@@ -43,6 +86,14 @@ export interface SaveAuthoredResult {
  * library on the next reload - the author sees "已保存", reopens the editor and
  * finds the game gone. Gating on the *same* validator on the way in keeps the
  * two sides symmetric: if this returns `ok`, the slot is guaranteed readable.
+ *
+ * Write discipline (why a failed save can never destroy the previous version):
+ *   1. validate,
+ *   2. serialise exactly once - a circular reference fails here, before any
+ *      storage is touched,
+ *   3. `setItem` into the same key. `localStorage.setItem` is atomic: on a
+ *      quota error it throws and the old value stays untouched,
+ *   4. read the bytes back and compare. Only then is `ok` returned.
  *
  * Deliberately does not apply the stricter spatial publishing rules
  * (`validateSpatial`): those are warnings for an in-progress draft, and blocking
@@ -97,9 +148,10 @@ export function saveAuthoredGameChecked(game: Game): SaveAuthoredResult {
     };
   }
 
+  // One serialisation, shared by the size check, the write and the readback.
+  let serialized: string;
   try {
-    window.localStorage.setItem(authoringKey(game.id), JSON.stringify(game));
-    return { ok: true, errors: [], warnings };
+    serialized = JSON.stringify(game);
   } catch (error) {
     return {
       ok: false,
@@ -107,15 +159,91 @@ export function saveAuthoredGameChecked(game: Game): SaveAuthoredResult {
         {
           path: "$",
           message:
-            error instanceof Error && /quota/i.test(error.message)
-              ? "浏览器本机存储已满，请删除不再需要的游戏后重试"
-              : "无法写入浏览器本机存储，请检查隐私模式或存储权限",
+            "游戏数据无法序列化（可能包含循环引用或不可保存的对象），本次没有写入任何内容。" +
+            (error instanceof Error && error.message ? `（${error.message}）` : ""),
           severity: "error",
         },
       ],
       warnings,
     };
   }
+
+  const bytes = utf8ByteLength(serialized);
+  let allWarnings = warnings;
+  if (bytes > PACK_SIZE_NOTICE_BYTES) {
+    const media = embeddedMediaBytes(game);
+    const mediaNote =
+      media > 0
+        ? `其中约 ${formatBytes(media)} 是内嵌在游戏包里的图片/文件（占 ${Math.round(
+            (media / bytes) * 100,
+          )}%），这部分最容易压缩：换成更小的图片或删掉不需要的素材，可以立刻省出空间。`
+        : "这份游戏包没有内嵌图片，体积主要来自文字与点位数据。";
+    allWarnings = [
+      ...warnings,
+      {
+        path: "$",
+        message:
+          `这份游戏包约 ${formatBytes(bytes)}，已经偏大。${mediaNote}` +
+          "浏览器为本站分配的空间是有限的，过大的游戏包更容易触发保存失败。",
+        severity: "warning",
+      },
+    ];
+  }
+
+  let hadPrevious = false;
+  try {
+    hadPrevious = window.localStorage.getItem(authoringKey(game.id)) !== null;
+  } catch {
+    hadPrevious = false;
+  }
+
+  try {
+    window.localStorage.setItem(authoringKey(game.id), serialized);
+  } catch (error) {
+    const quota = isQuotaError(error);
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "$",
+          message: quota
+            ? `浏览器本机存储已满，这份游戏包约 ${formatBytes(bytes)}，写入被浏览器拒绝。` +
+              "可以到「本机存储」删除不再需要的本地副本，或减少游戏包里的内嵌图片和文件后重试。" +
+              "也可能是无痕浏览等浏览器限制（无痕窗口关闭后会清空本机游戏）。" +
+              (hadPrevious ? "本机上的上一版没有被改动。" : "")
+            : "无法写入浏览器本机存储，请检查隐私模式或存储权限。" +
+              (error instanceof Error && error.message ? `（${error.message}）` : ""),
+          severity: "error",
+        },
+      ],
+      warnings: allWarnings,
+    };
+  }
+
+  // Read the exact bytes back. "The key exists" is not proof that the write
+  // we intended is the write that landed.
+  let stored: string | null = null;
+  try {
+    stored = window.localStorage.getItem(authoringKey(game.id));
+  } catch {
+    stored = null;
+  }
+  if (stored !== serialized) {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "$",
+          message:
+            "写入后读回校验未通过，不能确认游戏已保存。请重试；若反复失败，请到「本机存储」查看空间情况。",
+          severity: "error",
+        },
+      ],
+      warnings: allWarnings,
+    };
+  }
+
+  return { ok: true, errors: [], warnings: allWarnings, bytes, serialized };
 }
 
 /** Save a locally authored pack. It is intentionally browser-local until a future backend exists. */
@@ -493,8 +621,10 @@ export function importGamePackageChecked(text: string): ImportPackageOutcome {
         saveResult.errors[0]?.message ?? "游戏包无法保存到本机，请检查浏览器存储权限",
     };
   }
-  // Read-back verification: only the exact bytes prove the write succeeded.
-  if (readAuthoredGameRaw(game.id) !== JSON.stringify(game)) {
+  // Read-back verification: `saveAuthoredGameChecked` already re-read the exact
+  // payload it wrote, so compare against that same payload instead of
+  // serialising the (possibly multi-megabyte) pack a second time here.
+  if (saveResult.serialized !== undefined && readAuthoredGameRaw(game.id) !== saveResult.serialized) {
     return {
       status: "error",
       message: "保存后读回校验未通过，不能确认已保存。请重试；若反复失败，请检查浏览器存储空间。",
