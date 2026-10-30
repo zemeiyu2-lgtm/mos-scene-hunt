@@ -16,6 +16,7 @@ import { get as idbGet, set as idbSet, del as idbDel, createStore } from "idb-ke
 import { utf8ByteLength } from "./bytes";
 import type { GameState } from "../game/state";
 import type { Game } from "../game/types";
+import type { RuntimeMode } from "../runtime/mode";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -256,6 +257,130 @@ export function clearGameState(gameId?: string): void {
       // Preserve an unreadable legacy payload rather than deleting it.
     }
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Runtime-mode save routing                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Demo and preview sessions get their own state namespaces so neither can ever
+ * touch the player save. Both live in sessionStorage: a refresh continues the
+ * session (a paused demo survives a reload), and closing the tab discards the
+ * whole session - which is exactly the demo/preview lifecycle. The player
+ * namespace (`save:<gameId>`, localStorage) is untouched by both.
+ */
+const DEMO_SAVE_PREFIX = "mos-scene-hunt:demo:";
+const PREVIEW_SAVE_PREFIX = "mos-scene-hunt:preview:";
+
+function transientSaveKey(mode: "demo" | "preview", gameId: string): string {
+  const prefix = mode === "demo" ? DEMO_SAVE_PREFIX : PREVIEW_SAVE_PREFIX;
+  return `${prefix}${encodeURIComponent(gameId)}`;
+}
+
+function safeSessionStorage(): Storage | null {
+  try {
+    if (typeof window === "undefined") return null;
+    const probe = "__mos_probe__";
+    window.sessionStorage.setItem(probe, "1");
+    window.sessionStorage.removeItem(probe);
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+function readSessionRaw(key: string): string | null {
+  const ss = safeSessionStorage();
+  if (ss) {
+    try {
+      return ss.getItem(key);
+    } catch {
+      /* fall through */
+    }
+  }
+  return memoryStore.get(key) ?? null;
+}
+
+function writeSessionRaw(key: string, value: string): boolean {
+  const ss = safeSessionStorage();
+  if (ss) {
+    try {
+      ss.setItem(key, value);
+      return true;
+    } catch {
+      /* fall through to memory */
+    }
+  }
+  memoryStore.set(key, value);
+  return true;
+}
+
+function removeSessionRaw(key: string): void {
+  const ss = safeSessionStorage();
+  if (ss) {
+    try {
+      ss.removeItem(key);
+    } catch {
+      /* ignore */
+    }
+  }
+  memoryStore.delete(key);
+}
+
+function parseSaveEnvelope(raw: string | null, gameId: string): GameState | null {
+  if (!raw) return null;
+  try {
+    const envelope = JSON.parse(raw) as SaveEnvelope;
+    if (!envelope || envelope.schemaVersion !== SAVE_SCHEMA_VERSION) return null;
+    if (envelope.gameId !== gameId) return null;
+    if (!envelope.state || typeof envelope.state !== "object") return null;
+    return envelope.state;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist hunt state under the given runtime mode. "player" writes the normal
+ * player save; "demo"/"preview" write to their own sessionStorage namespace.
+ */
+export function saveGameStateForMode(state: GameState, mode: RuntimeMode): boolean {
+  if (mode === "player") return saveGameState(state);
+  const envelope: SaveEnvelope = {
+    schemaVersion: SAVE_SCHEMA_VERSION,
+    savedAt: Date.now(),
+    gameId: state.gameId,
+    gameVersion: state.gameVersion,
+    state,
+  };
+  return writeSessionRaw(transientSaveKey(mode, state.gameId), JSON.stringify(envelope));
+}
+
+/**
+ * Read hunt state for the given runtime mode. "player" keeps the existing
+ * behavior including legacy active-save migration; demo/preview never fall
+ * back to the player save - a fresh session simply starts un-hydrated.
+ */
+export function loadGameStateForMode(gameId: string, mode: RuntimeMode): GameState | null {
+  if (mode === "player") return loadGameState(gameId);
+  return parseSaveEnvelope(readSessionRaw(transientSaveKey(mode, gameId)), gameId);
+}
+
+/**
+ * Clear hunt state for the given runtime mode. In demo/preview this clears
+ * ONLY the transient namespace - the player save is never touched here.
+ */
+export function clearGameStateForMode(gameId: string | undefined, mode: RuntimeMode): void {
+  if (!gameId) {
+    if (mode === "player") clearGameState();
+    return;
+  }
+  if (mode === "player") {
+    clearGameState(gameId);
+    return;
+  }
+  removeSessionRaw(transientSaveKey(mode, gameId));
 }
 
 /* ------------------------------------------------------------------ */

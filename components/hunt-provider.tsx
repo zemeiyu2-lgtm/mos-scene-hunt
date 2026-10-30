@@ -42,12 +42,13 @@ import { DEFAULT_TRIGGER_RADIUS, distanceToLocation, isWithinRadius, type Positi
 import { entryScene, sceneOrder, type Game, type Scene } from "@/lib/game/types";
 import { loadGame, type LoadedGame } from "@/lib/content";
 import {
-  clearGameState,
-  loadGameState,
-  saveGameState,
+  clearGameStateForMode,
+  loadGameStateForMode,
+  saveGameStateForMode,
   upsertHuntIndex,
   type SaveEnvelope,
 } from "@/lib/storage";
+import { resolveRuntimeMode, type RuntimeMode } from "@/lib/runtime/mode";
 import { useSettings } from "./providers";
 import { useGps } from "./gps-provider";
 
@@ -61,6 +62,8 @@ export interface SceneDistance {
 }
 
 interface HuntContextValue {
+  /** The runtime mode this provider instance was mounted in. */
+  runtimeMode: RuntimeMode;
   game: Game | null;
   state: GameState | null;
   loading: boolean;
@@ -123,6 +126,23 @@ export function HuntProvider({
   const { settings } = useSettings();
   const { fix } = useGps();
 
+  /**
+   * The runtime mode is decided ONCE per provider mount, before any state is
+   * hydrated or persisted. Entering demo/preview is a full page navigation, so
+   * a provider instance never switches mode mid-flight - which is what makes
+   * "demo can never write the player save" a structural guarantee rather than
+   * a per-call check.
+   */
+  const modeRef = useRef<RuntimeMode | null>(null);
+  const getRuntimeMode = useCallback((): RuntimeMode => {
+    if (modeRef.current === null) {
+      modeRef.current = resolveRuntimeMode(
+        typeof window === "undefined" ? null : window.location.search,
+      );
+    }
+    return modeRef.current;
+  }, []);
+
   const [loaded, setLoaded] = useState<LoadedGame | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -172,7 +192,9 @@ export function HuntProvider({
         // usually stays demo-hunt), and hydrating by the prop id made every
         // share-link open treat the player's existing save for that game as a
         // mismatch and re-persist a fresh state over it - silent progress loss.
-        const persisted = loadGameState(result.game.id);
+        // Hydration is mode-aware: demo/preview sessions read their own
+        // transient namespace and never fall back to the player save.
+        const persisted = loadGameStateForMode(result.game.id, getRuntimeMode());
         const hydrated = reconcileState(result.game, persisted);
         dispatch({ type: "HYDRATE", state: hydrated, __game: result.game } as never);
       } catch (err) {
@@ -229,10 +251,13 @@ export function HuntProvider({
     if (!state) return;
     // Debounced: a walking player generates a fix per second and each one
     // touches lastUpdatedAt.
+    const mode = getRuntimeMode();
     const id = window.setTimeout(() => {
-      if (saveGameState(state)) {
+      if (saveGameStateForMode(state, mode)) {
         setLastSaveAt(Date.now());
-        if (loadedGameRef.current) {
+        // Only real player progress belongs in the multi-hunt index - demo and
+        // preview sessions must never appear in the "resume game" list.
+        if (mode === "player" && loadedGameRef.current) {
           upsertHuntIndex({
             gameId: state.gameId,
             title: loadedGameRef.current.title,
@@ -244,7 +269,7 @@ export function HuntProvider({
       }
     }, 250);
     return () => window.clearTimeout(id);
-  }, [state]);
+  }, [state, getRuntimeMode]);
 
   /* ---------------------------------------------------------------- */
   /* Derived values                                                  */
@@ -348,10 +373,12 @@ export function HuntProvider({
     [act],
   );
   const resetHunt = useCallback(() => {
-    // Clear only this hunt. Other games keep their independent saves.
-    if (state?.gameId) clearGameState(state.gameId);
+    // Clear only this hunt, in the CURRENT runtime mode's namespace. In demo
+    // mode "重新演示" therefore clears only the demo session state - the real
+    // player save is structurally out of reach.
+    if (state?.gameId) clearGameStateForMode(state.gameId, getRuntimeMode());
     act({ type: "RESET", now: Date.now() });
-  }, [act, state?.gameId]);
+  }, [act, state?.gameId, getRuntimeMode]);
 
   const setStateExternal = useCallback(
     (next: GameState) => {
@@ -396,6 +423,7 @@ export function HuntProvider({
 
   const value = useMemo<HuntContextValue>(
     () => ({
+      runtimeMode: getRuntimeMode(),
       game: loaded?.game ?? null,
       state,
       loading,
@@ -427,6 +455,7 @@ export function HuntProvider({
       lastSaveAt,
     }),
     [
+      getRuntimeMode,
       loaded,
       state,
       loading,

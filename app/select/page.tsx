@@ -16,7 +16,9 @@ import { useGps } from "@/components/gps-provider";
 import { findManifestEntry } from "@/lib/content";
 import { readSharedGameOutcome } from "@/lib/content/share";
 import { isSimulatorAvailable } from "@/lib/location";
-import { enableDemo } from "@/lib/demo/autopilot";
+import { enableDemo, isDemoSupported } from "@/lib/demo/autopilot";
+import { clearGameStateForMode } from "@/lib/storage";
+import { disablePreview } from "@/lib/runtime/mode";
 import {
   getSharedGameLibraryState,
   saveSharedGameToLibrary,
@@ -36,12 +38,23 @@ export default function SelectPage() {
     startHunt,
     contentSource,
     isSharedFromLink,
+    runtimeMode,
   } = useHunt();
   const { start, status, permission } = useGps();
 
   // 分享链接诊断：URL 带 #hunt= 载荷却没能还原出游戏时，必须告诉接收者原因。
   // 旧版这里静默回退到示范游戏，接收者会以为作者分享了别的游戏。
   const [shareBroken, setShareBroken] = useState<string | null>(null);
+
+  // Body marker so globals.css can pad the shell below the fixed preview bar.
+  useEffect(() => {
+    if (runtimeMode === "preview") document.body.dataset.previewBar = "1";
+    else delete document.body.dataset.previewBar;
+    return () => {
+      delete document.body.dataset.previewBar;
+    };
+  }, [runtimeMode]);
+
   useEffect(() => {
     let cancelled = false;
     void readSharedGameOutcome().then((outcome) => {
@@ -98,13 +111,17 @@ export default function SelectPage() {
 
   const completedCount = statuses.filter((s) => s.status === "completed").length;
 
-  // 自动演示入口：仅在有 GPS 模拟器的环境（开发版或显式开启的部署）出现，
-  // 玩家正式环境完全不渲染，避免误导。演示不写存档以外的任何数据。
-  const demoAvailable = useMemo(() => isSimulatorAvailable(), []);
+  // 自动演示入口：仅在支持演示的环境（开发版 / NEXT_PUBLIC_ENABLE_AUTO_DEMO=1
+  // 的部署）出现，玩家正式环境完全不渲染，避免误导。演示全程使用独立的
+  // demo 存档命名空间，开始即整页导航重挂载 provider——从结构上保证演示
+  // 永远不会写入真人存档（决策 D-001/D-004）。
+  const demoAvailable = useMemo(() => isDemoSupported(), []);
   const beginDemo = () => {
+    // Fresh demo session: drop any stale demo state for this pack, then let
+    // the reload re-mount the provider in demo mode.
+    if (game?.id) clearGameStateForMode(game.id, "demo");
     enableDemo();
-    startHunt();
-    router.push("/map");
+    window.location.assign("/map");
   };
 
   const hasProgress = Boolean(state && state.inventory.length > 0);
@@ -324,6 +341,29 @@ export default function SelectPage() {
         </p>
       ) : null}
     </Screen>
+      {runtimeMode === "preview" ? (
+        <div className="fixed inset-x-0 top-0 z-[900] border-b border-violet-200 bg-violet-600/95 text-white shadow-lg">
+          <div className="mx-auto flex h-11 max-w-[520px] items-center gap-2 px-3">
+            <span className="shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+              预览模式
+            </span>
+            <p className="min-w-0 flex-1 truncate text-[11px] text-white/85">
+              试玩不计入真人进度，也不会改动已保存的游戏包
+            </p>
+            <button
+              type="button"
+              className="shrink-0 rounded-lg bg-white/15 px-2.5 py-1 text-[11px] font-medium hover:bg-white/25"
+              onClick={() => {
+                disablePreview();
+                if (game?.id) clearGameStateForMode(game.id, "preview");
+                window.location.assign("/design");
+              }}
+            >
+              结束预览
+            </button>
+          </div>
+        </div>
+      ) : null}
       <TabBar />
     </>
   );

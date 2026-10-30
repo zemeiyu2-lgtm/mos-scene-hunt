@@ -29,6 +29,7 @@ import {
   type PermissionState,
   type PositionFix,
 } from "@/lib/location";
+import { resolveRuntimeMode } from "@/lib/runtime/mode";
 import { useSettings } from "./providers";
 
 export type GpsStatus =
@@ -175,8 +176,18 @@ export function GpsProvider({ children }: { children: ReactNode }) {
    */
   const simulatorCoordinate = settings.simulatorCoordinate;
   const simEnabled = settings.simulatorEnabled && simulatorCoordinate !== null;
+  /**
+   * In demo mode the autopilot owns a dedicated injection channel and must be
+   * the single source of simulated fixes - a leftover player setting must not
+   * fight it (or leak a second source of fake positions into the session).
+   */
+  const demoMode = useRef<boolean | null>(null);
+  if (demoMode.current === null) {
+    demoMode.current =
+      typeof window !== "undefined" && resolveRuntimeMode() === "demo";
+  }
   useEffect(() => {
-    if (!simEnabled || !simulatorAvailable) {
+    if (!simEnabled || demoMode.current || !simulatorAvailable) {
       simulatorActiveRef.current = false;
       return;
     }

@@ -37,6 +37,7 @@ import {
   readAuthoredGame,
 } from "@/lib/content";
 import type { Game, HuntArea, Reward, Scene } from "@/lib/game/types";
+import { enablePreview } from "@/lib/runtime/mode";
 import {
   addChoiceOption,
   answerLines,
@@ -692,9 +693,18 @@ export default function DesignPage() {
    * immediately hits play expects those edits to be in the hunt. Saving here
    * makes that the only outcome, and marking the pack first guarantees the
    * /select screen resolves to it.
+   *
+   * The try-out runs in PREVIEW mode (decision D-004/D-006): a full page
+   * navigation re-mounts the provider in preview mode, so the walk-through
+   * reads/writes the preview session namespace only - never the player save,
+   * and nothing about the pack itself is changed by playing it. Exit via the
+   * preview bar on /select.
    */
   const play = () => {
-    if (save()) router.push("/select");
+    if (save()) {
+      enablePreview();
+      window.location.assign("/select?preview=1");
+    }
   };
 
   const loadOfficialTemplate = () => {

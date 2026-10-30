@@ -19,6 +19,7 @@
 
 import { entryScene, type Challenge, type Game } from "../game/types";
 import type { SceneStatus } from "../game/state";
+import { isSimulatorAvailable } from "../location";
 
 export const DEMO_SESSION_KEY = "mos.demo.autopilot";
 
@@ -61,6 +62,67 @@ export function urlRequestsDemo(search: string | null | undefined): boolean {
     return new URLSearchParams(search).get("demo") === "1";
   } catch {
     return false;
+  }
+}
+
+/**
+ * Whether the auto-demo may run in this build.
+ *
+ * Deliberately DECOUPLED from the DEV GPS simulator gate: a production kiosk
+ * enables the demo with `NEXT_PUBLIC_ENABLE_AUTO_DEMO=1` while the DEV
+ * simulator panel stays off, so a stakeholder-facing demo never hands real
+ * players a fake-position panel. Dev/E2E builds keep working through the
+ * existing simulator gate.
+ */
+export function isDemoSupported(): boolean {
+  if (
+    typeof process !== "undefined" &&
+    process.env.NEXT_PUBLIC_ENABLE_AUTO_DEMO === "1"
+  ) {
+    return true;
+  }
+  return isSimulatorAvailable();
+}
+
+/* ------------------------------------------------------------------ */
+/* Demo playback speed                                                */
+/* ------------------------------------------------------------------ */
+
+export type DemoSpeed = "slow" | "normal" | "fast";
+
+const DEMO_SPEED_KEY = "mos.demo.speed";
+
+export function getDemoSpeed(): DemoSpeed {
+  if (typeof window === "undefined") return "normal";
+  try {
+    const raw = window.sessionStorage.getItem(DEMO_SPEED_KEY);
+    return raw === "slow" || raw === "fast" ? raw : "normal";
+  } catch {
+    return "normal";
+  }
+}
+
+export function setDemoSpeed(speed: DemoSpeed): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(DEMO_SPEED_KEY, speed);
+  } catch {
+    // Best-effort; the demo keeps running at normal speed.
+  }
+}
+
+/**
+ * Multiplier applied to every demo wait (arrival beat, auto-answer beats,
+ * reward dwell). slow=more patient for a stage, fast=quicker for a lobby.
+ */
+export function demoSpeedFactor(speed: DemoSpeed = getDemoSpeed()): number {
+  switch (speed) {
+    case "slow":
+      return 1.8;
+    case "fast":
+      return 0.4;
+    default:
+      return 1;
   }
 }
 
