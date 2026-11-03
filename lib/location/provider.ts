@@ -204,6 +204,12 @@ export function watchPosition(
       onFix(fix);
     },
     (err) => {
+      // Lifecycle guard (B-01 review P2): a callback the browser already
+      // queued before clearWatch() must not reach the consumer after the
+      // watch was stopped - a late PERMISSION_DENIED would otherwise kill a
+      // healthy replacement watcher. The success callback has the same guard
+      // above.
+      if (stopped) return;
       const geoErr = toGeoError(err);
       onError?.(geoErr);
       if (geoErr.code === "PERMISSION_DENIED") {

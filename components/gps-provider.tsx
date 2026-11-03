@@ -122,6 +122,14 @@ export function GpsProvider({ children }: { children: ReactNode }) {
   /** Mirrors `status` for timer callbacks that must not re-subscribe. */
   const statusRef = useRef<GpsStatus>(status);
   statusRef.current = status;
+  /**
+   * Instance identity of the current watcher subscription. Every
+   * `beginWatching()` mints a new generation; callbacks captured by an older
+   * subscription no-op once superseded. The lib-level `stopped` guard blocks
+   * late deliveries in production, and this ref makes the provider immune
+   * even to callbacks that slip past it (belt and braces, B-01 review P2).
+   */
+  const watchGenerationRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -170,9 +178,10 @@ export function GpsProvider({ children }: { children: ReactNode }) {
    */
   const beginWatching = useCallback(() => {
     watcherRef.current?.stop();
+    const generation = ++watchGenerationRef.current;
     watcherRef.current = watchPosition(
       (next) => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || watchGenerationRef.current !== generation) return;
         // While the simulator is enabled it is the single source of truth. A
         // real fix arriving a moment later must not yank the developer's
         // simulated position back to their desk mid-test.
@@ -183,7 +192,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
         setError(null);
       },
       (err) => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || watchGenerationRef.current !== generation) return;
         // Recoverable errors keep the previous fix on screen; only surface the
         // fatal ones as a blocking state.
         setError(err);

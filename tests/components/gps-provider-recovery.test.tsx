@@ -413,6 +413,33 @@ describe("GpsProvider - F4 watchdog", () => {
 });
 
 describe("GpsProvider - watcher hygiene", () => {
+  it("a late error from a REPLACED watcher cannot touch the new watcher (generation guard)", async () => {
+    await mountedAndWatching();
+    const oldWatch = liveWatches()[0];
+
+    act(() => gpsValue?.retry());
+    await waitFor(() => expect(liveWatches().length).toBe(1));
+    const newWatch = liveWatches()[0];
+    expect(newWatch.id).not.toBe(oldWatch.id);
+
+    // The old subscription fires a queued PERMISSION_DENIED after being
+    // replaced: the generation guard must swallow it - no error state, no
+    // permission flip, and the NEW watcher must stay alive.
+    act(() => oldWatch.onErr({ code: "PERMISSION_DENIED", message: "late denial", userMessage: "late" }));
+    expect(gpsValue?.status).toBe("watching");
+    expect(gpsValue?.error).toBeNull();
+    expect(gpsValue?.permission).toBe("granted");
+    expect(newWatch.stopped).toBe(false);
+    expect(liveWatches().length).toBe(1);
+
+    // Same protection for a late FIX from the old watcher: state keeps the
+    // new watcher's data.
+    act(() => newWatch.onFix(fixFixture()));
+    const freshLat = gpsValue?.fix?.lat;
+    act(() => oldWatch.onFix({ ...fixFixture(), lat: 1.23 }));
+    expect(gpsValue?.fix?.lat).toBe(freshLat);
+  });
+
   it("repeated retry/start/visibility cycles never stack duplicate watchers", async () => {
     await mountedAndWatching();
     const callsBefore = vi.mocked(watchPosition).mock.calls.length;
