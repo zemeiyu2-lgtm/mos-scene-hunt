@@ -25,6 +25,7 @@ import {
 } from "@/lib/content/shared-save";
 import { ErrorState, Screen } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
+import { detectCurrentPlatform, permissionRecoveryGuide } from "@/lib/location/guidance";
 
 export default function SelectPage() {
   const router = useRouter();
@@ -40,6 +41,10 @@ export default function SelectPage() {
     runtimeMode,
   } = useHunt();
   const { start, status, permission } = useGps();
+  const deniedGuide = useMemo(
+    () => permissionRecoveryGuide(detectCurrentPlatform()),
+    [],
+  );
 
   // 分享链接诊断：URL 带 #hunt= 载荷却没能还原出游戏时，必须告诉接收者原因。
   // 旧版这里静默回退到示范游戏，接收者会以为作者分享了别的游戏。
@@ -310,9 +315,19 @@ export default function SelectPage() {
           <li>· 无需注册或登录，进度保存在本机。</li>
         </ul>
         {permission === "denied" ? (
-          <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-[12px] leading-snug text-red-700">
-            检测到定位权限已被拒绝。请在浏览器地址栏的站点设置中重新允许定位，否则无法开始。
-          </p>
+          // B-03: the old copy sent every player to the address bar, which does
+          // not exist on iOS. The steps now match the platform in use.
+          <div className="mt-3 rounded-xl bg-red-50 px-3 py-2.5 text-red-700">
+            <p className="text-[13px] font-semibold leading-snug">{deniedGuide.title}</p>
+            <ol className="mt-1.5 space-y-1 pl-4 text-[13px] leading-snug" style={{ listStyle: "decimal" }}>
+              {deniedGuide.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+            {deniedGuide.note ? (
+              <p className="mt-1.5 text-[12.5px] leading-snug">{deniedGuide.note}</p>
+            ) : null}
+          </div>
         ) : null}
       </div>
 

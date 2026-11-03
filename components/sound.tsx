@@ -27,7 +27,26 @@ export function isSoundEnabled(): boolean {
   return window.localStorage.getItem(KEY) !== "off";
 }
 
-export type AudioPlaybackState = "unavailable" | "suspended" | "running";
+export type AudioPlaybackState = "unavailable" | "suspended" | "interrupted" | "running";
+
+/**
+ * Read the real context state.
+ *
+ * iOS Safari adds a non-standard `interrupted` state (incoming call, Siri,
+ * another app taking the audio session). The previous check was
+ * `state === "suspended" ? "suspended" : "running"`, so an interrupted context
+ * was reported as *running*: the arrival cue was scheduled into a context that
+ * produced no sound, and the "tap to restore sound" hint was suppressed at the
+ * exact moment it was needed (B-02 UX-08).
+ */
+function readAudioState(audio: AudioContext): AudioPlaybackState {
+  const state = (audio as AudioContext & { state: string }).state;
+  if (state === "running") return "running";
+  if (state === "interrupted") return "interrupted";
+  // "closed" cannot be resumed; from the caller's point of view it is gone.
+  if (state === "closed") return "unavailable";
+  return "suspended";
+}
 
 /**
  * Current audio readiness, for UI that wants to explain an autoplay-policy
@@ -37,7 +56,7 @@ export type AudioPlaybackState = "unavailable" | "suspended" | "running";
  */
 export function currentAudioState(): AudioPlaybackState {
   if (typeof window === "undefined" || !ctx) return "unavailable";
-  return ctx.state === "suspended" ? "suspended" : "running";
+  return readAudioState(ctx);
 }
 
 /* ------------------------------------------------------------------ */
@@ -89,12 +108,60 @@ function getContext(): AudioContext | null {
   return ctx;
 }
 
+/**
+ * A cue requested while the context was not running.
+ *
+ * Kept for a very short window only: an arrival chime that rings 30 seconds
+ * after the player walked in is noise, not feedback. The TTL is what separates
+ * "recovered just in time" from "stale sound that should stay dropped".
+ */
+const PENDING_CUE_TTL_MS = 4_000;
+let pendingCue: { cue: SoundCue; at: number } | null = null;
+let stateWatched = false;
+
+function flushPendingCue(audio: AudioContext) {
+  if (!pendingCue) return;
+  // Not running yet: keep the cue pending so a later statechange can still
+  // deliver it (Safari ends an interruption on its own schedule).
+  if (readAudioState(audio) !== "running") return;
+  const { cue, at } = pendingCue;
+  pendingCue = null;
+  if (Date.now() - at > PENDING_CUE_TTL_MS) return;
+  // Never make noise from a backgrounded tab.
+  if (typeof document !== "undefined" && document.hidden) return;
+  scheduleCue(audio, cue);
+}
+
+/**
+ * Follow the context's own state changes.
+ *
+ * iOS resumes an interrupted context by itself once the call ends; Safari fires
+ * `statechange`, so the cue that was requested during the interruption can
+ * still be delivered (subject to the TTL above). Without this listener the
+ * context would come back silently and the pending cue would be lost.
+ */
+function watchAudioState(audio: AudioContext) {
+  if (stateWatched) return;
+  // Every real AudioContext is an EventTarget; a stripped-down implementation
+  // (or a test double) may not be, and losing the listener only costs the
+  // automatic replay - never the game.
+  if (typeof audio.addEventListener !== "function") return;
+  stateWatched = true;
+  audio.addEventListener("statechange", () => {
+    if (readAudioState(audio) === "running") flushPendingCue(audio);
+  });
+}
+
 /** Browsers keep the context suspended until a user gesture; re-resume then. */
 function bindGestureUnlock(audio: AudioContext) {
   if (gestureBound || typeof window === "undefined") return;
   gestureBound = true;
   const unlock = () => {
-    if (audio.state === "suspended") void audio.resume().catch(() => undefined);
+    if (readAudioState(audio) === "running") return;
+    void audio
+      .resume()
+      .then(() => flushPendingCue(audio))
+      .catch(() => undefined);
   };
   window.addEventListener("pointerdown", unlock, { passive: true });
   window.addEventListener("keydown", unlock, { passive: true });
@@ -378,18 +445,25 @@ export function playSound(cue: SoundCue) {
   if (last !== undefined && now - last < COOLDOWN_MS[cue]) return;
   lastPlayedAt.set(cue, now);
 
-  if (audio.state === "suspended") {
-    // Autoplay policy: only schedule once the context actually runs, so a
-    // blocked start cannot dump a stack of queued notes in one burst on resume.
-    void audio
-      .resume()
-      .then(() => {
-        if (audio.state === "running") scheduleCue(audio, cue);
-      })
-      .catch(() => undefined);
+  const state = readAudioState(audio);
+  if (state === "unavailable") return;
+  if (state === "running") {
+    scheduleCue(audio, cue);
     return;
   }
-  scheduleCue(audio, cue);
+
+  // Not running: autoplay policy (suspended) or an iOS interruption. Only
+  // schedule once the context actually runs, so a blocked start cannot dump a
+  // stack of queued notes in one burst on resume. The pending cue is bounded by
+  // a short TTL and flushed by whichever recovery happens first: our own
+  // resume() below (a user gesture is often already active) or the browser's
+  // own statechange when an interruption ends.
+  pendingCue = { cue, at: Date.now() };
+  watchAudioState(audio);
+  void audio
+    .resume()
+    .then(() => flushPendingCue(audio))
+    .catch(() => undefined);
 }
 
 export function SoundToggle() {

@@ -24,6 +24,7 @@ const STATUS_LABEL: Record<GpsStatus, string> = {
   idle: "未开始",
   requesting: "定位中",
   watching: "监听中",
+  stalled: "暂无定位",
   error: "出错",
   unsupported: "设备不支持",
 };

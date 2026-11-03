@@ -17,10 +17,12 @@ import { useGps } from "@/components/gps-provider";
 import { MapView } from "@/components/map-view";
 import { SimulatorPanel } from "@/components/simulator-panel";
 import { GpsDiagnosticsChip } from "@/components/gps-diagnostics";
+import { GpsStatusBanner } from "@/components/gps-status-banner";
 import { calculateDistance, classifyFix, formatDistance, smoothHeading } from "@/lib/location";
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
 import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
+import { nextTileProvider, type TileHealth } from "@/lib/map/tile-health";
 import { ArrivalPrompt } from "@/components/arrival-prompt";
 import { hasProgressIn, readHuntIndex } from "@/lib/storage";
 import {
@@ -69,7 +71,7 @@ function getServedTargets(): Map<string, number> {
 export default function MapPage() {
   const router = useRouter();
   const { settings, update } = useSettings();
-  const { fix, start, status, error, isSimulated, retry, simulatorAvailable } = useGps();
+  const { fix, start, status, error, permission, isSimulated, retry, simulatorAvailable } = useGps();
   const {
     game,
     state,
@@ -85,6 +87,10 @@ export default function MapPage() {
   } = useHunt();
 
   const [recenterToken, setRecenterToken] = useState(0);
+  // B-03: raster tile health. The map reports it; this screen owns the retry
+  // banner so the map component stays a renderer with no UI opinions.
+  const [tileHealth, setTileHealth] = useState<TileHealth>("loading");
+  const [tileRetryToken, setTileRetryToken] = useState(0);
   const [taskExpanded, setTaskExpanded] = useState(false);
   const [heading, setHeading] = useState<number | null>(null);
   const [headingEnabled, setHeadingEnabled] = useState(false);
@@ -321,6 +327,8 @@ export default function MapPage() {
           onSimulatedDrag={(lat, lng) => update({ simulatorCoordinate: { lat, lng } })}
           fitToHunt={!fix}
           recenterToken={recenterToken}
+          tileRetryToken={tileRetryToken}
+          onTileHealthChange={setTileHealth}
         />
 
         {/* Top bar: hunt progress + GPS state. */}
@@ -401,44 +409,18 @@ export default function MapPage() {
               </div>
             ) : null}
 
-            {status === "error" && error ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
-                <p className="text-[12.5px] leading-snug text-red-800">{error.userMessage}</p>
-                <button
-                  type="button"
-                  className="mt-1.5 text-[12px] font-semibold text-red-700 underline"
-                  onClick={retry}
-                >
-                  重新请求定位
-                </button>
-              </div>
-            ) : null}
-
-            {status === "idle" && !fix ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-[12.5px] leading-snug text-amber-900">
-                  尚未开始定位。允许定位后才能显示你的当前位置和目标方向。
-                </p>
-                <button
-                  type="button"
-                  className="btn btn-primary mt-2 h-9 min-h-0 px-3 text-[13px]"
-                  onClick={start}
-                >
-                  获取我的位置
-                </button>
-              </div>
-            ) : null}
-
-            {status === "requesting" && !fix ? (
-              // 首次定位等待中：此前这里完全空白，弱 GPS（室内/高楼间）可能
-              // 长时间停在 requesting，玩家得不到任何反馈（雷达探针 N0 防的
-              // 就是这种空白等待态）。
-              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-[12.5px] leading-snug text-amber-900">
-                  正在获取定位……首次定位可能需要几秒钟，请在开阔位置稍候。
-                </p>
-              </div>
-            ) : null}
+            {/* B-03: one component owns every non-healthy positioning state.
+                Before this, a first-fix timeout only set `error` while the
+                status stayed "requesting", so the player saw an endless
+                "正在获取定位…" with no message and no retry (B-02 UX-01). */}
+            <GpsStatusBanner
+              status={status}
+              error={error}
+              permission={permission}
+              hasFix={Boolean(fix)}
+              onRetry={retry}
+              onStart={start}
+            />
 
             {isSimulated ? (
               <div className="pointer-events-auto mt-2">
@@ -465,6 +447,44 @@ export default function MapPage() {
           style={{ paddingBottom: "calc(12px + var(--tabbar-h) + var(--safe-bottom))" }}
         >
           <div className="page">
+            {/* B-03: a failed basemap used to be silent grey squares. The bar
+                sits above the task card, never over the map centre, and keeps
+                tapping/panning available behind it. */}
+            {tileHealth === "failed" ? (
+              <div
+                className="mb-2 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 shadow-sheet"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-amber-900">
+                  底图没有加载出来，地图可能不完整
+                </p>
+                <button
+                  type="button"
+                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center rounded-lg bg-amber-900 px-3 text-[13px] font-semibold text-white"
+                  onClick={() => {
+                    setTileHealth("loading");
+                    setTileRetryToken((token) => token + 1);
+                  }}
+                >
+                  重试
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center rounded-lg border border-amber-900/30 px-3 text-[13px] font-semibold text-amber-900"
+                  onClick={() => {
+                    const next = nextTileProvider(
+                      TILE_PROVIDER_LIST.map((provider) => provider.id),
+                      settings.tileProvider as TileProviderId,
+                    );
+                    update({ tileProvider: next });
+                    setTileHealth("loading");
+                  }}
+                >
+                  换底图
+                </button>
+              </div>
+            ) : null}
             {loading ? (
               <div className="card p-3 text-center text-[13px] text-[var(--muted)]">正在加载游戏数据…</div>
             ) : complete ? (

@@ -61,6 +61,7 @@ export type GpsStatus =
   | "idle"          // nothing requested yet
   | "requesting"    // waiting for the first fix
   | "watching"      // receiving updates
+  | "stalled"       // no fix yet (timeout / no signal) - recoverable, the player can retry
   | "error"         // fatal error, the player must act
   | "unsupported";  // no Geolocation API
 
@@ -76,6 +77,16 @@ const REBUILD_WINDOW_MS = 60_000;
  */
 const WATCHDOG_MAX_SILENCE_MS = 60_000;
 const WATCHDOG_TICK_MS = 15_000;
+/**
+ * How long the UI may say "正在获取定位…" before it has to offer an exit.
+ *
+ * The browser's own watch timeout is 15 s, but a watch that never reports
+ * anything is a documented failure mode on some phones - and a browser that
+ * never calls back would otherwise leave the player in an endless wait with no
+ * retry button (B-02 UX-01). This deadline only changes the *presentation*: the
+ * watcher keeps running, and a late fix still flips the status to "watching".
+ */
+const FIRST_FIX_DEADLINE_MS = 25_000;
 
 interface GpsContextValue {
   fix: PositionFix | null;
@@ -142,6 +153,11 @@ export function GpsProvider({ children }: { children: ReactNode }) {
    * even to callbacks that slip past it (belt and braces, B-01 review P2).
    */
   const watchGenerationRef = useRef(0);
+  /**
+   * When the current positioning attempt started. Used by the watchdog to
+   * bound how long a "stalled" session may go without a rebuild.
+   */
+  const requestStartedAtRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -169,7 +185,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
     watcherRef.current?.stop();
     watcherRef.current = null;
     setWatcherAlive(false);
-    setStatus((s) => (s === "watching" ? "idle" : s));
+    setStatus((s) => (s === "watching" || s === "stalled" ? "idle" : s));
   }, []);
 
   /** Is an automatic rebuild allowed right now (F2 throttle)? */
@@ -194,6 +210,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
    */
   const beginWatching = useCallback(() => {
     watcherRef.current?.stop();
+    requestStartedAtRef.current = Date.now();
     const generation = ++watchGenerationRef.current;
     /**
      * True when the low-level layer reported an error during the
@@ -232,6 +249,14 @@ export function GpsProvider({ children }: { children: ReactNode }) {
             watcherRef.current = null;
             setWatcherAlive(false);
           }
+        } else if (lastFixAtRef.current === 0) {
+          // B-02 UX-01: a first-fix TIMEOUT / POSITION_UNAVAILABLE used to only
+          // set `error`. Since the map screen renders the error banner only for
+          // status "error", the request stayed visually "requesting" forever -
+          // no message, no retry. There is no fix to keep on screen, so the
+          // wait must end in an actionable state. The watch itself stays alive:
+          // a later fix flips this straight back to "watching".
+          setStatus((s) => (s === "error" || s === "unsupported" ? s : "stalled"));
         }
       },
       { maximumAgeMs: 2000 },
@@ -245,7 +270,9 @@ export function GpsProvider({ children }: { children: ReactNode }) {
       // (unsupported / error) are kept.
       watcherRef.current = null;
       setWatcherAlive(false);
-      setStatus((s) => (s === "requesting" ? "error" : s));
+      // No subscription exists at all, so this is blocking rather than merely
+      // stalled: only the retry button can produce a new attempt.
+      setStatus((s) => (s === "error" || s === "unsupported" ? s : "error"));
       return;
     }
     setWatcherAlive(true);
@@ -276,34 +303,55 @@ export function GpsProvider({ children }: { children: ReactNode }) {
     watcherRef.current?.stop();
     watcherRef.current = null;
     setWatcherAlive(false);
+    // B-03: the watcher is established FIRST. Previously the watch was only
+    // created after the one-shot read settled, so a slow one-shot (15 s + 30 s
+    // relaxed retry inside `getCurrentPosition`) kept the player on
+    // "正在获取定位…" for up to 45 s before positioning even started. The
+    // one-shot is now only an accelerator for the first fix; it can no longer
+    // gate continuous positioning, and its rejection can no longer mask a
+    // watcher that is working.
+    beginWatching();
+    const generation = watchGenerationRef.current;
     getCurrentPosition()
       .then((first) => {
-        if (!mountedRef.current) return;
-        setFix(first);
-        setPermission("granted");
+        if (!mountedRef.current || watchGenerationRef.current !== generation) return;
         lastFixAtRef.current = Date.now();
         setLastFixAt(lastFixAtRef.current);
+        setFix(first);
+        setPermission("granted");
         setStatus("watching");
-        beginWatching();
+        setError(null);
       })
       .catch((err: GeoError) => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || watchGenerationRef.current !== generation) return;
+        // A fix already arrived meanwhile: this failure is historical noise.
+        if (lastFixAtRef.current > 0) return;
         setError(err);
-        setStatus(err.code === "UNSUPPORTED" ? "unsupported" : "error");
-        if (err.code === "PERMISSION_DENIED") setPermission("denied");
-        // A one-shot failure says nothing about whether a watch would work;
-        // still try to establish it so a flaky first read cannot leave the
-        // session permanently dead.
-        if (err.code !== "UNSUPPORTED" && err.code !== "PERMISSION_DENIED") {
-          beginWatching();
+        if (err.code === "PERMISSION_DENIED") {
+          setPermission("denied");
+          setStatus("error");
+          // Denial is fatal for the subscription; drop the handle so the
+          // "handle exists => watching" invariant holds and the permission
+          // change listener can rebuild after a re-grant.
+          watcherRef.current?.stop();
+          watcherRef.current = null;
+          setWatcherAlive(false);
+          return;
         }
+        if (err.code === "UNSUPPORTED") {
+          setStatus("unsupported");
+          return;
+        }
+        // Recoverable: the watch may still deliver. Show the actionable state
+        // instead of an endless wait; a late fix clears it automatically.
+        setStatus((s) => (s === "watching" || s === "error" ? s : "stalled"));
       });
   }, [beginWatching]);
 
   const start = useCallback(() => {
     stoppedByUserRef.current = false;
     if (watcherRef.current) return;
-    setStatus((s) => (s === "idle" || s === "error" ? "requesting" : s));
+    setStatus((s) => (s === "idle" || s === "error" || s === "stalled" ? "requesting" : s));
     setError(null);
     beginWatching();
   }, [beginWatching]);
@@ -328,6 +376,28 @@ export function GpsProvider({ children }: { children: ReactNode }) {
     autoStartedRef.current = true;
     start();
   }, [start]);
+
+  /**
+   * B-02 UX-01: a first-fix request must never wait forever *visually*.
+   *
+   * The browser's watch timeout is 15 s, but a watch that reports nothing at
+   * all is a real failure mode (silent OS-level rejection, frozen tab, an
+   * implementation that simply never invokes the callbacks). After
+   * `FIRST_FIX_DEADLINE_MS` the status becomes "stalled", which renders the
+   * explanation and the retry button. This is presentation only: the watcher
+   * is untouched, and a fix arriving a second later restores "watching".
+   */
+  useEffect(() => {
+    if (status !== "requesting" || fix) return;
+    const id = window.setTimeout(() => {
+      if (!mountedRef.current) return;
+      if (stoppedByUserRef.current) return;
+      if (statusRef.current !== "requesting") return;
+      if (lastFixAtRef.current > 0) return;
+      setStatus("stalled");
+    }, FIRST_FIX_DEADLINE_MS);
+    return () => window.clearTimeout(id);
+  }, [status, fix]);
 
   /**
    * F1 (second half): follow permission changes while mounted.
@@ -415,7 +485,21 @@ export function GpsProvider({ children }: { children: ReactNode }) {
     const id = window.setInterval(() => {
       if (!mountedRef.current || document.hidden) return;
       if (stoppedByUserRef.current) return;
-      if (statusRef.current !== "watching") return;
+      const phase = statusRef.current;
+      if (phase === "stalled") {
+        // B-03: a stalled session is still a live attempt. Rebuild it once per
+        // silence window (the F2 throttle caps the rest), because some phones
+        // only recover positioning after a fresh subscription. Nothing is
+        // retried while the page is hidden - there silence is expected.
+        if (
+          !watcherRef.current ||
+          (requestStartedAtRef.current > 0 && Date.now() - requestStartedAtRef.current > WATCHDOG_MAX_SILENCE_MS)
+        ) {
+          rebuildWatcher();
+        }
+        return;
+      }
+      if (phase !== "watching") return;
       if (!watcherRef.current) {
         rebuildWatcher();
         return;
