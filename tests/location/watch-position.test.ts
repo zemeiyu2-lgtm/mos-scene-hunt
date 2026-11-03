@@ -138,3 +138,64 @@ describe("watchPosition - lifecycle guards", () => {
     expect(onFix).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * B-01 P2: `watchPosition()` can throw synchronously instead of reporting
+ * through the error callback - an insecure context, a Permissions-Policy that
+ * blocks geolocation (sandboxed iframe / embedded webview), or an exotic
+ * platform implementation. Before the fix the exception escaped to the caller,
+ * which had no way to learn that the subscription was never created.
+ */
+describe("watchPosition - synchronous failures", () => {
+  function throwOnWatch(reason: unknown) {
+    (navigator.geolocation as unknown as { watchPosition: unknown }).watchPosition = vi.fn(() => {
+      throw reason;
+    });
+  }
+
+  it("a synchronous throw is surfaced once, classified like any other error", () => {
+    throwOnWatch(new TypeError("Illegal invocation"));
+    const onFix = vi.fn();
+    const onError = vi.fn();
+
+    expect(() => watchPosition(onFix as never, onError as never)).not.toThrow();
+    expect(onFix).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledTimes(1);
+    const err = onError.mock.calls[0][0] as { code: string; userMessage: string };
+    expect(err.code).toBe("UNKNOWN");
+    expect(err.userMessage).toContain("未知错误");
+  });
+
+  it("the inert watcher it returns can be stopped safely (no clearWatch of an unknown id)", () => {
+    throwOnWatch(new Error("blocked by permissions policy"));
+    const onError = vi.fn();
+    const w = watchPosition(vi.fn() as never, onError as never);
+
+    expect(() => w.stop()).not.toThrow();
+    expect(geo.cleared.size).toBe(0);
+    // stop() is idempotent and does not re-emit the error.
+    expect(() => w.stop()).not.toThrow();
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it("a throwing geolocation getter is contained too", () => {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: {
+        get geolocation(): never {
+          throw new Error("geolocation is not available in this context");
+        },
+      },
+    });
+    const onError = vi.fn();
+
+    expect(() => watchPosition(vi.fn() as never, onError as never)).not.toThrow();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect((onError.mock.calls[0][0] as { code: string }).code).toBe("UNKNOWN");
+  });
+
+  it("a synchronous throw without an error handler still does not crash the caller", () => {
+    throwOnWatch(new TypeError("boom"));
+    expect(() => watchPosition(vi.fn() as never)).not.toThrow();
+  });
+});

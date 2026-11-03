@@ -195,6 +195,13 @@ export function GpsProvider({ children }: { children: ReactNode }) {
   const beginWatching = useCallback(() => {
     watcherRef.current?.stop();
     const generation = ++watchGenerationRef.current;
+    /**
+     * True when the low-level layer reported an error during the
+     * `watchPosition()` call itself. That only happens when the subscription
+     * could not be created at all (the API threw synchronously, or the API is
+     * missing), so no watcher exists and none will ever deliver a fix.
+     */
+    let failedSynchronously = false;
     watcherRef.current = watchPosition(
       (next) => {
         if (!mountedRef.current || watchGenerationRef.current !== generation) return;
@@ -210,6 +217,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
       },
       (err) => {
         if (!mountedRef.current || watchGenerationRef.current !== generation) return;
+        failedSynchronously = true;
         // Recoverable errors keep the previous fix on screen; only surface the
         // fatal ones as a blocking state.
         setError(err);
@@ -228,6 +236,18 @@ export function GpsProvider({ children }: { children: ReactNode }) {
       },
       { maximumAgeMs: 2000 },
     );
+    if (failedSynchronously) {
+      // The subscription never came into existence (B-01 P2). Drop the dead
+      // handle and never advertise a live watcher. A status still sitting on
+      // "requesting" would leave the player staring at a spinner with no way
+      // out, so it becomes the blocking error state whose retry button is the
+      // only sensible next action. Statuses already set by the error handler
+      // (unsupported / error) are kept.
+      watcherRef.current = null;
+      setWatcherAlive(false);
+      setStatus((s) => (s === "requesting" ? "error" : s));
+      return;
+    }
     setWatcherAlive(true);
   }, []);
 

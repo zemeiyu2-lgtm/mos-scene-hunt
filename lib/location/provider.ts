@@ -181,54 +181,80 @@ export function watchPosition(
 
   let stopped = false;
   let lastFixAt = 0;
+  /**
+   * Handle of the live subscription. `null` means "no subscription exists":
+   * either the call has not returned yet or it threw synchronously (see the
+   * try/catch below). Clearing a handle we never received would throw.
+   */
+  let watchId: number | null = null;
 
-  const id = navigator.geolocation.watchPosition(
-    (pos) => {
-      if (stopped) return;
-      let fix: PositionFix;
-      try {
-        fix = toFix(pos);
-      } catch (err) {
-        onError?.(toGeoError(err));
-        return;
-      }
-      // Guard against the classic duplicate/regressed fix: ignore readings that
-      // are older than the last one we accepted.
-      if (fix.timestamp < lastFixAt) return;
-      lastFixAt = fix.timestamp;
+  const handleFix = (pos: GeolocationPosition) => {
+    if (stopped) return;
+    let fix: PositionFix;
+    try {
+      fix = toFix(pos);
+    } catch (err) {
+      onError?.(toGeoError(err));
+      return;
+    }
+    // Guard against the classic duplicate/regressed fix: ignore readings that
+    // are older than the last one we accepted.
+    if (fix.timestamp < lastFixAt) return;
+    lastFixAt = fix.timestamp;
 
-      if (hasZeroCoordinate(fix) && fix.accuracy > 1000) {
-        onError?.(new GeoError("INVALID_FIX", "null island", ERROR_COPY.INVALID_FIX));
-        return;
-      }
-      onFix(fix);
-    },
-    (err) => {
-      // Lifecycle guard (B-01 review P2): a callback the browser already
-      // queued before clearWatch() must not reach the consumer after the
-      // watch was stopped - a late PERMISSION_DENIED would otherwise kill a
-      // healthy replacement watcher. The success callback has the same guard
-      // above.
-      if (stopped) return;
-      const geoErr = toGeoError(err);
-      onError?.(geoErr);
-      if (geoErr.code === "PERMISSION_DENIED") {
-        stopped = true;
+    if (hasZeroCoordinate(fix) && fix.accuracy > 1000) {
+      onError?.(new GeoError("INVALID_FIX", "null island", ERROR_COPY.INVALID_FIX));
+      return;
+    }
+    onFix(fix);
+  };
+
+  const handleWatchError = (err: GeolocationPositionError) => {
+    // Lifecycle guard (B-01 review P2): a callback the browser already
+    // queued before clearWatch() must not reach the consumer after the
+    // watch was stopped - a late PERMISSION_DENIED would otherwise kill a
+    // healthy replacement watcher. The success callback has the same guard
+    // above.
+    if (stopped) return;
+    const geoErr = toGeoError(err);
+    onError?.(geoErr);
+    if (geoErr.code === "PERMISSION_DENIED") {
+      stopped = true;
+      if (watchId !== null) {
         try {
-          navigator.geolocation.clearWatch(id);
+          navigator.geolocation.clearWatch(watchId);
         } catch {
           /* ignore */
         }
       }
-    },
-    { enableHighAccuracy: true, maximumAge: opts.maximumAgeMs, timeout: opts.timeoutMs },
-  );
+    }
+  };
+
+  try {
+    watchId = navigator.geolocation.watchPosition(handleFix, handleWatchError, {
+      enableHighAccuracy: true,
+      maximumAge: opts.maximumAgeMs,
+      timeout: opts.timeoutMs,
+    });
+  } catch (err) {
+    // B-01 P2: watchPosition() can throw SYNCHRONOUSLY instead of reporting
+    // through the error callback - an insecure context, a Permissions-Policy
+    // that blocks geolocation (sandboxed iframe, some embedded webviews), or
+    // an exotic platform implementation. Nothing was subscribed, so nothing
+    // needs clearing; the failure is surfaced once through the normal channel
+    // (classified like any other error) and an inert watcher is returned, so
+    // the caller can never believe a watch is alive nor stay stuck waiting.
+    stopped = true;
+    onError?.(toGeoError(err));
+    return { stop: () => {} };
+  }
 
   return {
     stop() {
       stopped = true;
+      if (watchId === null) return;
       try {
-        navigator.geolocation.clearWatch(id);
+        navigator.geolocation.clearWatch(watchId);
       } catch {
         /* ignore */
       }

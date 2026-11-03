@@ -38,6 +38,12 @@ const locationState = {
   oneShot: null as null | { resolve?: unknown; reject?: { code: string; message: string } },
   watches: [] as FakeWatch[],
   nextId: 0,
+  /**
+   * When set, the low-level `watchPosition()` fails the way the real one does
+   * when the platform refuses synchronously: the error callback fires DURING
+   * the call and an inert watcher comes back (lib/location/provider.ts P2).
+   */
+  syncFailure: null as null | { code: string; message: string; userMessage: string },
 };
 
 function lastWatch(): FakeWatch {
@@ -61,6 +67,12 @@ vi.mock("@/lib/location", () => ({
     return Promise.resolve(locationState.oneShot?.resolve ?? fixFixture());
   }),
   watchPosition: vi.fn((onFix: FixCb, onErr: ErrCb) => {
+    if (locationState.syncFailure) {
+      // Mirrors the real contract: report during the call, then hand back a
+      // watcher that is already dead.
+      onErr(locationState.syncFailure);
+      return { stop: () => {} };
+    }
     const watch: FakeWatch = { id: ++locationState.nextId, onFix, onErr, stopped: false };
     locationState.watches.push(watch);
     return {
@@ -136,6 +148,7 @@ beforeEach(() => {
   locationState.oneShot = null;
   locationState.watches = [];
   locationState.nextId = 0;
+  locationState.syncFailure = null;
   permissionListeners.length = 0;
   installPermissionsStub();
   Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
@@ -467,5 +480,59 @@ describe("GpsProvider - watcher hygiene", () => {
     unmount();
     expect(watch.stopped).toBe(true);
     expect(permissionListeners.length).toBeLessThan(permissionListenersBefore + 1);
+  });
+});
+
+describe("GpsProvider - synchronous watcher failure (B-01 P2)", () => {
+  it("a platform that refuses synchronously never leaves the session on 'requesting'", async () => {
+    locationState.syncFailure = {
+      code: "UNKNOWN",
+      message: "Illegal invocation",
+      userMessage: "定位出现未知错误，请重试。",
+    };
+
+    renderProvider();
+    await waitFor(() => expect(gpsValue?.status).toBe("error"));
+
+    // No subscription exists, and the provider must not pretend one does:
+    // the diagnostics chip and the watchdog rely on this being honest.
+    expect(locationState.watches.length).toBe(0);
+    expect(gpsValue?.watcherAlive).toBe(false);
+    expect(gpsValue?.error?.code).toBe("UNKNOWN");
+    expect(gpsValue?.fix).toBeNull();
+  });
+
+  it("retry() still recovers once the platform starts working again", async () => {
+    locationState.syncFailure = {
+      code: "UNKNOWN",
+      message: "Permissions policy blocks geolocation",
+      userMessage: "定位出现未知错误，请重试。",
+    };
+
+    renderProvider();
+    await waitFor(() => expect(gpsValue?.status).toBe("error"));
+
+    // The environment recovers (permission re-granted, page refocused...).
+    locationState.syncFailure = null;
+    act(() => gpsValue?.retry());
+    await waitFor(() => expect(liveWatches().length).toBe(1));
+
+    act(() => lastWatch().onFix(fixFixture()));
+    expect(gpsValue?.status).toBe("watching");
+    expect(gpsValue?.watcherAlive).toBe(true);
+    expect(gpsValue?.error).toBeNull();
+  });
+
+  it("an UNSUPPORTED capability reported during the call keeps its own status", async () => {
+    locationState.syncFailure = {
+      code: "UNSUPPORTED",
+      message: "no geolocation",
+      userMessage: "当前浏览器不支持定位功能，无法开始寻宝。",
+    };
+
+    renderProvider();
+    await waitFor(() => expect(gpsValue?.status).toBe("unsupported"));
+    expect(gpsValue?.watcherAlive).toBe(false);
+    expect(locationState.watches.length).toBe(0);
   });
 });
