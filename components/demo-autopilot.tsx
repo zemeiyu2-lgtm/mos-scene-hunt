@@ -252,7 +252,7 @@ export function DemoAutopilot() {
     <>
       <div className="fixed inset-x-0 top-0 z-[900] border-b border-white/10 bg-[var(--ink-900,#111827)]/92 text-white shadow-lg backdrop-blur">
         <div className="demo-bar-inner mx-auto flex h-11 max-w-[520px] items-center gap-2 px-3">
-          <span className="shrink-0 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-950">
+          <span className="shrink-0 rounded-full bg-[var(--warn-solid)] px-2 py-0.5 text-[10px] font-bold text-[var(--warn-ink)]">
             自动演示
           </span>
           <div className="min-w-0 flex-1 leading-tight">

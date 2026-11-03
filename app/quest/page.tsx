@@ -48,7 +48,7 @@ export default function QuestPage() {
       subtitle={`${game.title} · ${completedCount}/${statuses.length} 个地点已完成`}
       headerRight={
         <span className="flex items-center gap-2">
-          {complete ? <span className="chip bg-emerald-100 text-emerald-700">全部完成</span> : null}
+          {complete ? <span className="chip bg-[var(--ok-bg-strong)] text-[var(--ok-strong)]">全部完成</span> : null}
           <button
             type="button"
             className="chip bg-[var(--surface)] text-[var(--muted)]"
@@ -99,7 +99,7 @@ export default function QuestPage() {
                   <span
                     className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-bold ${
                       isDone
-                        ? "bg-emerald-500 text-white"
+                        ? "bg-[var(--ok-solid)] text-white"
                         : row.isActive
                           ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
                           : "bg-[var(--line)] text-[var(--muted)]"
@@ -122,7 +122,7 @@ export default function QuestPage() {
                     {!isLocked && d ? (
                       <p className="mt-2 text-[13px]">
                         {d.inRange ? (
-                          <span className="font-semibold text-emerald-600">✓ 已进入任务区域</span>
+                          <span className="font-semibold text-[var(--ok-strong)]">✓ 已进入任务区域</span>
                         ) : (
                           <>
                             <span className="text-[var(--muted)]">距离目标：</span>
@@ -201,9 +201,9 @@ export default function QuestPage() {
       ) : null}
 
       {complete ? (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center">
-          <p className="text-[15px] font-semibold text-emerald-800">🎉 全部完成</p>
-          <p className="mt-1 text-[13px] leading-relaxed text-emerald-700">
+        <div className="mt-4 rounded-2xl border border-[var(--ok-border)] bg-[var(--ok-bg)] p-4 text-center">
+          <p className="text-[15px] font-semibold text-[var(--ok-text)]">🎉 全部完成</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-[var(--ok-strong)]">
             你已走完 {statuses.length} 个真实地点。进度已保存在本机，刷新页面也不会丢失。
           </p>
         </div>

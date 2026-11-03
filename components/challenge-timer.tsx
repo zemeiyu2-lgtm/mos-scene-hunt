@@ -86,7 +86,7 @@ export function ChallengeTimerBar({
       data-role="challenge-timer"
       className={`mb-3 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${
         urgent
-          ? "border-red-200 bg-red-50 text-red-800"
+          ? "border-[var(--err-border)] bg-[var(--err-bg)] text-[var(--err-text)]"
           : "border-[var(--line)] bg-[var(--surface)] text-[var(--fg)]"
       }`}
     >
@@ -120,10 +120,10 @@ export function ChallengeExpiredPanel({
   return (
     <div
       data-role="challenge-expired"
-      className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3"
+      className="mb-3 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] px-3 py-3"
     >
-      <p className="text-[13.5px] font-bold text-red-800">时间到 · 本次尝试未完成</p>
-      <p className="mt-0.5 text-[13px] leading-snug text-red-700">
+      <p className="text-[13.5px] font-bold text-[var(--err-text)]">时间到 · 本次尝试未完成</p>
+      <p className="mt-0.5 text-[13px] leading-snug text-[var(--err-text)]">
         第 {attempt} 次尝试已超时（限时 {limitLabel}），这一次的答案不再计入。
         重试会重新获得完整的 {limitLabel}，之前答对的题目进度、奖励都不会受影响。
       </p>

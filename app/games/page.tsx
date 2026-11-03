@@ -128,7 +128,7 @@ export default function GamesPage() {
                   <h3 className="font-bold">{game.title}</h3>
                   <p className="mt-1 text-xs text-[var(--muted)]">{game.scenes.length} 个地点 · 约 {game.estimatedMinutes ?? "—"} 分钟</p>
                 </div>
-                <span className="chip shrink-0 bg-emerald-50 text-emerald-800">已就绪</span>
+                <span className="chip shrink-0 bg-[var(--ok-bg)] text-[var(--ok-text)]">已就绪</span>
               </div>
               {game.description ? <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">{game.description}</p> : null}
               <div className="mt-3 grid grid-cols-2 gap-2">

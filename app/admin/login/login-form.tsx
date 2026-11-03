@@ -73,7 +73,7 @@ export function LoginForm() {
       </div>
 
       {error ? (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded-lg bg-[var(--err-bg)] px-3 py-2 text-sm text-[var(--err-text)]">
           {error}
         </p>
       ) : null}

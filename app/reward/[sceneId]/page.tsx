@@ -91,7 +91,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           ) : null}
 
           {!granted ? (
-            <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[13px] leading-snug text-amber-900">
+            <p className="mt-3 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[13px] leading-snug text-[var(--warn-text)]">
               注意：这个场景似乎还没有被正式完成。请返回任务列表重新作答。
             </p>
           ) : null}
@@ -111,7 +111,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
               背包共 {totalCollected} 件
             </span>
             {state.keywords.length ? (
-              <span className="chip bg-amber-100 text-[12px] text-amber-800">
+              <span className="chip bg-[var(--warn-bg-strong)] text-[12px] text-[var(--warn-text)]">
                 关键词：{state.keywords.join(" · ")}
               </span>
             ) : null}
@@ -121,10 +121,10 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
             <div className="bsop-keys mt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-amber-800">八个秘密</p>
-                  <p className="mt-0.5 text-[13px] text-amber-900/70">你已经把这一站带进了整条路线</p>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[var(--warn-text)]">八个秘密</p>
+                  <p className="mt-0.5 text-[13px] text-[var(--warn-text)]">你已经把这一站带进了整条路线</p>
                 </div>
-                <span className="text-[13px] font-bold text-amber-900">{state.keywords.length}/7</span>
+                <span className="text-[13px] font-bold text-[var(--warn-text)]">{state.keywords.length}/7</span>
               </div>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 {["呼召","真理","实践","敬拜","群体","生命","忠心"].map((word) => {
@@ -155,7 +155,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           </p>
           {isBsop ? (
             <div className="mt-4 rounded-xl bg-white/70 px-3.5 py-3 text-left">
-              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-amber-800">最后任务 · 带走</p>
+              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[var(--warn-text)]">最后任务 · 带走</p>
               <p className="mt-1 text-[13px] font-semibold">把一个具体行动写下来，然后离开地图。</p>
             </div>
           ) : null}

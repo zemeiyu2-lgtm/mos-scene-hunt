@@ -98,7 +98,7 @@ export function ArrivalPrompt({
         >
           <div className="flex items-start gap-3">
             <div
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-emerald-200 bg-emerald-50 text-[18px]"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--ok-border)] bg-[var(--ok-bg)] text-[18px]"
               aria-hidden="true"
             >
               📍
@@ -110,7 +110,7 @@ export function ArrivalPrompt({
               >
                 目标已发现！
               </p>
-              <p className="mt-1 truncate text-[14px] font-semibold text-emerald-700">
+              <p className="mt-1 truncate text-[14px] font-semibold text-[var(--ok-strong)]">
                 {sceneTitle}
               </p>
               <p
@@ -122,7 +122,7 @@ export function ArrivalPrompt({
               </p>
               {soundNeedsGesture ? (
                 <p
-                  className="mt-2 text-[13px] leading-snug text-amber-700"
+                  className="mt-2 text-[13px] leading-snug text-[var(--warn-text)]"
                   data-testid="arrival-prompt-sound-hint"
                 >
                   🔔 提示音被手机或浏览器暂时限制了，点按屏幕任意处即可恢复；提示卡和任务不受影响。

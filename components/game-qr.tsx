@@ -42,7 +42,7 @@ export function GameQr({
 
   if (!plan.ok) {
     return (
-      <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[12px] leading-relaxed text-amber-900" role="note">
+      <p className="mt-2 rounded-lg bg-[var(--warn-bg)] p-3 text-[12px] leading-relaxed text-[var(--warn-text)]" role="note">
         {plan.reason}
       </p>
     );
@@ -68,7 +68,7 @@ export function GameQr({
   return (
     <QrErrorBoundary
       fallback={
-        <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[12px] leading-relaxed text-amber-900" role="note">
+        <p className="mt-2 rounded-lg bg-[var(--warn-bg)] p-3 text-[12px] leading-relaxed text-[var(--warn-text)]" role="note">
           二维码生成时出现意外错误；分享链接不受影响，请直接复制链接发送。
         </p>
       }

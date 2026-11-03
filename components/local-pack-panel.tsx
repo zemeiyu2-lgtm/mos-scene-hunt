@@ -264,10 +264,10 @@ export function LocalPackPanel({
               <div
                 className={`h-full rounded-full ${
                   pressure.level === "critical"
-                    ? "bg-red-500"
+                    ? "bg-[var(--err-solid)]"
                     : pressure.level === "tight"
-                      ? "bg-amber-500"
-                      : "bg-emerald-500"
+                      ? "bg-[var(--warn-solid)]"
+                      : "bg-[var(--ok-solid)]"
                 }`}
                 style={{ width: `${Math.max(2, Math.round(pressure.ratio * 100))}%` }}
               />
@@ -309,7 +309,7 @@ export function LocalPackPanel({
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     {pack.isCurrent ? <span className="chip">当前</span> : null}
                     {state.status === "published" ? (
-                      <span className="chip bg-emerald-50 text-emerald-800">线上已发布</span>
+                      <span className="chip bg-[var(--ok-bg)] text-[var(--ok-text)]">线上已发布</span>
                     ) : state.status === "not-published" ? (
                       <span className="chip bg-[var(--surface)]">线上未发布</span>
                     ) : state.status === "unknown" ? (
@@ -321,7 +321,7 @@ export function LocalPackPanel({
                 </div>
 
                 {!pack.valid ? (
-                  <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] leading-relaxed text-amber-800">
+                  <p className="mt-2 rounded-lg bg-[var(--warn-bg)] px-2 py-1.5 text-[11px] leading-relaxed text-[var(--warn-text)]">
                     这条记录无法被读取为游戏（可能已损坏），但它仍占用空间，可以删除。
                   </p>
                 ) : null}
@@ -330,7 +330,7 @@ export function LocalPackPanel({
                   {renderActions?.(pack)}
                   <button
                     type="button"
-                    className="btn btn-ghost min-h-9 px-3 text-[12px] text-red-700"
+                    className="btn btn-ghost min-h-9 px-3 text-[12px] text-[var(--err-text)]"
                     onClick={() => void remove(pack)}
                     disabled={busyId === pack.id}
                   >

@@ -164,10 +164,10 @@ export default function SelectPage() {
     <>
     <Screen title="选择寻宝" subtitle="确认信息后开始">
       {shareBroken ? (
-        <div className="card mb-4 border border-amber-200 bg-amber-50 p-4 text-[13px] leading-relaxed text-amber-900">
+        <div className="card mb-4 border border-[var(--warn-border)] bg-[var(--warn-bg)] p-4 text-[13px] leading-relaxed text-[var(--warn-text)]">
           <p className="font-semibold">分享链接未能打开</p>
           <p className="mt-1">{shareBroken}</p>
-          <p className="mt-1 text-amber-800">
+          <p className="mt-1 text-[var(--warn-text)]">
             下面显示的不是朋友分享的游戏。请让朋友重新发送完整链接，或用手机相机扫描对方屏幕上的二维码。
           </p>
         </div>
@@ -194,7 +194,7 @@ export default function SelectPage() {
           ) : null}
 
           {game.id === "bsop-eight-secrets" ? (
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
+            <div className="mt-4 rounded-2xl border border-[var(--warn-border)] bg-[var(--warn-bg)] px-4 py-3 text-[var(--warn-text)]">
               <p className="text-sm font-bold">户外校园寻宝 · 8 个站点</p>
               <p className="mt-1 text-xs leading-relaxed">找到地点，回答一道圣经记忆题，收集钥匙。轻松玩，不用写长答案。</p>
             </div>
@@ -215,7 +215,7 @@ export default function SelectPage() {
           </dl>
 
           {game.huntArea ? (
-            <div className="mt-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[13px] leading-relaxed text-amber-900">
+            <div className="mt-4 rounded-xl bg-[var(--warn-bg)] px-3.5 py-3 text-[13px] leading-relaxed text-[var(--warn-text)]">
               <p className="font-semibold">
                 探索区域 · {game.huntArea.name ?? formatArea(game.huntArea.radiusMeters)}
                 {game.huntArea.shape === "polygon"
@@ -275,17 +275,17 @@ export default function SelectPage() {
             </button>
           </div>
           {saveState === "saved" ? (
-            <p className="mt-2 rounded-xl bg-green-50 px-3 py-2 text-[13px] leading-snug text-green-800">
+            <p className="mt-2 rounded-xl bg-[var(--ok-bg)] px-3 py-2 text-[13px] leading-snug text-[var(--ok-text)]">
               已保存到本机游戏库，可在「创作库」中随时找到并打开。
             </p>
           ) : null}
           {saveState === "conflict" ? (
-            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[13px] leading-snug text-amber-900">
+            <p className="mt-2 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[13px] leading-snug text-[var(--warn-text)]">
               本机已有一个同名但内容不同的游戏。为避免覆盖你已有的游戏和进度，这次没有保存。
             </p>
           ) : null}
           {saveError ? (
-            <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[13px] leading-snug text-red-700">
+            <p className="mt-2 rounded-xl bg-[var(--err-bg)] px-3 py-2 text-[13px] leading-snug text-[var(--err-text)]">
               保存失败：{saveError}
             </p>
           ) : null}
@@ -317,7 +317,7 @@ export default function SelectPage() {
         {permission === "denied" ? (
           // B-03: the old copy sent every player to the address bar, which does
           // not exist on iOS. The steps now match the platform in use.
-          <div className="mt-3 rounded-xl bg-red-50 px-3 py-2.5 text-red-700">
+          <div className="mt-3 rounded-xl bg-[var(--err-bg)] px-3 py-2.5 text-[var(--err-text)]">
             <p className="text-[13px] font-semibold leading-snug">{deniedGuide.title}</p>
             <ol className="mt-1.5 space-y-1 pl-4 text-[13px] leading-snug" style={{ listStyle: "decimal" }}>
               {deniedGuide.steps.map((step) => (
@@ -350,7 +350,7 @@ export default function SelectPage() {
       </div>
 
       {status === "unsupported" ? (
-        <p className="mt-3 text-center text-[13px] text-red-700">
+        <p className="mt-3 text-center text-[13px] text-[var(--err-text)]">
           当前浏览器不支持定位功能，游戏无法运行。
         </p>
       ) : null}

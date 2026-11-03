@@ -39,7 +39,7 @@ export default async function AdminHome({
   return (
     <div className="space-y-6">
       {params.denied ? (
-        <p role="alert" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p role="alert" className="rounded-lg bg-[var(--warn-bg)] px-4 py-3 text-sm text-[var(--warn-text)]">
           当前账号没有访问该页面的权限。
         </p>
       ) : null}

@@ -252,7 +252,7 @@ export default function DesignPage() {
     return (
       <Screen title="创作中心">
         <div className="card h-40 animate-pulse" />
-        {loadError ? <p className="mt-3 text-sm text-red-700">{loadError}</p> : null}
+        {loadError ? <p className="mt-3 text-sm text-[var(--err-text)]">{loadError}</p> : null}
       </Screen>
     );
   }
@@ -934,7 +934,7 @@ export default function DesignPage() {
           >
             简介
           </button>
-          {hasUnsavedEdits ? <span className="font-semibold text-amber-700">· 有未保存的修改</span> : null}
+          {hasUnsavedEdits ? <span className="font-semibold text-[var(--warn-text)]">· 有未保存的修改</span> : null}
         </p>
         {infoOpen ? (
           <label className="mt-2 block text-xs font-semibold">
@@ -944,9 +944,9 @@ export default function DesignPage() {
         ) : null}
 
         {pendingBlank ? (
-          <div role="alertdialog" aria-label="当前游戏有未保存的修改" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
-            <p className="text-[12px] font-bold text-amber-900">当前游戏还有未保存的修改</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-amber-900">
+          <div role="alertdialog" aria-label="当前游戏有未保存的修改" className="mt-3 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] p-3">
+            <p className="text-[12px] font-bold text-[var(--warn-text)]">当前游戏还有未保存的修改</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--warn-text)]">
               新建会切换到一款空白游戏。请选择如何处理这些修改。
             </p>
             <div className="mt-2 grid grid-cols-3 gap-1.5">
@@ -1089,7 +1089,7 @@ export default function DesignPage() {
             )}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <span className="chip bg-amber-100 text-amber-800">
+            <span className="chip bg-[var(--warn-bg-strong)] text-[var(--warn-text)]">
               {isPolygon
                 ? `自定义区域 · ${polygonPoints.length} 个边界点`
                 : `圆形 · 半径 ${Math.round(area?.radiusMeters ?? 100)}m`}
@@ -1211,7 +1211,7 @@ export default function DesignPage() {
                   </button>
                   <button
                     type="button"
-                    className="text-xs font-semibold text-red-700 underline"
+                    className="text-xs font-semibold text-[var(--err-text)] underline"
                     onClick={clearPolygon}
                   >
                     清除区域
@@ -1284,7 +1284,7 @@ export default function DesignPage() {
         {selected ? (
           <div className="mt-4">
             {selectedOutsideArea ? (
-              <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
+              <p className="mb-3 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] font-semibold text-[var(--warn-text)]">
                 提示：「{selected.title}」落在游戏区域之外。把它拖进区域内，或重新绘制区域。
               </p>
             ) : null}
@@ -1303,7 +1303,7 @@ export default function DesignPage() {
                                 🏁 此站是<strong>结局</strong>（完成后游戏结束）。点击恢复连接「{working.scenes[idx + 1]?.title}」。
                               </button>
                             ) : (
-                              <p className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">🏁 此站是<strong>结局</strong>：完成后游戏即结束。多个结局 = 把多个站点都设为终点，再用选项路线分别指向它们。</p>
+                              <p className="mb-3 rounded-xl bg-[var(--ok-bg)] px-3 py-2 text-[11.5px] text-[var(--ok-text)]">🏁 此站是<strong>结局</strong>：完成后游戏即结束。多个结局 = 把多个站点都设为终点，再用选项路线分别指向它们。</p>
                             );
                           }
                           return (
@@ -1364,10 +1364,10 @@ export default function DesignPage() {
                     </p>
                   ) : null}
                   {requiresNotice ? (
-                    <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">{requiresNotice}</div>
+                    <div className="mt-2 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--warn-text)]">{requiresNotice}</div>
                   ) : null}
                   {dangling.length ? (
-                    <div className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[11.5px] leading-relaxed text-red-800">
+                    <div className="mt-2 rounded-xl bg-[var(--err-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--err-text)]">
                       发现失效的前置引用（{dangling.map((d) => d.missingId).join("、")}），保存会被校验拦下。请取消对应勾选后重试。
                     </div>
                   ) : null}
@@ -1493,7 +1493,7 @@ export default function DesignPage() {
                         </span>
                       </div>
                       {challenge.reflective ? (
-                        <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
+                        <div className="mt-2 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--warn-text)]">
                           这是<strong>反思型选择</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
                         </div>
                       ) : null}
@@ -1530,7 +1530,7 @@ export default function DesignPage() {
                     />
                   </label>
                   {timeLimitDraft?.sceneId === selected.id && timeLimitDraft.error ? (
-                    <p className="mt-1 text-[10.5px] leading-snug text-red-700">{timeLimitDraft.error}</p>
+                    <p className="mt-1 text-[10.5px] leading-snug text-[var(--err-text)]">{timeLimitDraft.error}</p>
                   ) : challenge.timeLimitSeconds ? (
                     <p className="mt-1 text-[10.5px] leading-snug text-[var(--muted)]">
                       进入题目即开始计时；超时后本次作答作废，可重试，每次重试重新获得完整时限。
@@ -1576,7 +1576,7 @@ export default function DesignPage() {
               </div>
               <label className="mt-2 block text-xs">奖励内容<input className="input mt-1" value={selected.reward?.value ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, value: e.target.value } : undefined })} /></label>
               {rewardNotice ? (
-                <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">{rewardNotice}</div>
+                <div className="mt-2 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--warn-text)]">{rewardNotice}</div>
               ) : null}
               {selected.reward?.type === "item" ? (
                 <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">
@@ -1633,7 +1633,7 @@ export default function DesignPage() {
               );
             })()}
 
-            <button type="button" className="mt-4 text-xs font-semibold text-red-700 underline" onClick={deleteSelected} disabled={working.scenes.length <= 1}>
+            <button type="button" className="mt-4 text-xs font-semibold text-[var(--err-text)] underline" onClick={deleteSelected} disabled={working.scenes.length <= 1}>
               删除这个场景
             </button>
           </div>
@@ -1728,7 +1728,7 @@ export default function DesignPage() {
           <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(area?.radiusMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">区域尺度</div></div>
         </div>
         {working.scenes.length > 1 ? <div className="mt-3 overflow-x-auto pb-1"><div className="flex min-w-max items-center gap-1">{working.scenes.map((scene, i) => <span key={scene.id} className="flex items-center gap-1">{i > 0 ? <span className="text-[var(--muted)]">→</span> : null}<button type="button" className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${scene.id === selected?.id ? "border-[var(--accent)] bg-[var(--accent)]/10" : "border-[var(--line)]"}`} onClick={() => setSelectedId(scene.id)}>{i + 1}. {scene.title}</button></span>)}</div></div> : null}
-        {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}><strong>{issue.severity === "error" ? "需要修正：" : "空间提示："}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-semibold text-emerald-800">空间检查通过，可以继续设计。</p>}
+        {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-[var(--err-bg)] text-[var(--err-text)]" : "bg-[var(--warn-bg)] text-[var(--warn-text)]"}`}><strong>{issue.severity === "error" ? "需要修正：" : "空间提示："}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-[var(--ok-bg)] px-3 py-2 text-[11.5px] font-semibold text-[var(--ok-text)]">空间检查通过，可以继续设计。</p>}
       </section>
 
       {/* ------------------------------------------------ ④ 保存游戏 */}
@@ -1742,14 +1742,14 @@ export default function DesignPage() {
           <p className="mt-1 text-[var(--muted)]">先设好真实起点、区域和各站坐标（AI 给的 0,0 只是占位），并在安全的户外试玩。修改后需重新发布，旧链接不会自动更新；二维码在本机生成，不调用外部服务。</p>
         </div>
         {areaIncomplete ? (
-          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
+          <p className="mt-2 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] font-semibold text-[var(--warn-text)]">
             游戏区域还没有画完（至少 {MIN_POLYGON_POINTS} 个边界点），完成或取消绘制后才能保存。
           </p>
         ) : null}
         {saveFailure ? (
           <div
             role="alert"
-            className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11.5px] leading-relaxed text-red-800"
+            className="mt-2 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--err-text)]"
           >
             <p className="font-semibold">{saveFailure.summary}</p>
             {/* A single problem is already spelled out in the summary above. */}
@@ -1817,7 +1817,7 @@ export default function DesignPage() {
           ) : null}
           {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}
           <div className="grid grid-cols-2 gap-2"><button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button><button type="button" className="btn btn-ghost btn-block" onClick={exportPackage}>导出游戏包</button></div>
-          <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>恢复官方示范内容</button>
+          <button type="button" className="btn btn-ghost btn-block text-[var(--err-text)]" onClick={resetOfficial}>恢复官方示范内容</button>
         </div>
       </section>
 

@@ -74,21 +74,21 @@ export default function BagPage() {
     >
       {/* Keywords get their own treatment: they are the narrative currency. */}
       {state.keywords.length ? (
-        <Card className="border-amber-200 bg-amber-50">
-          <p className="text-[12px] font-semibold uppercase tracking-wider text-amber-800">
+        <Card className="border-[var(--warn-border)] bg-[var(--warn-bg)]">
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--warn-text)]">
             已收集关键词
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {state.keywords.map((word) => (
               <span
                 key={word}
-                className="rounded-xl bg-white px-3 py-1.5 text-[15px] font-bold text-amber-900 shadow-sm"
+                className="rounded-xl bg-white px-3 py-1.5 text-[15px] font-bold text-[var(--warn-text)] shadow-sm"
               >
                 {word}
               </span>
             ))}
           </div>
-          <p className="mt-2.5 text-[12px] leading-relaxed text-amber-800">
+          <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--warn-text)]">
             关键词会被后续情境引用。它们由确定性游戏逻辑发放，不会因为刷新页面而改变。
           </p>
         </Card>
@@ -166,7 +166,7 @@ export default function BagPage() {
             />
             <KV k="精度" v={fix ? `±${Math.round(fix.accuracy)} m` : "—"} mono />
             {quality?.message ? (
-              <p className="mt-1 text-[12px] leading-snug text-amber-700">{quality.message}</p>
+              <p className="mt-1 text-[12px] leading-snug text-[var(--warn-text)]">{quality.message}</p>
             ) : null}
 
             <div className="my-3 h-px bg-[var(--line)]" />
@@ -282,17 +282,17 @@ export default function BagPage() {
         </details>
 
         {showReset ? (
-          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
-            <p className="text-[13px] font-semibold text-red-800">
+          <div className="mt-3 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] p-3">
+            <p className="text-[13px] font-semibold text-[var(--err-text)]">
               ⚠️ 重置会清空全部进度
             </p>
-            <p className="mt-1 text-[13px] leading-relaxed text-red-700">
+            <p className="mt-1 text-[13px] leading-relaxed text-[var(--err-text)]">
               已完成的地点、全部关键词与奖励都会被删除，且无法恢复。此操作只影响本机存档。
             </p>
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                className="btn h-9 min-h-0 bg-red-600 px-3 text-[13px] text-white"
+                className="btn h-9 min-h-0 bg-[var(--err-solid)] px-3 text-[13px] text-white"
                 onClick={() => {
                   resetHunt();
                   setShowReset(false);

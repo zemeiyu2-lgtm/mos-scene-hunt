@@ -152,7 +152,7 @@ export function WorkActions({
               type="button"
               disabled={disabled}
               onClick={() => submitDecision("approve")}
-              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="rounded-lg bg-[var(--ok-solid)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
             >
               直接通过
             </button>
@@ -164,7 +164,7 @@ export function WorkActions({
             type="button"
             disabled={disabled}
             onClick={() => call("publish")}
-            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            className="rounded-lg bg-[var(--ok-solid)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
           >
             {busy === "publish" ? "发布中…" : "发布到公开"}
           </button>
@@ -175,7 +175,7 @@ export function WorkActions({
             type="button"
             disabled={disabled}
             onClick={() => call("withdraw")}
-            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            className="rounded-lg bg-[var(--err-solid)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
           >
             撤下（公开读取立即 404）
           </button>
@@ -323,7 +323,7 @@ export function WorkActions({
               type="button"
               disabled={disabled}
               onClick={() => submitDecision("approve")}
-              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="rounded-lg bg-[var(--ok-solid)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
             >
               通过
             </button>
@@ -331,7 +331,7 @@ export function WorkActions({
               type="button"
               disabled={disabled}
               onClick={() => submitDecision("request_changes")}
-              className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="rounded-lg bg-[var(--warn-solid-deep)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
             >
               退回修改
             </button>
@@ -339,7 +339,7 @@ export function WorkActions({
               type="button"
               disabled={disabled}
               onClick={() => submitDecision("reject")}
-              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="rounded-lg bg-[var(--err-solid)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
             >
               拒绝
             </button>
@@ -348,12 +348,12 @@ export function WorkActions({
       ) : null}
 
       {error ? (
-        <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+        <p role="alert" className="mt-3 rounded-lg bg-[var(--err-bg)] px-3 py-2 text-xs text-[var(--err-text)]">
           {error}
         </p>
       ) : null}
       {message ? (
-        <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">{message}</p>
+        <p className="mt-3 rounded-lg bg-[var(--ok-bg)] px-3 py-2 text-xs text-[var(--ok-text)]">{message}</p>
       ) : null}
     </section>
   );

@@ -37,7 +37,7 @@ export default async function QueuePage() {
               {queue.map((entry) => {
                 const late = entry.waitingHours >= 72;
                 return (
-                  <tr key={entry.work.gameId} className={late ? "bg-red-50/60" : undefined}>
+                  <tr key={entry.work.gameId} className={late ? "bg-[var(--err-bg)]" : undefined}>
                     <td className="px-4 py-2.5">
                       <Link
                         href={`/admin/works/${entry.work.gameId}`}
@@ -56,7 +56,7 @@ export default async function QueuePage() {
                         {WORK_STATE_LABEL[entry.work.state]}
                       </span>
                     </td>
-                    <td className={`px-4 py-2.5 tabular-nums ${late ? "font-semibold text-red-700" : ""}`}>
+                    <td className={`px-4 py-2.5 tabular-nums ${late ? "font-semibold text-[var(--err-text)]" : ""}`}>
                       {entry.waitingHours.toFixed(1)} 小时
                     </td>
                     <td className="px-4 py-2.5 text-[var(--muted)]">

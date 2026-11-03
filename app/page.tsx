@@ -170,8 +170,8 @@ export default function HomePage() {
         </section>
       ) : loadError ? (
         <section className="card mt-3 p-4">
-          <p className="text-[14px] font-semibold text-red-700">游戏内容加载失败</p>
-          <p className="mt-1 text-[13px] leading-relaxed text-red-600">{loadError}</p>
+          <p className="text-[14px] font-semibold text-[var(--err-text)]">游戏内容加载失败</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-[var(--err-text)]">{loadError}</p>
           <button type="button" className="btn btn-secondary mt-3 w-full" onClick={() => reloadContent(true)}>重试加载</button>
         </section>
       ) : null}

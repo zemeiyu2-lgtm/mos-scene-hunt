@@ -364,7 +364,7 @@ export default function MapPage() {
               <button
                 type="button"
                 onClick={() => void enableHeading()}
-                className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[19px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
+                className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[19px] ${heading !== null ? "border-[var(--warn-border)] bg-[var(--warn-bg)]" : ""}`}
                 aria-label={heading !== null ? "手机朝向指示已启用" : "启用手机朝向指示"}
                 title="蓝色尾巴显示手机朝向；蓝色箭头指向目标"
               >
@@ -398,14 +398,14 @@ export default function MapPage() {
 
             {/* GPS status strip: only shown when something is wrong or simulated. */}
             {headingMessage && heading === null ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-[13px] leading-snug text-amber-900">{headingMessage}</p>
+              <div className="pointer-events-auto mt-2 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2">
+                <p className="text-[13px] leading-snug text-[var(--warn-text)]">{headingMessage}</p>
               </div>
             ) : null}
 
             {outsideHuntArea ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
-                <p className="text-[13px] leading-snug text-amber-900">
+              <div className="pointer-events-auto mt-2 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2">
+                <p className="text-[13px] leading-snug text-[var(--warn-text)]">
                   你已离开本次寻宝区域，请结合地图回到寻宝范围内。
                 </p>
               </div>
@@ -436,7 +436,7 @@ export default function MapPage() {
             <GpsDiagnosticsChip />
 
             {loadError ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">
+              <div className="pointer-events-auto mt-2 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] px-3 py-2 text-[13px] text-[var(--err-text)]">
                 {loadError}
               </div>
             ) : null}
@@ -454,16 +454,16 @@ export default function MapPage() {
                 tapping/panning available behind it. */}
             {tileHealth === "failed" ? (
               <div
-                className="mb-2 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 shadow-sheet"
+                className="mb-2 flex items-center gap-2 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2 shadow-sheet"
                 role="status"
                 aria-live="polite"
               >
-                <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-amber-900">
+                <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-[var(--warn-text)]">
                   底图没有加载出来，地图可能不完整
                 </p>
                 <button
                   type="button"
-                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center rounded-lg bg-amber-900 px-3 text-[13px] font-semibold text-white"
+                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center rounded-lg bg-[var(--warn-text)] px-3 text-[13px] font-semibold text-white"
                   onClick={() => {
                     setTileHealth("loading");
                     setTileRetryToken((token) => token + 1);
@@ -473,7 +473,7 @@ export default function MapPage() {
                 </button>
                 <button
                   type="button"
-                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center rounded-lg border border-amber-900/30 px-3 text-[13px] font-semibold text-amber-900"
+                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center rounded-lg border border-[var(--warn-ring)] px-3 text-[13px] font-semibold text-[var(--warn-text)]"
                   onClick={() => {
                     const next = nextTileProvider(
                       TILE_PROVIDER_LIST.map((provider) => provider.id),
@@ -491,7 +491,7 @@ export default function MapPage() {
               <div className="card p-3 text-center text-[13px] text-[var(--muted)]">正在加载游戏数据…</div>
             ) : complete ? (
               <div className="card p-3 shadow-sheet">
-                <p className="text-[14px] font-semibold text-emerald-700">🎉 你已走完全部 {statuses.length} 个地点</p>
+                <p className="text-[14px] font-semibold text-[var(--ok-strong)]">🎉 你已走完全部 {statuses.length} 个地点</p>
                 <Link href="/bag" className="btn btn-primary btn-block mt-2">查看我的收获</Link>
               </div>
             ) : current ? (
@@ -503,7 +503,7 @@ export default function MapPage() {
                   aria-expanded={taskExpanded}
                   aria-label={taskExpanded ? "收起任务详情" : "展开任务详情"}
                 >
-                  <div className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-sky-50">
+                  <div className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-[var(--info-border)] bg-[var(--info-bg)]">
                     <div
                       className="absolute inset-0 animate-[spin_2.8s_linear_infinite] opacity-80"
                       style={{
@@ -511,7 +511,7 @@ export default function MapPage() {
                       }}
                       aria-hidden="true"
                     />
-                    <div className="absolute inset-[7px] rounded-full border border-sky-200/80" aria-hidden="true" />
+                    <div className="absolute inset-[7px] rounded-full border border-[var(--info-border)]" aria-hidden="true" />
                     <svg
                       viewBox="0 0 40 40"
                       className="relative h-9 w-9 drop-shadow-sm"
@@ -533,7 +533,7 @@ export default function MapPage() {
                     </span>
                   ) : null}
                   {arrivedScene && arrivedScene.id === current.id ? (
-                    <span className="chip shrink-0 bg-emerald-100 text-emerald-700">已抵达</span>
+                    <span className="chip shrink-0 bg-[var(--ok-bg-strong)] text-[var(--ok-strong)]">已抵达</span>
                   ) : null}
                   <span className="shrink-0 text-[var(--muted)]" aria-hidden="true">{taskExpanded ? "⌄" : "⌃"}</span>
                 </button>
@@ -547,7 +547,7 @@ export default function MapPage() {
                         : "蓝色方向指示指向当前目标。请同时观察地图和现场环境；方向会随定位更新，卡片上的距离为 GPS 估算值，仅供参考。"}
                     </p>
                     {fixQuality?.message && !currentDistance?.inRange ? (
-                      <p className="mt-2 text-[13px] leading-snug text-amber-700">{fixQuality.message}</p>
+                      <p className="mt-2 text-[13px] leading-snug text-[var(--warn-text)]">{fixQuality.message}</p>
                     ) : null}
                     {arrivedScene && arrivedScene.id === current.id ? (
                       <button
