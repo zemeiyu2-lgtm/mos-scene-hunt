@@ -153,7 +153,7 @@ async function drawPoints(page, n) {
 }
 
 async function openDesign(page, label) {
-  await page.goto(`${BASE}/design`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/design?flow=all`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".leaflet-container", { timeout: 20000 });
   await sleep(1200);
   const box = await page.evaluate(() => {
@@ -352,7 +352,7 @@ try {
   await check("F2 离开 /design 再返回，地图重建正常", async () => {
     await page.goto(`${BASE}/games`, { waitUntil: "domcontentloaded" });
     await sleep(700);
-    await page.goto(`${BASE}/design`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${BASE}/design?flow=all`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".leaflet-container", { timeout: 20000 });
     await sleep(1200);
     const s = await designState(page);

@@ -99,7 +99,7 @@ async function drawPoints(page, n) {
 }
 
 async function openDesign(page) {
-  await page.goto(`${BASE}/design`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/design?flow=all`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".leaflet-container", { timeout: 20000 });
   await sleep(1300);
 }

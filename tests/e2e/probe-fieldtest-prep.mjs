@@ -86,7 +86,7 @@ await check("1 测试游戏出现在游戏中心", async () => {
 });
 
 // 2. 深链接打开设计器确认载入
-await page.goto(`${BASE}/design?game=${GAME_ID}`, { waitUntil: "networkidle2" });
+await page.goto(`${BASE}/design?game=${GAME_ID}&flow=all`, { waitUntil: "networkidle2" });
 await sleep(2000);
 await check("2 设计器按深链接载入测试游戏", async () => {
   await page.waitForFunction(
