@@ -38,7 +38,7 @@ import {
   type GameState,
   type SceneStatus,
 } from "@/lib/game/state";
-import { DEFAULT_TRIGGER_RADIUS, distanceToLocation, isWithinRadius, type PositionFix } from "@/lib/location";
+import { ArrivalHysteresis, DEFAULT_TRIGGER_RADIUS, distanceToLocation, isWithinRadius, resolveRadius, type PositionFix } from "@/lib/location";
 import { entryScene, sceneOrder, type Game, type Scene } from "@/lib/game/types";
 import { loadGame, type LoadedGame } from "@/lib/content";
 import {
@@ -215,26 +215,66 @@ export function HuntProvider({
   /* ---------------------------------------------------------------- */
 
   /**
-   * Which scene rings currently contain the player.
+   * Which scene rings currently contain the player - AFTER arrival
+   * hysteresis (B-01B).
+   *
+   * The raw per-fix containment is not fed to the engine directly any more:
+   * `ArrivalHysteresis` (lib/location/arrival-hysteresis.ts) requires two
+   * consecutive reliable fixes inside the enter radius to confirm an
+   * arrival, and only clears "inside" beyond 1.5x the radius. That kills the
+   * boundary-oscillation loop (edge standing produced repeated arrivedAt
+   * stamps, prompts and sounds) without touching the engine or the reward
+   * protocol. The map UI (`derived` below) keeps showing RAW distances so
+   * the pointer never lies about where the player is.
    *
    * Only scenes the player is allowed to enter are evaluated: standing on a
-   * locked future scene must not pre-arm it, or a shortcut through the map would
-   * skip the hunt.
+   * locked future scene must not pre-arm it, or a shortcut through the map
+   * would skip the hunt.
    */
-  const insideIds = useMemo(() => {
-    const game = loaded?.game;
-    if (!game || !state || !fix) return [] as string[];
-    const allowed = new Set(availableSceneIds(game, state));
-    return game.scenes
-      .filter((scene) => allowed.has(scene.id) || state.scenes[scene.id]?.status !== "locked")
-      .filter((scene) =>
-        isWithinRadius(fix, scene.location, {
-          accuracy: fix.accuracy,
-          allowAccuracySlack: settings.allowAccuracySlack,
-        }),
-      )
-      .map((scene) => scene.id);
-  }, [loaded, state, fix, settings.allowAccuracySlack]);
+  const hysteresisRef = useRef<ArrivalHysteresis | null>(null);
+  if (!hysteresisRef.current) hysteresisRef.current = new ArrivalHysteresis();
+  const loadedGameIdRef = useRef<string | null>(null);
+  /** Latest state for the fix effect without re-subscribing on every act. */
+  const stateRef = useRef<GameState | null>(null);
+  stateRef.current = state;
+  const [insideIds, setInsideIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const game = loadedGameRef.current;
+    if (!fix || !game) return;
+    // A different pack must start with clean machines; a same-fix re-render
+    // is deduplicated inside the hysteresis by fixKey.
+    if (loadedGameIdRef.current !== game.id) {
+      loadedGameIdRef.current = game.id;
+      hysteresisRef.current?.resetAll();
+    }
+    const st = stateRef.current;
+    const allowed = st ? new Set(availableSceneIds(game, st)) : new Set<string>();
+    const fixKey = String(fix.timestamp);
+    const next: string[] = [];
+    for (const scene of game.scenes) {
+      const progress = st?.scenes[scene.id];
+      if (!progress) continue;
+      if (progress.status === "locked" && !allowed.has(scene.id)) continue;
+      const distanceM = distanceToLocation(fix, scene.location);
+      const baseRadiusM = resolveRadius(scene.location);
+      const slack = settings.allowAccuracySlack
+        ? Math.min(fix.accuracy, baseRadiusM * 0.5)
+        : 0;
+      const step = hysteresisRef.current?.update(
+        scene.id,
+        {
+          distanceM,
+          baseRadiusM,
+          enterRadiusM: baseRadiusM + slack,
+          accuracyM: fix.accuracy,
+        },
+        fixKey,
+      );
+      if (step?.inside) next.push(scene.id);
+    }
+    setInsideIds(next);
+  }, [fix, loaded, settings.allowAccuracySlack]);
 
   // Push the computed containment into the reducer. The reducer only flips
   // arrived <-> baseline; it can never complete a scene from position alone.
