@@ -33,6 +33,26 @@ describe("simulator capability gates", () => {
     expect(isSimulatorAvailable()).toBe(true);
   });
 
+  it("Vercel PRODUCTION deployment with SIMULATOR=1: hard-disabled even with opt-in", () => {
+    // Reproduces the 2026-11-03 finding: the variable was set on the Vercel
+    // Production environment. The code-level stop must win over the variable.
+    vi.stubEnv("NEXT_PUBLIC_ENABLE_GPS_SIMULATOR", "1");
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect(isSimulatorAvailable()).toBe(false);
+  });
+
+  it("Vercel PREVIEW deployment with SIMULATOR=1: still available (stakeholder demos)", () => {
+    vi.stubEnv("NEXT_PUBLIC_ENABLE_GPS_SIMULATOR", "1");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    expect(isSimulatorAvailable()).toBe(true);
+  });
+
+  it("local production build with SIMULATOR=1: still available (no VERCEL_ENV injected)", () => {
+    vi.stubEnv("NEXT_PUBLIC_ENABLE_GPS_SIMULATOR", "1");
+    vi.stubEnv("VERCEL_ENV", "");
+    expect(isSimulatorAvailable()).toBe(true);
+  });
+
   it("demo runs on AUTO_DEMO=1 WITHOUT the DEV simulator (D-003 decoupling)", () => {
     vi.stubEnv("NEXT_PUBLIC_ENABLE_GPS_SIMULATOR", "");
     vi.stubEnv("NEXT_PUBLIC_ENABLE_AUTO_DEMO", "1");

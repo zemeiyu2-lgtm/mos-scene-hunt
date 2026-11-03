@@ -93,6 +93,13 @@ interface GpsContextValue {
   retry: () => void;
   /** Force a specific fix (used by the simulator). */
   injectFix: (fix: PositionFix) => void;
+  /* --- Diagnostics (B-01D, display-only: never drives the engine) --- */
+  /** Wall-clock ms of the last accepted fix (0 = none yet). */
+  lastFixAt: number;
+  /** True while a watcher subscription handle exists. */
+  watcherAlive: boolean;
+  /** How many automatic recoveries (watchdog/visibility/permission) ran. */
+  autoRebuildCount: number;
 }
 
 const GpsContext = createContext<GpsContextValue | null>(null);
@@ -104,6 +111,11 @@ export function GpsProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<GeoError | null>(null);
   const [permission, setPermission] = useState<PermissionState>("unknown");
   const [simulatorAvailable, setSimulatorAvailable] = useState(false);
+  // Diagnostics mirrors (B-01D): refs are the source of truth for timers,
+  // these states expose the same facts to the read-only diagnostics view.
+  const [lastFixAt, setLastFixAt] = useState(0);
+  const [watcherAlive, setWatcherAlive] = useState(false);
+  const [autoRebuildCount, setAutoRebuildCount] = useState(0);
 
   const watcherRef = useRef<{ stop: () => void } | null>(null);
   const mountedRef = useRef(true);
@@ -139,12 +151,14 @@ export function GpsProvider({ children }: { children: ReactNode }) {
       mountedRef.current = false;
       watcherRef.current?.stop();
       watcherRef.current = null;
+      setWatcherAlive(false);
     };
   }, []);
 
   const injectFix = useCallback((next: PositionFix) => {
     simulatorActiveRef.current = Boolean(next.simulated) || simulatorActiveRef.current;
     lastFixAtRef.current = Date.now();
+    setLastFixAt(lastFixAtRef.current);
     setFix(next);
     setStatus("watching");
     setError(null);
@@ -154,6 +168,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
     stoppedByUserRef.current = true;
     watcherRef.current?.stop();
     watcherRef.current = null;
+    setWatcherAlive(false);
     setStatus((s) => (s === "watching" ? "idle" : s));
   }, []);
 
@@ -169,6 +184,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
 
   const recordRebuild = useCallback((): void => {
     rebuildsRef.current.push(Date.now());
+    setAutoRebuildCount((c) => c + 1);
   }, []);
 
   /**
@@ -187,6 +203,7 @@ export function GpsProvider({ children }: { children: ReactNode }) {
         // simulated position back to their desk mid-test.
         if (simulatorActiveRef.current) return;
         lastFixAtRef.current = Date.now();
+        setLastFixAt(lastFixAtRef.current);
         setFix(next);
         setStatus("watching");
         setError(null);
@@ -205,11 +222,13 @@ export function GpsProvider({ children }: { children: ReactNode }) {
             // stays true and F1/F3 recovery can engage later.
             watcherRef.current?.stop();
             watcherRef.current = null;
+            setWatcherAlive(false);
           }
         }
       },
       { maximumAgeMs: 2000 },
     );
+    setWatcherAlive(true);
   }, []);
 
   /**
@@ -236,12 +255,14 @@ export function GpsProvider({ children }: { children: ReactNode }) {
     setStatus("requesting");
     watcherRef.current?.stop();
     watcherRef.current = null;
+    setWatcherAlive(false);
     getCurrentPosition()
       .then((first) => {
         if (!mountedRef.current) return;
         setFix(first);
         setPermission("granted");
         lastFixAtRef.current = Date.now();
+        setLastFixAt(lastFixAtRef.current);
         setStatus("watching");
         beginWatching();
       })
@@ -444,8 +465,11 @@ export function GpsProvider({ children }: { children: ReactNode }) {
       stop,
       retry,
       injectFix,
+      lastFixAt,
+      watcherAlive,
+      autoRebuildCount,
     }),
-    [fix, status, error, permission, simulatorAvailable, start, stop, retry, injectFix],
+    [fix, status, error, permission, simulatorAvailable, start, stop, retry, injectFix, lastFixAt, watcherAlive, autoRebuildCount],
   );
 
   return <GpsContext.Provider value={value}>{children}</GpsContext.Provider>;

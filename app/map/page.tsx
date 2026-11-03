@@ -16,6 +16,7 @@ import { useSettings } from "@/components/providers";
 import { useGps } from "@/components/gps-provider";
 import { MapView } from "@/components/map-view";
 import { SimulatorPanel } from "@/components/simulator-panel";
+import { GpsDiagnosticsChip } from "@/components/gps-diagnostics";
 import { calculateDistance, classifyFix, formatDistance, smoothHeading } from "@/lib/location";
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
@@ -446,6 +447,9 @@ export default function MapPage() {
                 </span>
               </div>
             ) : null}
+
+            {/* B-01D: collapsed field-testing aid; read-only, no coordinates. */}
+            <GpsDiagnosticsChip />
 
             {loadError ? (
               <div className="pointer-events-auto mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-800">

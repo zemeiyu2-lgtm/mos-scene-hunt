@@ -20,6 +20,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { currentAudioState, playSound } from "@/components/sound";
+import { vibrateOnArrival } from "@/lib/haptics";
 
 export interface ArrivalPromptProps {
   /** Title of the scene the player just reached. */
@@ -58,6 +59,10 @@ export function ArrivalPrompt({
   const [soundNeedsGesture, setSoundNeedsGesture] = useState(false);
   useEffect(() => {
     playSound("arrive");
+    // One light haptic pulse per arrival, same keying as the cue: devices
+    // without the Vibration API (iOS Safari) silently skip it, and a failure
+    // can never affect the prompt, the sound, or the reward flow.
+    vibrateOnArrival();
     const timer = setTimeout(() => {
       setSoundNeedsGesture(currentAudioState() === "suspended");
     }, 400);

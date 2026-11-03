@@ -105,6 +105,16 @@ describe("decideArrivalPrompt", () => {
     expect(decideArrivalPrompt({ ...base, now: NOW + PROMPT_REPEAT_GUARD_MS - 1, lastServed })).toBe(false);
   });
 
+  it("re-prompts at exactly PROMPT_REPEAT_GUARD_MS, never a ms earlier (B-01D boundary)", () => {
+    const lastServed = new Map<string, number>();
+    expect(decideArrivalPrompt({ ...base, now: NOW, lastServed })).toBe(true);
+    lastServed.set(arrivalEventKey(GAME, SCENE, NOW)!, NOW);
+    // The guard is deliberately short; its length must be exactly the named
+    // constant - both a longer effective cooldown and an earlier re-prompt
+    // would be a silent behaviour change.
+    expect(decideArrivalPrompt({ ...base, now: NOW + PROMPT_REPEAT_GUARD_MS, lastServed })).toBe(true);
+  });
+
   it("prompts again when the player leaves and walks back in (new arrival stamp)", () => {
     const lastServed = new Map<string, number>();
     expect(decideArrivalPrompt({ ...base, now: NOW, lastServed })).toBe(true);

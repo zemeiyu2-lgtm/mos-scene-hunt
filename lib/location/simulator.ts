@@ -15,13 +15,23 @@ import type { Coordinate, PositionFix } from "../location/types";
  * The simulator is compiled in only when the app is built for development, or
  * when the operator explicitly sets NEXT_PUBLIC_ENABLE_GPS_SIMULATOR=1 on a
  * preview deployment (useful for stakeholder demos on a hosted URL).
+ *
+ * Hard production stop: Vercel injects VERCEL_ENV=production at build time for
+ * production deployments (previews get "preview", local builds get nothing).
+ * Even if the opt-in variable is accidentally configured on the Production
+ * environment - as was found to be the case on 2026-11-03 - the panel can
+ * never compile in there.
  */
 export function isSimulatorAvailable(): boolean {
-  const explicitOptIn =
-    typeof process !== "undefined" &&
-    process.env.NEXT_PUBLIC_ENABLE_GPS_SIMULATOR === "1";
   const isDevBuild = typeof process !== "undefined" && process.env.NODE_ENV !== "production";
-  return isDevBuild || explicitOptIn;
+  if (isDevBuild) return true;
+  if (typeof process !== "undefined" && process.env.VERCEL_ENV === "production") {
+    return false;
+  }
+  return (
+    typeof process !== "undefined" &&
+    process.env.NEXT_PUBLIC_ENABLE_GPS_SIMULATOR === "1"
+  );
 }
 
 /** Why the simulator is unavailable, for display in the settings sheet. */
