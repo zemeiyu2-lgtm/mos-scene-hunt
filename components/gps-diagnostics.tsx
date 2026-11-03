@@ -93,7 +93,7 @@ export function GpsDiagnosticsChip() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="chip text-[11px] text-[var(--muted)]"
+        className="chip min-h-[44px] px-3 text-[13px] text-[var(--muted)]"
         data-testid="gps-diagnostics-toggle"
       >
         GPS 诊断 {open ? "▲" : "▼"}
@@ -106,8 +106,8 @@ export function GpsDiagnosticsChip() {
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
             {rows.map(([k, v]) => (
               <div key={k} className="col-span-2 grid grid-cols-subgrid">
-                <dt className="text-[11.5px] text-[var(--muted)]">{k}</dt>
-                <dd className="text-right text-[11.5px] font-medium text-[var(--text)]">{v}</dd>
+                <dt className="text-[13px] text-[var(--muted)]">{k}</dt>
+                <dd className="text-right text-[13px] font-medium text-[var(--text)]">{v}</dd>
               </div>
             ))}
           </dl>

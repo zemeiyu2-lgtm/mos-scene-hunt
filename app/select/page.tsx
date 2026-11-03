@@ -164,7 +164,7 @@ export default function SelectPage() {
     <>
     <Screen title="选择寻宝" subtitle="确认信息后开始">
       {shareBroken ? (
-        <div className="card mb-4 border border-amber-200 bg-amber-50 p-4 text-[12.5px] leading-relaxed text-amber-900">
+        <div className="card mb-4 border border-amber-200 bg-amber-50 p-4 text-[13px] leading-relaxed text-amber-900">
           <p className="font-semibold">分享链接未能打开</p>
           <p className="mt-1">{shareBroken}</p>
           <p className="mt-1 text-amber-800">
@@ -208,14 +208,14 @@ export default function SelectPage() {
               { k: "预计", v: `${game.estimatedMinutes ?? 20} 分钟` },
             ].map((item) => (
               <div key={item.k} className="rounded-xl bg-[var(--surface)] px-3 py-2">
-                <dt className="text-[11px] text-[var(--muted)]">{item.k}</dt>
+                <dt className="text-[12px] text-[var(--muted)]">{item.k}</dt>
                 <dd className="tabular mt-0.5 text-[13px] font-semibold">{item.v}</dd>
               </div>
             ))}
           </dl>
 
           {game.huntArea ? (
-            <div className="mt-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[12px] leading-relaxed text-amber-900">
+            <div className="mt-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[13px] leading-relaxed text-amber-900">
               <p className="font-semibold">
                 探索区域 · {game.huntArea.name ?? formatArea(game.huntArea.radiusMeters)}
                 {game.huntArea.shape === "polygon"
@@ -232,12 +232,12 @@ export default function SelectPage() {
           <div className="mt-4 space-y-2">
             {game.scenes.map((scene, i) => (
               <div key={scene.id} className="flex items-start gap-3">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--line)] text-[11px] font-bold text-[var(--muted)]">
+                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--line)] text-[12px] font-bold text-[var(--muted)]">
                   {i + 1}
                 </span>
                 <div className="min-w-0">
                   <p className="text-[13.5px] font-medium leading-snug">{scene.title}</p>
-                  <p className="text-[11.5px] text-[var(--muted)]">
+                  <p className="text-[12px] text-[var(--muted)]">
                     {scene.challenge ? challengeLabel(scene.challenge.type) : "无任务"}
                     {scene.reward ? ` · 奖励：${scene.reward.title}` : ""}
                   </p>
@@ -253,7 +253,7 @@ export default function SelectPage() {
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[13px] font-semibold">朋友分享的游戏 · 临时试玩中</p>
-              <p className="mt-0.5 text-[12px] leading-snug text-[var(--muted)]">
+              <p className="mt-0.5 text-[13px] leading-snug text-[var(--muted)]">
                 可以先直接游玩；保存后才会进入本机游戏库，之后可从「创作库」随时打开。
               </p>
             </div>
@@ -275,17 +275,17 @@ export default function SelectPage() {
             </button>
           </div>
           {saveState === "saved" ? (
-            <p className="mt-2 rounded-xl bg-green-50 px-3 py-2 text-[12px] leading-snug text-green-800">
+            <p className="mt-2 rounded-xl bg-green-50 px-3 py-2 text-[13px] leading-snug text-green-800">
               已保存到本机游戏库，可在「创作库」中随时找到并打开。
             </p>
           ) : null}
           {saveState === "conflict" ? (
-            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[12px] leading-snug text-amber-900">
+            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[13px] leading-snug text-amber-900">
               本机已有一个同名但内容不同的游戏。为避免覆盖你已有的游戏和进度，这次没有保存。
             </p>
           ) : null}
           {saveError ? (
-            <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[12px] leading-snug text-red-700">
+            <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[13px] leading-snug text-red-700">
               保存失败：{saveError}
             </p>
           ) : null}
@@ -301,7 +301,7 @@ export default function SelectPage() {
               {completedCount} / {statuses.length} 个地点已完成
             </span>
           </p>
-          <p className="mt-1 text-[12px] text-[var(--muted)]">
+          <p className="mt-1 text-[13px] text-[var(--muted)]">
             继续寻宝不会清空已有进度。
           </p>
         </div>
@@ -309,7 +309,7 @@ export default function SelectPage() {
 
       <div className="card mt-4 p-4">
         <p className="text-[13px] font-semibold">开始前只需记住</p>
-        <ul className="mt-2 space-y-1.5 text-[12.5px] leading-relaxed text-[var(--muted)]">
+        <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed text-[var(--muted)]">
           <li>· 本游戏仅适合户外游玩；室内定位可能不稳定。</li>
           <li>· 允许浏览器使用位置权限，才能触发站点。</li>
           <li>· 无需注册或登录，进度保存在本机。</li>
@@ -325,7 +325,7 @@ export default function SelectPage() {
               ))}
             </ol>
             {deniedGuide.note ? (
-              <p className="mt-1.5 text-[12.5px] leading-snug">{deniedGuide.note}</p>
+              <p className="mt-1.5 text-[13px] leading-snug">{deniedGuide.note}</p>
             ) : null}
           </div>
         ) : null}
@@ -350,7 +350,7 @@ export default function SelectPage() {
       </div>
 
       {status === "unsupported" ? (
-        <p className="mt-3 text-center text-[12px] text-red-700">
+        <p className="mt-3 text-center text-[13px] text-red-700">
           当前浏览器不支持定位功能，游戏无法运行。
         </p>
       ) : null}
@@ -358,15 +358,15 @@ export default function SelectPage() {
       {runtimeMode === "preview" ? (
         <div className="fixed inset-x-0 top-0 z-[900] border-b border-violet-200 bg-violet-600/95 text-white shadow-lg">
           <div className="mx-auto flex h-11 max-w-[520px] items-center gap-2 px-3">
-            <span className="shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+            <span className="shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-[12px] font-bold">
               预览模式
             </span>
-            <p className="min-w-0 flex-1 truncate text-[11px] text-white/85">
+            <p className="min-w-0 flex-1 truncate text-[12px] text-white/85">
               试玩不计入真人进度，也不会改动已保存的游戏包
             </p>
             <button
               type="button"
-              className="shrink-0 rounded-lg bg-white/15 px-2.5 py-1 text-[11px] font-medium hover:bg-white/25"
+              className="shrink-0 rounded-lg bg-white/15 px-2.5 py-1 text-[12px] font-medium hover:bg-white/25"
               onClick={() => {
                 disablePreview();
                 if (game?.id) clearGameStateForMode(game.id, "preview");

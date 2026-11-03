@@ -97,7 +97,7 @@ export default function QuestPage() {
               >
                 <div className="flex items-start gap-3">
                   <span
-                    className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-bold ${
+                    className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-bold ${
                       isDone
                         ? "bg-emerald-500 text-white"
                         : row.isActive
@@ -114,13 +114,13 @@ export default function QuestPage() {
                       <StatusChip status={row.status} className="shrink-0" />
                     </div>
 
-                    <p className="mt-0.5 text-[12px] text-[var(--muted)]">
+                    <p className="mt-0.5 text-[13px] text-[var(--muted)]">
                       {row.scene.location.name ?? "地点"}
                       {row.scene.reward ? ` · 奖励：${row.scene.reward.title}` : ""}
                     </p>
 
                     {!isLocked && d ? (
-                      <p className="mt-2 text-[12.5px]">
+                      <p className="mt-2 text-[13px]">
                         {d.inRange ? (
                           <span className="font-semibold text-emerald-600">✓ 已进入任务区域</span>
                         ) : (
@@ -129,7 +129,7 @@ export default function QuestPage() {
                             <span className="tabular font-semibold">
                               {formatDistance(d.distance)}
                             </span>
-                            <span className="text-[11px] text-[var(--muted)]">
+                            <span className="text-[12px] text-[var(--muted)]">
                               {" "}
                               / 触发半径 {radius} m
                             </span>
@@ -137,7 +137,7 @@ export default function QuestPage() {
                         )}
                       </p>
                     ) : isLocked ? (
-                      <p className="mt-2 text-[12px] text-[var(--muted)]">
+                      <p className="mt-2 text-[13px] text-[var(--muted)]">
                         {describeSceneLock(
                           sceneLockReason(row.scene, game.scenes, completedSceneIds, heldItemKinds),
                           `完成「${statuses[index - 1]?.scene.title ?? "前一个地点"}」后解锁`,
@@ -146,7 +146,7 @@ export default function QuestPage() {
                     ) : null}
 
                     {row.scene.briefing && !isLocked && !isDone ? (
-                      <p className="mt-2 border-l-2 border-[var(--line)] pl-2.5 text-[12px] italic leading-relaxed text-[var(--muted)]">
+                      <p className="mt-2 border-l-2 border-[var(--line)] pl-2.5 text-[13px] italic leading-relaxed text-[var(--muted)]">
                         {row.scene.briefing}
                       </p>
                     ) : null}
@@ -203,7 +203,7 @@ export default function QuestPage() {
       {complete ? (
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center">
           <p className="text-[15px] font-semibold text-emerald-800">🎉 全部完成</p>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-emerald-700">
+          <p className="mt-1 text-[13px] leading-relaxed text-emerald-700">
             你已走完 {statuses.length} 个真实地点。进度已保存在本机，刷新页面也不会丢失。
           </p>
         </div>
@@ -218,7 +218,7 @@ export default function QuestPage() {
         >
           <div className="card w-full max-w-[320px] p-4 shadow-sheet">
             <p className="text-[15px] font-semibold">退出本次寻宝？</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
+            <p className="mt-1 text-[13px] leading-relaxed text-[var(--muted)]">
               进度已自动保存在本机。回到游戏中心后点「开始游戏」即可回到现在的位置，奖励和已完成的地点都不会丢失。
             </p>
             <div className="mt-3 grid gap-2">

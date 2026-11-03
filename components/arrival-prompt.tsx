@@ -115,14 +115,14 @@ export function ArrivalPrompt({
               </p>
               <p
                 id="arrival-prompt-desc"
-                className="mt-1 text-[12px] leading-snug text-[var(--muted)]"
+                className="mt-1 text-[13px] leading-snug text-[var(--muted)]"
               >
                 {placeName ? `${placeName} · ` : ""}
                 你已进入任务触发范围。
               </p>
               {soundNeedsGesture ? (
                 <p
-                  className="mt-2 text-[11.5px] leading-snug text-amber-700"
+                  className="mt-2 text-[13px] leading-snug text-amber-700"
                   data-testid="arrival-prompt-sound-hint"
                 >
                   🔔 提示音被手机或浏览器暂时限制了，点按屏幕任意处即可恢复；提示卡和任务不受影响。

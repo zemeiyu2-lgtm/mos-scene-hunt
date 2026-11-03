@@ -90,7 +90,7 @@ export function GpsStatusBanner({
           <p className={`${TITLE} text-red-800`}>定位权限被拒绝，暂时无法寻宝</p>
           <StepList guide={permissionGuide} />
           {permissionGuide.note ? (
-            <p className="mt-2 text-[12.5px] leading-snug text-red-700">{permissionGuide.note}</p>
+            <p className="mt-2 text-[13px] leading-snug text-red-700">{permissionGuide.note}</p>
           ) : null}
           <button type="button" className={ACTION} onClick={onRetry}>
             重新请求定位

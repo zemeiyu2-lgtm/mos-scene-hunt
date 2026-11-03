@@ -33,7 +33,7 @@ export default function TutorialPage() {
       <section className="card overflow-hidden">
         <div className="relative h-[280px] w-full bg-[var(--gold-chalk)]">
           <MapView player={demoPlayer} entries={entries} huntArea={demoGame.huntArea} tileProvider="osm" fitToHunt />
-          <div className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[var(--hero-teal-veil)] px-3 py-1 text-[10px] font-semibold text-white shadow">演示地图 · 模拟位置</div>
+          <div className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[var(--hero-teal-veil)] px-3 py-1 text-[12px] font-semibold text-white shadow">演示地图 · 模拟位置</div>
         </div>
         <div className="p-4">
           <div className="flex items-center justify-between gap-3">
@@ -44,7 +44,7 @@ export default function TutorialPage() {
           <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{step.detail}</p>
           <div className="mt-4 grid grid-cols-4 gap-1.5">
             {steps.map((item, index) => (
-              <button key={item.title} type="button" onClick={() => setStepIndex(index)} aria-label={item.title} aria-current={index === stepIndex ? "step" : undefined} className={`rounded-xl px-1 py-2 text-[11px] font-semibold ${index === stepIndex ? "bg-[var(--accent)] text-white" : "bg-[var(--surface)] text-[var(--muted)]"}`}>
+              <button key={item.title} type="button" onClick={() => setStepIndex(index)} aria-label={item.title} aria-current={index === stepIndex ? "step" : undefined} className={`rounded-xl px-1 py-2 text-[12px] font-semibold ${index === stepIndex ? "bg-[var(--accent)] text-white" : "bg-[var(--surface)] text-[var(--muted)]"}`}>
                 {index + 1}. {item.title}
               </button>
             ))}

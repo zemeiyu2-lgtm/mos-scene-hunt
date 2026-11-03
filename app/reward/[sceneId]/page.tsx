@@ -67,7 +67,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
       <section className="card overflow-hidden">
         <div className="completion-hero px-5 py-8 text-center">
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/15 text-[34px] shadow-lg">{reward?.icon ?? "✓"}</div>
-          <p className="mt-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-white/75">
+          <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.16em] text-white/75">
             获得{reward?.type === "keyword" ? "关键词" : reward?.type === "badge" ? "徽章" : "奖励"}
           </p>
           <h2 className="mt-1 text-[26px] font-bold leading-tight">
@@ -83,7 +83,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
         <div className="p-5">
           {scene.challenge?.explanation ? (
             <div className="rounded-xl bg-[var(--surface)] px-3.5 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--muted)]">
                 解答
               </p>
               <p className="mt-1 text-[13.5px] leading-relaxed">{scene.challenge.explanation}</p>
@@ -91,13 +91,13 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           ) : null}
 
           {!granted ? (
-            <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[12px] leading-snug text-amber-900">
+            <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[13px] leading-snug text-amber-900">
               注意：这个场景似乎还没有被正式完成。请返回任务列表重新作答。
             </p>
           ) : null}
 
           <div className="mt-4">
-            <div className="flex items-center justify-between text-[12px]">
+            <div className="flex items-center justify-between text-[13px]">
               <span className="text-[var(--muted)]">整体进度</span>
               <span className="tabular font-semibold">
                 {statuses.filter((s) => s.status === "completed").length} / {statuses.length} 个地点
@@ -107,11 +107,11 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="chip bg-[var(--surface)] text-[11px] text-[var(--muted)]">
+            <span className="chip bg-[var(--surface)] text-[12px] text-[var(--muted)]">
               背包共 {totalCollected} 件
             </span>
             {state.keywords.length ? (
-              <span className="chip bg-amber-100 text-[11px] text-amber-800">
+              <span className="chip bg-amber-100 text-[12px] text-amber-800">
                 关键词：{state.keywords.join(" · ")}
               </span>
             ) : null}
@@ -121,10 +121,10 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
             <div className="bsop-keys mt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">八个秘密</p>
-                  <p className="mt-0.5 text-[12px] text-amber-900/70">你已经把这一站带进了整条路线</p>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-amber-800">八个秘密</p>
+                  <p className="mt-0.5 text-[13px] text-amber-900/70">你已经把这一站带进了整条路线</p>
                 </div>
-                <span className="text-[12px] font-bold text-amber-900">{state.keywords.length}/7</span>
+                <span className="text-[13px] font-bold text-amber-900">{state.keywords.length}/7</span>
               </div>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 {["呼召","真理","实践","敬拜","群体","生命","忠心"].map((word) => {
@@ -155,23 +155,23 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
           </p>
           {isBsop ? (
             <div className="mt-4 rounded-xl bg-white/70 px-3.5 py-3 text-left">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">最后任务 · 带走</p>
+              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-amber-800">最后任务 · 带走</p>
               <p className="mt-1 text-[13px] font-semibold">把一个具体行动写下来，然后离开地图。</p>
             </div>
           ) : null}
         </section>
       ) : nextScene ? (
         <section className="card mt-4 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--muted)]">
             已解锁 · 下一个地点
           </p>
           <p className="mt-1.5 text-[16px] font-bold">{nextScene.title}</p>
-          <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">
+          <p className="mt-0.5 text-[13px] text-[var(--muted)]">
             {nextScene.location.name ?? "目标地点"}
           </p>
 
           {nextScene.briefing ? (
-            <p className="mt-2.5 border-l-2 border-[var(--accent)] pl-3 text-[12.5px] italic leading-relaxed text-[var(--muted)]">
+            <p className="mt-2.5 border-l-2 border-[var(--accent)] pl-3 text-[13px] italic leading-relaxed text-[var(--muted)]">
               {nextScene.briefing}
             </p>
           ) : null}
@@ -184,7 +184,7 @@ export default function RewardPage({ params }: { params: Promise<{ sceneId: stri
               </span>
             </p>
           ) : fix ? null : (
-            <p className="mt-3 text-[12px] text-[var(--muted)]">正在获取定位以计算距离…</p>
+            <p className="mt-3 text-[13px] text-[var(--muted)]">正在获取定位以计算距离…</p>
           )}
         </section>
       ) : null}

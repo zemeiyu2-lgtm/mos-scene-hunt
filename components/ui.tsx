@@ -206,8 +206,8 @@ export function LoadingState({ label = "正在加载…" }: { label?: string }) 
 export function KV({ k, v, mono = false }: { k: string; v: ReactNode; mono?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5">
-      <span className="shrink-0 text-[12px] text-[var(--muted)]">{k}</span>
-      <span className={`text-right text-[12px] ${mono ? "tabular font-mono" : ""}`}>{v}</span>
+      <span className="shrink-0 text-[13px] text-[var(--muted)]">{k}</span>
+      <span className={`text-right text-[13px] ${mono ? "tabular font-mono" : ""}`}>{v}</span>
     </div>
   );
 }

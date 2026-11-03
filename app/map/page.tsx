@@ -338,23 +338,25 @@ export default function MapPage() {
         >
           <div className="page">
             <div className="map-hud pointer-events-auto flex items-center gap-2">
+              {/* B-03 HUD：当前目标与进度是玩家最需要的信息，占据主位；
+                  其余控件收进右侧统一 46px 触控区。 */}
               <Link
                 href="/quest"
-                className="card flex min-w-0 flex-1 items-center gap-3 px-3 py-2"
+                className="card flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5"
                 aria-label="查看任务列表"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold">
+                  <p className="truncate text-[15px] font-bold leading-tight">
                     {complete ? "全部完成 🎉" : current?.title ?? "加载中…"}
                   </p>
-                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]">
+                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[var(--line)]">
                     <div
                       className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500"
                       style={{ width: `${Math.round(ratio * 100)}%` }}
                     />
                   </div>
                 </div>
-                <span className="shrink-0 text-[11px] tabular text-[var(--muted)]">
+                <span className="shrink-0 text-[13px] font-semibold tabular text-[var(--text)]">
                   {statuses.filter((s) => s.status === "completed").length}/{statuses.length}
                 </span>
               </Link>
@@ -362,7 +364,7 @@ export default function MapPage() {
               <button
                 type="button"
                 onClick={() => void enableHeading()}
-                className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
+                className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[19px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
                 aria-label={heading !== null ? "手机朝向指示已启用" : "启用手机朝向指示"}
                 title="蓝色尾巴显示手机朝向；蓝色箭头指向目标"
               >
@@ -372,7 +374,7 @@ export default function MapPage() {
               <button
                 type="button"
                 onClick={() => setRecenterToken((t) => t + 1)}
-                className="card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px]"
+                className="card grid h-[46px] w-[46px] shrink-0 place-items-center text-[19px]"
                 aria-label="回到我的位置"
                 title="回到我的位置"
               >
@@ -382,7 +384,7 @@ export default function MapPage() {
               <select
                 value={settings.tileProvider}
                 onChange={(e) => update({ tileProvider: e.target.value as TileProviderId })}
-                className="card h-[46px] w-[46px] shrink-0 appearance-none bg-[var(--card)] text-center text-[12px]"
+                className="card h-[46px] w-[46px] shrink-0 appearance-none bg-[var(--card)] text-center text-[13px] font-bold"
                 aria-label="地图样式"
                 title="地图样式"
               >
@@ -397,13 +399,13 @@ export default function MapPage() {
             {/* GPS status strip: only shown when something is wrong or simulated. */}
             {headingMessage && heading === null ? (
               <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-[12px] leading-snug text-amber-900">{headingMessage}</p>
+                <p className="text-[13px] leading-snug text-amber-900">{headingMessage}</p>
               </div>
             ) : null}
 
             {outsideHuntArea ? (
               <div className="pointer-events-auto mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
-                <p className="text-[12.5px] leading-snug text-amber-900">
+                <p className="text-[13px] leading-snug text-amber-900">
                   你已离开本次寻宝区域，请结合地图回到寻宝范围内。
                 </p>
               </div>
@@ -434,7 +436,7 @@ export default function MapPage() {
             <GpsDiagnosticsChip />
 
             {loadError ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-800">
+              <div className="pointer-events-auto mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">
                 {loadError}
               </div>
             ) : null}
@@ -526,7 +528,7 @@ export default function MapPage() {
                     <p className="truncate text-[14px] font-bold">{current.title}</p>
                   </div>
                   {currentDistance && !currentDistance.inRange ? (
-                    <span className="shrink-0 tabular text-[12px] font-semibold text-[var(--muted)]">
+                    <span className="shrink-0 text-[15px] font-bold tabular text-[var(--text)]">
                       {formatDistance(currentDistance.distance)}
                     </span>
                   ) : null}
@@ -538,14 +540,14 @@ export default function MapPage() {
 
                 {taskExpanded ? (
                   <div className="border-t border-[var(--line)] px-3 pb-3 pt-2">
-                    <p className="text-[12px] text-[var(--muted)]">{current.location.name ?? "当前目标地点"}</p>
+                    <p className="text-[13px] text-[var(--muted)]">{current.location.name ?? "当前目标地点"}</p>
                     <p className="mt-2 text-[13px] leading-snug">
                       {targetBearing === null
                         ? "暂时无法确定目标方向。请确认定位权限，并移动到 GPS 信号较好的开阔位置。"
                         : "蓝色方向指示指向当前目标。请同时观察地图和现场环境；方向会随定位更新，卡片上的距离为 GPS 估算值，仅供参考。"}
                     </p>
                     {fixQuality?.message && !currentDistance?.inRange ? (
-                      <p className="mt-2 text-[11.5px] leading-snug text-amber-700">{fixQuality.message}</p>
+                      <p className="mt-2 text-[13px] leading-snug text-amber-700">{fixQuality.message}</p>
                     ) : null}
                     {arrivedScene && arrivedScene.id === current.id ? (
                       <button
@@ -559,7 +561,7 @@ export default function MapPage() {
                       <Link href="/quest" className="btn btn-secondary btn-block mt-3">查看任务详情</Link>
                     )}
                     {insideAnyScene && arrivedScene && arrivedScene.id !== current.id ? (
-                      <p className="mt-2 text-[11.5px] text-[var(--muted)]">
+                      <p className="mt-2 text-[13px] text-[var(--muted)]">
                         你正在「{arrivedScene.title}」的范围内，但它尚未解锁。先去完成当前目标。
                       </p>
                     ) : null}
@@ -639,7 +641,7 @@ function KioskFullscreenButton() {
     <button
       type="button"
       onClick={toggle}
-      className="kiosk-only items-center gap-1.5 rounded-full bg-[var(--card,#ffffff)]/92 px-3.5 py-2 text-[12px] font-semibold text-[var(--ink-700,#374151)] shadow-lg ring-1 ring-black/5 hover:bg-[var(--card,#ffffff)]"
+      className="kiosk-only items-center gap-1.5 rounded-full bg-[var(--card,#ffffff)]/92 px-3.5 py-2 text-[13px] font-semibold text-[var(--ink-700,#374151)] shadow-lg ring-1 ring-black/5 hover:bg-[var(--card,#ffffff)]"
       style={{ position: "absolute", right: 16, bottom: 16, zIndex: 500 }}
     >
       {isFullscreen ? "退出全屏" : "全屏展示"}

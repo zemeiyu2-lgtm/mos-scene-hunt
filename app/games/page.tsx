@@ -96,12 +96,12 @@ export default function GamesPage() {
       <section className="card overflow-hidden">
         <div className="relative h-[190px] bg-[var(--gold-chalk)]">
           <MapView player={demoPlayer} entries={demoEntries} huntArea={demoGame.huntArea} tileProvider="osm" fitToHunt />
-          <span className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[var(--hero-teal-veil)] px-3 py-1 text-[10px] font-semibold text-white shadow">玩法示范 · 模拟位置</span>
+          <span className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[var(--hero-teal-veil)] px-3 py-1 text-[12px] font-semibold text-white shadow">玩法示范 · 模拟位置</span>
         </div>
         <div className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold tracking-[0.18em] text-[var(--muted)]">HOW TO PLAY</p>
+              <p className="text-[12px] font-bold tracking-[0.18em] text-[var(--muted)]">HOW TO PLAY</p>
               <h2 className="mt-1 text-xl font-bold">先看示范，再开始探索</h2>
               <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">看地图、走近地点、解锁任务、收集线索。示范不会读取真实位置。</p>
             </div>
@@ -153,7 +153,7 @@ export default function GamesPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="font-bold">{game.title}</h3>
-                    <p className="mt-1 text-[11px] text-[var(--muted)]">作者：{game.author}</p>
+                    <p className="mt-1 text-[12px] text-[var(--muted)]">作者：{game.author}</p>
                   </div>
                   <span className="chip shrink-0">{game.sceneCount} 站</span>
                 </div>

@@ -90,7 +90,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
     >
       {!isComplete && distance && !distance.inRange ? (
         <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-          <p className="text-[12.5px] leading-snug text-amber-900">
+          <p className="text-[13px] leading-snug text-amber-900">
             你已离开任务区域（当前 {formatDistance(distance.distance)}）。情境已解锁，可以继续阅读与作答。
           </p>
         </div>
@@ -98,7 +98,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
 
       <article className="card story-card p-5 scene-reveal">
         {scene.briefing ? (
-          <p className="mb-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[12.5px] italic leading-relaxed text-amber-900">
+          <p className="mb-4 rounded-xl bg-amber-50 px-3.5 py-3 text-[13px] italic leading-relaxed text-amber-900">
             {scene.briefing}
           </p>
         ) : null}
@@ -116,10 +116,10 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
           <div className="scene-observation mt-4">
             <div className="scene-observation__icon">◉</div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">现场观察</p>
+              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-amber-800">现场观察</p>
               <p className="mt-0.5 text-[13px] font-semibold">{scene.place.observationFocus}</p>
               {scene.place.accessNote ? (
-                <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--muted)]">{scene.place.accessNote}</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">{scene.place.accessNote}</p>
               ) : null}
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
             <div className="min-w-0">
               <p className="text-[13px] font-semibold">{scene.npc.name}</p>
               {scene.npc.role ? (
-                <p className="text-[11.5px] text-[var(--muted)]">{scene.npc.role}</p>
+                <p className="text-[12px] text-[var(--muted)]">{scene.npc.role}</p>
               ) : null}
             </div>
           </div>
@@ -169,7 +169,7 @@ export default function ScenePage({ params }: { params: Promise<{ sceneId: strin
                 key={i}
                 className="rounded-xl bg-[var(--surface)] px-3 py-2 text-[13.5px] leading-relaxed"
               >
-                <span className="mr-1.5 text-[11px] font-semibold text-[var(--muted)]">
+                <span className="mr-1.5 text-[12px] font-semibold text-[var(--muted)]">
                   {line.speaker === "narrator"
                     ? "旁白"
                     : line.speaker === "player"
