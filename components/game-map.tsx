@@ -23,14 +23,15 @@
  */
 
 import "leaflet/dist/leaflet.css";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import { formatDistance, resolveRadius } from "@/lib/location";
 import type { SceneStatus } from "@/lib/game/state";
 import type { HuntArea, Scene } from "@/lib/game/types";
 import type { PositionFix } from "@/lib/location";
 
-import { TILE_PROVIDERS, type TileProviderId } from "@/lib/map/tiles";
+import { TILE_PROVIDERS, resolveActiveTiles, type TileProviderId } from "@/lib/map/tiles";
+import { classifyGeoapifyFailure, describeGeoapifyBlock } from "@/lib/map/geoapify";
 import { MARKER_LOCKED, MARKER_OK, NAV_BLUE } from "@/lib/visual-tokens";
 
 export type { TileProviderId };
@@ -80,6 +81,18 @@ interface GameMapProps {
    * placed so far, and shows the "依次点击边界点" guidance overlay.
    */
   drawingMode?: boolean;
+  /**
+   * Outage-acceptance hook: called once when the vendor cannot paint (missing
+   * or rejected Geoapify key, network error on the probe tile). Mirrors
+   * `map-contract.ts`; this file keeps a local copy of the props interface,
+   * so the field is declared here too.
+   */
+  onEngineFailure?: (reason: string) => void;
+  /**
+   * Runtime tile override (Geoapify outage fallback): when non-null it
+   * replaces the resolved provider without a rebuild.
+   */
+  forceProvider?: TileProviderId | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -203,6 +216,8 @@ export default function GameMap({
   onSceneSelect,
   onHuntAreaDrag,
   drawingMode = false,
+  onEngineFailure,
+  forceProvider = null,
 }: GameMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -237,7 +252,66 @@ export default function GameMap({
   const drawingModeRef = useRef(drawingMode);
   drawingModeRef.current = drawingMode;
 
-  const tiles = TILE_PROVIDERS[tileProvider] ?? TILE_PROVIDERS["osm-hot"];
+  // Vendor switch lives in `resolveActiveTiles`: the default build resolves to
+  // the exact same OSM/CARTO descriptor it always did, and only a build that
+  // opts into Geoapify changes the URL. `blocked` is non-null solely when the
+  // opt-in happened without a usable key. `forceProvider` (outage fallback)
+  // overrides both: MapView swaps a failed Geoapify vendor back to plain OSM.
+  const { provider: tiles, blocked: tileBlocked } = useMemo(() => {
+    if (forceProvider) {
+      const forced = TILE_PROVIDERS[forceProvider];
+      if (forced) return { provider: forced, blocked: null };
+    }
+    return resolveActiveTiles(tileProvider);
+  }, [tileProvider, forceProvider]);
+
+  /**
+   * Runtime key validation for Geoapify.
+   *
+   * A build-time key can still be revoked, mistyped or out of quota, and
+   * Leaflet's only symptom is grey squares (tile 401s are not exceptions).
+   * One probe tile request (0.25 credits) buys an explicit, classified panel.
+   */
+  const [runtimeBlocked, setRuntimeBlocked] = useState<string | null>(null);
+  useEffect(() => {
+    if (tiles.id !== "geoapify") return;
+    let cancelled = false;
+    const probeUrl = tiles.url
+      .replace("{z}", "0")
+      .replace("{x}", "0")
+      .replace("{y}", "0");
+    void (async () => {
+      try {
+        const response = await fetch(probeUrl);
+        const reason = response.ok
+          ? null
+          : classifyGeoapifyFailure(response.status, await response.text().catch(() => ""));
+        if (!cancelled) {
+          setRuntimeBlocked(reason);
+          // Probe metrics read `blocked` from the window object, not React
+          // state; keep the two in step so the report matches the panel.
+          if (reason && window.__mosMapMetrics) window.__mosMapMetrics.blocked = reason;
+        }
+      } catch {
+        if (!cancelled) setRuntimeBlocked("network-error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tiles.id, tiles.url]);
+  const effectiveBlocked = tileBlocked ?? runtimeBlocked;
+
+  // Outage fallback: announce a blocked vendor once, so MapView can swap to the
+  // backup. Ref pattern matches the other callbacks (no stale closure).
+  const engineFailureRef = useRef(onEngineFailure);
+  engineFailureRef.current = onEngineFailure;
+  const failureReportedRef = useRef(false);
+  useEffect(() => {
+    if (!effectiveBlocked || failureReportedRef.current) return;
+    failureReportedRef.current = true;
+    engineFailureRef.current?.(effectiveBlocked);
+  }, [effectiveBlocked]);
 
   // Signatures keep the imperative diffs cheap: effects only run when the
   // *meaning* of the layer changed, not on every parent re-render.
@@ -287,6 +361,50 @@ export default function GameMap({
     // E2E/test handle: lets probes read zoom/centre without reaching into
     // Leaflet internals. Harmless in production (client-only, single instance).
     (window as Window & { __mosSceneHuntMap?: L.Map }).__mosSceneHuntMap = map;
+
+    // Vendor-bench instrumentation. Inert for gameplay: it only publishes the
+    // same numbers a probe would otherwise have to infer from the DOM, so the
+    // Leaflet baseline can be compared to the vector engines on equal terms.
+    const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const metrics = {
+      engine: (tiles.id === "geoapify" ? "leaflet-geoapify" : "leaflet") as
+        | "leaflet"
+        | "leaflet-geoapify",
+      readyMs: null as number | null,
+      idleMs: null as number | null,
+      tileErrors: 0,
+      bootErrors: [] as string[],
+      blocked: tileBlocked,
+      zooms: [map.getZoom()],
+    };
+    window.__mosMapEngine = metrics.engine;
+    window.__mosMapMetrics = metrics;
+    window.__mosMap = {
+      getZoom: () => map.getZoom(),
+      getCenter: () => {
+        const center = map.getCenter();
+        return { lat: center.lat, lng: center.lng };
+      },
+      jumpTo: ({ center, zoom }) => {
+        // The shared probe contract passes [lng, lat] (GeoJSON order); Leaflet
+        // wants [lat, lng]. Swapping here — not at the call sites — keeps the
+        // contract single-sourced.
+        const latLng: L.LatLngExpression = center ? [center[1], center[0]] : map.getCenter();
+        map.setView(latLng, zoom ?? map.getZoom(), { animate: false });
+      },
+    };
+    map.whenReady(() => {
+      metrics.readyMs = Math.round(
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt,
+      );
+      metrics.idleMs = metrics.readyMs;
+    });
+    map.on("zoomend", () => {
+      metrics.zooms = [map.getZoom()];
+    });
+    map.on("tileerror", () => {
+      metrics.tileErrors += 1;
+    });
     // Capture the collections owned by this map instance for deterministic cleanup.
     const rings = ringsRef.current;
     const sceneMarkers = sceneMarkersRef.current;
@@ -774,6 +892,17 @@ export default function GameMap({
             请在地图上依次点击游戏区域的边界点 · 已选择 {huntArea?.points?.length ?? 0} 个点
             {(huntArea?.points?.length ?? 0) < 3 ? "（至少 3 个点）" : ""}
           </div>
+        </div>
+      ) : null}
+
+      {/* A geoapify build without a working key must say so, not paint grey. */}
+      {effectiveBlocked ? (
+        <div className="absolute inset-x-3 top-3 z-[1200] rounded-xl border border-amber-300 bg-amber-50/95 p-3 text-[12px] leading-relaxed text-amber-900 shadow-lg">
+          <p className="font-semibold">Geoapify 瓦片未就绪</p>
+          <p className="mt-1">{describeGeoapifyBlock(effectiveBlocked)}</p>
+          <p className="mt-1 text-amber-800/80">
+            需在测试环境配置 NEXT_PUBLIC_GEOAPIFY_KEY。本页面不会借用其他 Key，也不会回退到 OSM。
+          </p>
         </div>
       ) : null}
 

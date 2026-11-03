@@ -18,10 +18,13 @@
     "test:acceptance:only": "node tests/e2e/run-e2e.mjs"
   },
   "dependencies": {
+    "@protomaps/basemaps": "^5.7.2",
     "@vercel/blob": "^2.8.2",
     "idb-keyval": "^6.2.1",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "^5.24.0",
     "next": "16.4.2",
+    "pmtiles": "^4.5.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
