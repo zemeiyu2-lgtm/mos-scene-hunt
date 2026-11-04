@@ -24,11 +24,12 @@
 const PRODUCTION_PREFIXES = {
   registry: "registry",
   "published-games": "published-games",
+  cities: "cities",
 } as const;
 
 export interface NamespaceGuardInput {
   /** Human readable name of the store, used in the error message. */
-  store: "registry" | "published-games";
+  store: "registry" | "published-games" | "cities";
   /** Raw value of the dedicated prefix environment variable, if any. */
   prefix: string | undefined;
 }
@@ -46,7 +47,11 @@ export function resolveBlobPrefix(input: NamespaceGuardInput): string {
   }
 
   const envVar =
-    input.store === "registry" ? "REGISTRY_BLOB_PREFIX" : "PUBLISHED_GAMES_BLOB_PREFIX";
+    input.store === "registry"
+      ? "REGISTRY_BLOB_PREFIX"
+      : input.store === "cities"
+        ? "CITIES_BLOB_PREFIX"
+        : "PUBLISHED_GAMES_BLOB_PREFIX";
 
   if (!prefix) {
     throw new Error(
