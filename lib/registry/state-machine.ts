@@ -14,10 +14,12 @@
  *  - Public readability is derived from `state`, never from "we have bytes".
  */
 
+import { isValidCityId } from "../cities/types";
 import {
   isPubliclyReadable,
   type ReviewDecision,
   type ReviewRecord,
+  type Role,
   type SubmissionRecord,
   type VersionRecord,
   type WorkRecord,
@@ -39,7 +41,22 @@ export type WorkEvent =
    * Needed for legacy works imported before accounts existed, and to hand a
    * work back after a mistaken claim.
    */
-  | { type: "transfer_owner"; toUserId: string; actorUserId: string };
+  | { type: "transfer_owner"; toUserId: string; actorUserId: string }
+  /**
+   * City association. Orthogonal to the lifecycle — it never changes `state`,
+   * `publishedVersionId` or the version list.
+   *
+   * `proof` carries who is asking, because the rule differs by state: the
+   * owner may set the city while the work is not publicly discoverable, but
+   * once it is live the association is discoverable data and only an admin may
+   * move it. The route layer authenticates; this layer decides.
+   */
+  | {
+      type: "set_city";
+      cityId: string | null;
+      actorUserId: string;
+      actorRole: Role;
+    };
 
 export type TransitionErrorCode =
   | "not_owner"
@@ -50,7 +67,9 @@ export type TransitionErrorCode =
   | "no_published_version"
   | "duplicate_version"
   | "reason_required"
-  | "work_archived";
+  | "work_archived"
+  | "city_change_forbidden"
+  | "invalid_city";
 
 export interface TransitionError {
   ok: false;
@@ -139,6 +158,34 @@ export function applyWorkEvent(
 
     case "submit":
       return applySubmit(work, event, opts);
+
+    case "set_city": {
+      if (event.cityId !== null && !isValidCityId(event.cityId)) {
+        return fail("invalid_city", "城市 id 不合法。");
+      }
+      const isAdmin = event.actorRole === "admin";
+      const isOwner = event.actorUserId === work.ownerUserId;
+      if (!isAdmin && !isOwner) {
+        return fail("not_owner", "只有作者本人或管理员可以修改城市归属。");
+      }
+      // Once a work is (or has been) publicly discoverable, its city is public
+      // data: an owner may not silently move an already-published pack to
+      // another city. Admin-only, and always audited by the service layer.
+      const publishedReachable: WorkState[] = ["published", "unlisted", "withdrawn"];
+      if (publishedReachable.includes(work.state) && !isAdmin) {
+        return fail("city_change_forbidden", "作品已发布过，城市归属只能由管理员修改。");
+      }
+      if ((work.cityId ?? null) === event.cityId) {
+        return { ok: true, work, changed: false };
+      }
+      const next = clone(work);
+      if (event.cityId === null) {
+        delete next.cityId;
+      } else {
+        next.cityId = event.cityId;
+      }
+      return { ok: true, work: settle(next, now), changed: true };
+    }
 
     case "claim_review": {
       // Review actions are keyed on the SUBMISSION, not on the work's main

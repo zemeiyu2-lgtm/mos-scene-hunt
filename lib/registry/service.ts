@@ -18,6 +18,9 @@ import { randomUUID } from "node:crypto";
 import { canonicalJson, deriveVersionId, isValidGameId } from "../publish/version";
 import { getStore as getPublishStore } from "../publish/storage";
 import type { Game } from "../game/types";
+import { syncWorkCityLink } from "../cities/link";
+import { resolveCityRef } from "../cities/resolve";
+import { getCityStore } from "../cities/store";
 import { getRegistry, type RegistryStore } from "./store";
 import { applyWorkEvent, canClaimGameId, type WorkEvent } from "./state-machine";
 import {
@@ -126,7 +129,12 @@ async function mutateWork(
     const now = new Date().toISOString();
     const result = applyWorkEvent(existing, event, { now, submissionId: randomUUID() });
     if (!result.ok) {
-      const status = result.code === "game_id_taken" || result.code === "not_owner" ? 403 : 409;
+      const status =
+        result.code === "game_id_taken" ||
+        result.code === "not_owner" ||
+        result.code === "city_change_forbidden"
+          ? 403
+          : 409;
       throw new HttpError(status, result.code, result.message);
     }
     if (!result.changed) return { work: existing, changed: false };
@@ -144,6 +152,31 @@ export interface SubmitResult {
   versionId: string;
   created: boolean;
   idempotent: boolean;
+}
+
+/**
+ * Keep the derived city index in step with a work whose visibility may have
+ * changed.
+ *
+ * Ordering is the whole consistency story: this runs AFTER the work document
+ * has committed. A failure here therefore leaves a stale (missing/mis-flagged)
+ * index entry, never a listed pack that is not actually published — and
+ * `rebuildCityLinks()` can always restore the index from the works.
+ */
+async function syncCityIndexAfterMutation(
+  work: WorkRecord,
+  actor: ActorContext | null,
+): Promise<void> {
+  const outcome = await syncWorkCityLink(work);
+  if (outcome !== "failed") return;
+  console.error("[cities] 城市索引联动失败（作品状态已生效，可用重建修复）", work.gameId);
+  await recordAudit(getRegistry(), {
+    actor,
+    action: "work.city_link_sync_failed",
+    targetType: "work",
+    targetId: work.gameId,
+    after: { cityId: work.cityId ?? null, state: work.state },
+  });
 }
 
 /**
@@ -299,6 +332,7 @@ export async function publishWork(actor: ActorContext, gameId: string): Promise<
       : null,
     after: { state: work.state, publishedVersionId: work.publishedVersionId },
   });
+  await syncCityIndexAfterMutation(work, actor);
   return work;
 }
 
@@ -371,6 +405,54 @@ export async function applySimpleAction(
     before: before ? { state: before.state } : null,
     after: { state: work.state },
   });
+  await syncCityIndexAfterMutation(work, actor);
+  return work;
+}
+
+/**
+ * Set or clear the city association of one work.
+ *
+ * The caller's role is passed into the pure transition, which enforces the rule
+ * (owner while the work is not publicly discoverable, admin once it is). The
+ * city id is validated against a real profile here — an association to a
+ * non-existent city can never be stored, and a merged id is resolved to its
+ * survivor before it is written.
+ */
+export async function setWorkCity(
+  actor: ActorContext,
+  gameId: string,
+  rawCityId: string | null,
+): Promise<WorkRecord> {
+  const registry = getRegistry();
+
+  let cityId: string | null = null;
+  if (rawCityId !== null) {
+    const resolved = await resolveCityRef(getCityStore(), rawCityId);
+    if (!resolved) {
+      throw new HttpError(400, "city_not_found", "城市档案不存在，无法建立关联。");
+    }
+    cityId = resolved.city.cityId;
+  }
+
+  const before = await registry.getWork(gameId);
+  const { work, changed } = await mutateWork(registry, gameId, actor, {
+    type: "set_city",
+    cityId,
+    actorUserId: actor.user.id,
+    actorRole: actor.user.role,
+  });
+
+  if (changed) {
+    await recordAudit(registry, {
+      actor,
+      action: "work.city_change",
+      targetType: "work",
+      targetId: gameId,
+      before: { cityId: before?.cityId ?? null, state: before?.state ?? null },
+      after: { cityId: work.cityId ?? null },
+    });
+    await syncCityIndexAfterMutation(work, actor);
+  }
   return work;
 }
 

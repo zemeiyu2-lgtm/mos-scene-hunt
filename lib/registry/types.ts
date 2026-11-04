@@ -191,6 +191,15 @@ export interface WorkRecord {
   updatedAt: string;
   /** Bumped on every successful write; used for optimistic concurrency. */
   revision: number;
+  /**
+   * City association (城市探索生态). Optional and additive: a work without it
+   * behaves exactly as before, and the pack JSON itself is untouched.
+   *
+   * Written only by the server through a state-machine event, never copied
+   * from client input. Points at a `cities/<cityId>.json` profile; readers
+   * follow `mergedInto` before using it.
+   */
+  cityId?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -215,7 +224,9 @@ export type AuditAction =
   | "work.restore"
   | "work.archive"
   | "work.transfer_owner"
-  | "work.import_legacy";
+  | "work.import_legacy"
+  | "work.city_change"
+  | "work.city_link_sync_failed";
 
 export interface AuditRecord {
   id: string;
