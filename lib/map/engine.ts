@@ -13,6 +13,8 @@
 
 export type MapEngineId = "leaflet" | "amap" | "openfreemap" | "protomaps" | "geoapify";
 
+// Diagnostic rebuilds (preview acceptance) change this file's tree so the
+// build cache cannot reuse a bundle inlined with a different engine value.
 export const DEFAULT_MAP_ENGINE: MapEngineId = "leaflet";
 
 /** Values accepted for `NEXT_PUBLIC_MAP_ENGINE`, including friendly aliases. */
