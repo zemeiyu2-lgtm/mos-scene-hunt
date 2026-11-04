@@ -42,6 +42,9 @@ const root = process.cwd();
 const BUILD_ENV = {
   ...process.env,
   NEXT_PUBLIC_ENABLE_GPS_SIMULATOR: "1",
+  // Runtime server flag: admits the E2E suite into /dev/map-bench (the gate
+  // defaults to 404 outside `next dev`, which is what production serves).
+  MOS_DEV_BENCH: "1",
 };
 
 function runSync(cmd, args, env) {
