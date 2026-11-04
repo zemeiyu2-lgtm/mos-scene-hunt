@@ -90,6 +90,33 @@ function fail(code: TransitionErrorCode, message: string): TransitionError {
   return { ok: false, code, message };
 }
 
+/**
+ * Who may (re)assign a work's city — exported so the association service can
+ * ask BEFORE it creates anything.
+ *
+ * That ordering is the whole point: a city profile must not come into
+ * existence for a request that was going to be rejected anyway, or the
+ * database quietly fills with cities nobody was allowed to create.
+ */
+export function canSetCity(
+  work: WorkRecord,
+  actor: { userId: string; role: Role },
+): TransitionError | null {
+  const isAdmin = actor.role === "admin";
+  const isOwner = actor.userId === work.ownerUserId;
+  if (!isAdmin && !isOwner) {
+    return fail("not_owner", "只有作者本人或管理员可以修改城市归属。");
+  }
+  // Once a work is (or has been) publicly discoverable, its city is public
+  // data: an owner may not silently move an already-published pack to another
+  // city. Admin-only, and always audited by the service layer.
+  const publishedReachable: WorkState[] = ["published", "unlisted", "withdrawn"];
+  if (publishedReachable.includes(work.state) && !isAdmin) {
+    return fail("city_change_forbidden", "作品已发布过，城市归属只能由管理员修改。");
+  }
+  return null;
+}
+
 function clone(work: WorkRecord): WorkRecord {
   return {
     ...work,
@@ -163,18 +190,8 @@ export function applyWorkEvent(
       if (event.cityId !== null && !isValidCityId(event.cityId)) {
         return fail("invalid_city", "城市 id 不合法。");
       }
-      const isAdmin = event.actorRole === "admin";
-      const isOwner = event.actorUserId === work.ownerUserId;
-      if (!isAdmin && !isOwner) {
-        return fail("not_owner", "只有作者本人或管理员可以修改城市归属。");
-      }
-      // Once a work is (or has been) publicly discoverable, its city is public
-      // data: an owner may not silently move an already-published pack to
-      // another city. Admin-only, and always audited by the service layer.
-      const publishedReachable: WorkState[] = ["published", "unlisted", "withdrawn"];
-      if (publishedReachable.includes(work.state) && !isAdmin) {
-        return fail("city_change_forbidden", "作品已发布过，城市归属只能由管理员修改。");
-      }
+      const denied = canSetCity(work, { userId: event.actorUserId, role: event.actorRole });
+      if (denied) return denied;
       if ((work.cityId ?? null) === event.cityId) {
         return { ok: true, work, changed: false };
       }

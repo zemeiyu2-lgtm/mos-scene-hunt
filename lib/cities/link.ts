@@ -102,6 +102,24 @@ export interface CityPackageSummary {
 }
 
 /**
+ * The city a work REALLY belongs to right now, or null.
+ *
+ * Two things this closes that a naive `work.cityId === cityId` check does not:
+ *  - a work pointing at a MERGED id belongs to the survivor (a merge must not
+ *    silently empty the survivor's page);
+ *  - a work with no `cityId` belongs to no city at all, even if a stale index
+ *    entry claims otherwise.
+ */
+async function effectiveWorkCityId(
+  cityStore: CityStore,
+  work: WorkRecord,
+): Promise<string | null> {
+  if (!work.cityId) return null;
+  const resolved = await resolveCityRef(cityStore, work.cityId).catch(() => null);
+  return resolved ? resolved.city.cityId : null;
+}
+
+/**
  * Packs publicly listed under one city.
  *
  * Every candidate link is re-validated against the work document, so `unlisted`
@@ -134,9 +152,9 @@ export async function listCityPackages(
     const work = await registry.getWork(entry.gameId);
     if (!work) continue;
     if (work.state !== "published") continue;
-    if (work.cityId && work.cityId !== canonical) {
-      // Work was moved to another city after the link was written; the link is
-      // stale, the work wins.
+    if ((await effectiveWorkCityId(cityStore, work)) !== canonical) {
+      // The work was moved to another city (or lost its city) after the link
+      // was written: the link is stale, the work wins.
       continue;
     }
     const version = work.versions.find((v) => v.versionId === work.publishedVersionId);
@@ -148,6 +166,27 @@ export async function listCityPackages(
     });
   }
   return out.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+}
+
+/**
+ * How many published, currently-city-attached packs each city has.
+ *
+ * Derived from the work documents rather than from `link.visible`: the whole
+ * point of a city catalogue gate is that a stale index entry must not be able
+ * to advertise an empty city. The link set is only used as the candidate list.
+ */
+export async function countPublishedByCity(deps: LinkDeps = {}): Promise<Map<string, number>> {
+  const cityStore = deps.cityStore ?? getCityStore();
+  const registry = deps.registry ?? getRegistry();
+  const counts = new Map<string, number>();
+  for (const entry of await cityStore.listLinks()) {
+    const work = await registry.getWork(entry.gameId);
+    if (!work || work.state !== "published") continue;
+    const cityId = await effectiveWorkCityId(cityStore, work);
+    if (!cityId) continue;
+    counts.set(cityId, (counts.get(cityId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 /* ------------------------------------------------------------------ */

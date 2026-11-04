@@ -1,11 +1,31 @@
 /**
  * City service — validation, create-or-reuse, merge, public views.
  *
- * The rule that matters most: THE SERVER decides whether a city already exists.
- * A client may send any name; it never sends an id it invented, and it never
- * gets to skip the identity check. Creation is a create-if-absent write, so two
- * simultaneous requests for the same city converge on one profile even when
- * they both miss the lookup.
+ * The rule that matters most, in two halves:
+ *
+ *  1. THE SERVER decides whether a city already exists. A client may send any
+ *     name; it never sends an id it invented, and it never gets to skip the
+ *     identity check.
+ *  2. A CITY ONLY EXISTS BECAUSE CONTENT NEEDS IT. Creation is reachable only
+ *     through {@link attachCityToWork}, which requires a persisted work, an
+ *     actor with permission over it, and writes the association in the same
+ *     call. There is no public "create a city" verb — not for a bare name, not
+ *     for a catalogue entry, not for a search box.
+ *
+ * Ordering inside that flow (and why):
+ *
+ *   1. read the work                        → 404 before anything is written
+ *   2. ask the state machine about the actor → 403 before anything is written
+ *   3. reuse an existing profile, or create one stamped with `sourceGameId`
+ *   4. commit the work's `cityId` (revision-checked)
+ *   5. derive the index entry (after the commit, never before)
+ *
+ * If step 4 fails we roll the profile back — but only when this very request
+ * created it, it is still untouched (revision 0), and nothing has linked to it
+ * yet. If even the rollback fails, the profile is not lost in the void: it
+ * carries `sourceGameId`, so a retry of the same request reuses it and
+ * completes the association, and {@link auditCityProvenance} reports it in the
+ * meantime. Nothing here claims transactional guarantees Blob does not have.
  *
  * No external geocoder is called here (batch 1 boundary): the city is whatever
  * the user chose, and `referenceLocation` is optional, supplied by the caller
@@ -13,7 +33,13 @@
  */
 
 import { HttpError } from "../auth/guard";
+import type { ActorContext } from "../registry/service";
+import { setWorkCity } from "../registry/service";
+import { getRegistry, type RegistryStore } from "../registry/store";
+import { canSetCity } from "../registry/state-machine";
+import { isValidGameId } from "../publish/version";
 import { findCityMatch, deriveCityId, type CityIdentityInput } from "./identity";
+import { countPublishedByCity } from "./link";
 import { resolveCityRef } from "./resolve";
 import { getCityStore, type CityStore } from "./store";
 import {
@@ -147,15 +173,27 @@ function assertIdentityInput(input: CityIdentityInput): void {
   }
 }
 
+/** Who caused a creation, and the pack that justified it. */
+export interface CitySource {
+  gameId: string;
+  userId: string;
+}
+
 /**
  * Create the city or return the existing profile that means the same place.
+ *
+ * NOT exported: the only caller is {@link attachCityToWork}, which has already
+ * proved that the pack exists and that this actor may touch it. Exporting this
+ * would reintroduce exactly the "city with no content behind it" hole the V2
+ * authorisation closed.
  *
  * Idempotent by construction: the second identical request finds the profile
  * written by the first, and two racing first requests both end up on the
  * winner because the loser re-reads after its exclusive-create conflict.
  */
-export async function createOrReuseCity(
+async function createOrReuseCity(
   input: CityIdentityInput,
+  source: CitySource,
   deps: { store?: CityStore; now?: string } = {},
 ): Promise<CreateCityResult> {
   assertIdentityInput(input);
@@ -198,6 +236,9 @@ export async function createOrReuseCity(
       localizedNames: { ...(input.localizedNames ?? {}) },
       aliases: [...(input.aliases ?? [])],
       referenceLocation: input.referenceLocation,
+      // Provenance, set exactly once: this pack is why the city exists.
+      sourceGameId: source.gameId,
+      sourceUserId: source.userId,
       status: "active",
       createdAt: now,
       updatedAt: now,
@@ -223,24 +264,232 @@ export async function createOrReuseCity(
   throw new HttpError(409, "city_id_exhausted", "城市档案创建冲突过多，请稍后重试。");
 }
 
-/** Public listing projection, with a lightweight count from the derived index. */
+/* ------------------------------------------------------------------ */
+/* The one and only write path: pack → city                           */
+/* ------------------------------------------------------------------ */
+
+export interface AttachCityRequest {
+  /** Attach an existing profile. `null` clears the association. */
+  cityId?: string | null;
+  /** Create-or-reuse by identity, then attach. Mutually exclusive with cityId. */
+  city?: CityIdentityInput;
+}
+
+export interface AttachCityResult {
+  work: Awaited<ReturnType<typeof setWorkCity>>;
+  city: CityProfile | null;
+  created: boolean;
+  reused: boolean;
+  ambiguous: boolean;
+}
+
+/**
+ * Roll back a profile this request created but could not attach.
+ *
+ * Guards, in order of importance: it must be the profile we wrote (revision
+ * still 0), and no link may reference it. Both can be violated by a concurrent
+ * attach for the same city — in that case the other request owns the profile
+ * now, so it is left alone. Best effort by definition; a failed rollback is
+ * reported, never thrown, because the caller is already on an error path.
+ */
+async function rollbackUnlinkedCity(
+  store: CityStore,
+  city: CityProfile,
+  reason: string,
+): Promise<void> {
+  try {
+    const current = await store.getCity(city.cityId);
+    if (!current) return;
+    if (current.revision !== 0 || current.createdAt !== city.createdAt) return; // touched since
+    const links = await store.listLinks();
+    if (links.some((entry) => entry.cityId === city.cityId)) return; // adopted concurrently
+    await store.deleteCity(city.cityId);
+  } catch (error) {
+    console.error(
+      "[cities] 未能回滚未关联的城市档案（可由 auditCityProvenance 发现并重试修复）",
+      city.cityId,
+      reason,
+      error,
+    );
+  }
+}
+
+/**
+ * Associate a pack with a city, creating the profile only if it is genuinely
+ * new — the single entry point for city creation.
+ *
+ * Verification order matters and is not negotiable: the work must exist, and
+ * the actor must be allowed to set its city, BEFORE a profile is written. A
+ * rejected request therefore leaves the city store exactly as it found it.
+ *
+ * Idempotent: replaying the same request reuses the same profile and the state
+ * machine reports `changed: false`, so nothing is rewritten and no duplicate
+ * is produced.
+ */
+export async function attachCityToWork(
+  actor: ActorContext,
+  gameId: string,
+  request: AttachCityRequest,
+  deps: { store?: CityStore; registry?: RegistryStore; now?: string } = {},
+): Promise<AttachCityResult> {
+  if (!isValidGameId(gameId)) {
+    throw new HttpError(400, "invalid_game_id", "游戏 id 不合法。");
+  }
+  if (request.cityId !== undefined && request.city !== undefined) {
+    throw new HttpError(400, "ambiguous_city_input", "cityId 与 city 不能同时提供。");
+  }
+
+  const registry = deps.registry ?? getRegistry();
+  const store = deps.store ?? getCityStore();
+
+  const work = await registry.getWork(gameId);
+  if (!work) {
+    throw new HttpError(404, "work_not_found", "作品不存在，无法关联城市。");
+  }
+  // Ask the state machine first: no profile may be created for a request that
+  // was always going to be rejected.
+  const denied = canSetCity(work, { userId: actor.user.id, role: actor.user.role });
+  if (denied) {
+    throw new HttpError(403, denied.code, denied.message);
+  }
+
+  if (request.cityId === null) {
+    const cleared = await setWorkCity(actor, gameId, null);
+    return { work: cleared, city: null, created: false, reused: false, ambiguous: false };
+  }
+
+  let city: CityProfile;
+  let created = false;
+  let reused = false;
+  let ambiguous = false;
+
+  if (request.cityId !== undefined) {
+    const resolved = await resolveCityRef(store, request.cityId);
+    if (!resolved) {
+      throw new HttpError(400, "city_not_found", "城市档案不存在，无法建立关联。");
+    }
+    city = resolved.city;
+    reused = true;
+  } else if (request.city) {
+    const result = await createOrReuseCity(
+      request.city,
+      { gameId, userId: actor.user.id },
+      { store, now: deps.now },
+    );
+    city = result.city;
+    created = result.created;
+    reused = result.reused;
+    ambiguous = result.ambiguous;
+  } else {
+    throw new HttpError(400, "city_required", "必须提供 cityId 或 city。");
+  }
+
+  try {
+    const updated = await setWorkCity(actor, gameId, city.cityId);
+    return { work: updated, city, created, reused, ambiguous };
+  } catch (error) {
+    if (created) {
+      await rollbackUnlinkedCity(store, city, error instanceof Error ? error.message : String(error));
+    }
+    throw error;
+  }
+}
+
+/**
+ * Read-only integrity report: which active profiles have no content behind
+ * them?
+ *
+ * A profile counts as backed when at least one work references it (directly or
+ * through a merge pointer) or at least one index entry does. Anything else is
+ * either a rollback that did not land or a legacy/manual artefact. Reported,
+ * never deleted — removal is an operator decision (§ lifecycle boundary).
+ */
+export interface CityProvenanceReport {
+  scanned: number;
+  backed: number;
+  orphans: Array<{
+    cityId: string;
+    cityName: string;
+    sourceGameId: string | null;
+    reason: "no_work_reference" | "source_work_missing" | "source_work_not_linked";
+  }>;
+}
+
+export async function auditCityProvenance(
+  deps: { store?: CityStore; registry?: RegistryStore } = {},
+): Promise<CityProvenanceReport> {
+  const store = deps.store ?? getCityStore();
+  const registry = deps.registry ?? getRegistry();
+
+  const cities = (await store.listCities()).filter((city) => city.status === "active");
+  const works = await registry.listWorks();
+  const links = await store.listLinks();
+
+  const referenced = new Set<string>();
+  const record = async (rawId: string | undefined | null): Promise<void> => {
+    if (!rawId) return;
+    const resolved = await resolveCityRef(store, rawId).catch(() => null);
+    if (resolved) referenced.add(resolved.city.cityId);
+  };
+  for (const work of works) await record(work.cityId);
+  for (const entry of links) await record(entry.cityId);
+
+  const byId = new Map(cities.map((city) => [city.cityId, city] as const));
+  const orphanIds = new Set<string>();
+  for (const city of cities) {
+    if (referenced.has(city.cityId)) continue;
+    orphanIds.add(city.cityId);
+  }
+
+  const report: CityProvenanceReport = {
+    scanned: cities.length,
+    backed: cities.length - orphanIds.size,
+    orphans: [],
+  };
+  for (const cityId of orphanIds) {
+    const city = byId.get(cityId)!;
+    const sourceGameId = city.sourceGameId ?? null;
+    let reason: CityProvenanceReport["orphans"][number]["reason"] = "no_work_reference";
+    if (sourceGameId) {
+      const source = works.find((work) => work.gameId === sourceGameId);
+      reason = source ? "source_work_not_linked" : "source_work_missing";
+    }
+    report.orphans.push({ cityId, cityName: city.cityName, sourceGameId, reason });
+  }
+  report.orphans.sort((a, b) => a.cityId.localeCompare(b.cityId));
+  return report;
+}
+
+export interface CityListQuery {
+  q?: string;
+  country?: string;
+  /**
+   * `public` (default) = the discovery catalogue: only cities that currently
+   * have at least one PUBLISHED pack. `all` = the creator's picker, which must
+   * also see cities that so far only have drafts — otherwise a creator cannot
+   * find the city their own unpublished pack created.
+   */
+  scope?: "public" | "all";
+}
+
+/** Public listing projection, with a count validated against the works. */
 export async function listCitiesPublic(
-  query: { q?: string; country?: string } = {},
-  deps: { store?: CityStore } = {},
+  query: CityListQuery = {},
+  deps: { store?: CityStore; registry?: RegistryStore } = {},
 ): Promise<PublicCity[]> {
   const store = deps.store ?? getCityStore();
+  const scope = query.scope ?? "public";
   const cities = (await store.listCities()).filter((city) => city.status === "active");
-  const links = await store.listLinks();
-  const counts = new Map<string, number>();
-  for (const entry of links) {
-    if (!entry.visible) continue;
-    counts.set(entry.cityId, (counts.get(entry.cityId) ?? 0) + 1);
-  }
+  // Counts come from published WORKS, not from the derived index: the index can
+  // lag behind a withdrawal, and a lagging index would advertise a city whose
+  // only pack is no longer discoverable.
+  const counts = await countPublishedByCity({ cityStore: store, registry: deps.registry });
 
   const q = query.q?.trim().toLowerCase() ?? "";
   const country = query.country?.trim().toUpperCase() ?? "";
 
   return cities
+    .filter((city) => (scope === "public" ? (counts.get(city.cityId) ?? 0) > 0 : true))
     .filter((city) => (country ? city.countryCode === country : true))
     .filter((city) => {
       if (!q) return true;
@@ -276,16 +525,17 @@ export interface PublicCityDetail {
 
 export async function getPublicCity(
   cityId: string,
-  deps: { store?: CityStore } = {},
+  deps: { store?: CityStore; registry?: RegistryStore } = {},
 ): Promise<PublicCityDetail | null> {
   if (!isValidCityId(cityId)) return null;
   const store = deps.store ?? getCityStore();
   const resolved = await resolveCityRef(store, cityId);
   if (!resolved) return null;
-  const links = await store.listLinks();
-  const gameCount = links.filter(
-    (entry) => entry.visible && entry.cityId === resolved.city.cityId,
-  ).length;
+  // Direct reference (never discovery): the profile is returned even with zero
+  // published packs, so a creator can see the city their draft belongs to.
+  // `gameCount` still counts only packs a stranger could actually open.
+  const counts = await countPublishedByCity({ cityStore: store, registry: deps.registry });
+  const gameCount = counts.get(resolved.city.cityId) ?? 0;
   return {
     city: {
       cityId: resolved.city.cityId,

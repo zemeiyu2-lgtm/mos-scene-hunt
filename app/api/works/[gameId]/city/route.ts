@@ -7,22 +7,28 @@ import {
   requireUser,
   toErrorResponse,
 } from "@/lib/auth/guard";
+import { parseCityInput } from "@/lib/cities/service";
+import { attachCityToWork } from "@/lib/cities/service";
 import { isValidGameId } from "@/lib/publish/version";
 import { getRegistry } from "@/lib/registry/store";
-import { setWorkCity } from "@/lib/registry/service";
 
 /**
- * Work ↔ city association.
+ * Work ↔ city association — the canonical write path for the city ecosystem.
  *
  * GET  /api/works/<gameId>/city   owner or admin: current association
  * POST /api/works/<gameId>/city   owner (not yet public) or admin (any state)
  *
- * Body: `{ "cityId": "manila-ph" }` or `{ "cityId": null }` to clear.
+ * Body, exactly one of:
+ *   `{ "cityId": "manila-ph" }`     attach an existing profile
+ *   `{ "cityId": null }`            clear the association
+ *   `{ "city": { cityName: … } }`   create-or-reuse by identity, then attach
  *
- * A client can never write `cityId` through the publish payload — the pack
- * JSON is validated and stored as-is, and this endpoint is the only write path.
- * The permission rule itself lives in the state machine, not here: this route
- * only proves WHO is asking.
+ * A client can never write `cityId` through the publish payload — the pack JSON
+ * is validated and stored as-is, and this endpoint is the only write path.
+ *
+ * Nothing is created before the pack is proved to exist and the actor is proved
+ * to be allowed to touch it; the decision itself lives in the state machine
+ * (`canSetCity`), this route only authenticates.
  */
 
 export const runtime = "nodejs";
@@ -94,26 +100,43 @@ export async function POST(
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return jsonResponse(400, { error: "invalid_body", message: "请求体必须是一个 JSON 对象。" });
     }
-    const body = parsed as { cityId?: unknown };
-    if (!("cityId" in body)) {
-      return jsonResponse(400, { error: "invalid_body", message: "缺少 cityId 字段。" });
-    }
-    const requested = body.cityId;
-    if (requested !== null && typeof requested !== "string") {
-      return jsonResponse(400, { error: "invalid_body", message: "cityId 必须是字符串或 null。" });
+    const body = parsed as { cityId?: unknown; city?: unknown };
+    const hasCity = body.city !== undefined && body.city !== null;
+    if (!("cityId" in body) && !hasCity) {
+      return jsonResponse(400, {
+        error: "invalid_body",
+        message: "必须提供 cityId 或 city 字段。",
+      });
     }
 
     const hints = clientHints(request);
-    const work = await setWorkCity(
-      { user: auth.user, ipHash: hints.ipHash, uaHash: hints.uaHash },
-      gameId,
-      requested === null ? null : requested.trim(),
-    );
+    const actor = { user: auth.user, ipHash: hints.ipHash, uaHash: hints.uaHash };
+
+    const result = hasCity
+      ? await attachCityToWork(actor, gameId, { city: parseCityInput(body.city) })
+      : typeof body.cityId === "string" || body.cityId === null
+        ? await attachCityToWork(actor, gameId, {
+            cityId: body.cityId === null ? null : body.cityId.trim(),
+          })
+        : null;
+    if (!result) {
+      return jsonResponse(400, { error: "invalid_body", message: "cityId 必须是字符串或 null。" });
+    }
 
     return jsonResponse(200, {
-      gameId: work.gameId,
-      cityId: work.cityId ?? null,
-      state: work.state,
+      gameId: result.work.gameId,
+      cityId: result.work.cityId ?? null,
+      state: result.work.state,
+      city: result.city
+        ? {
+            cityId: result.city.cityId,
+            cityName: result.city.cityName,
+            countryCode: result.city.countryCode,
+            countryName: result.city.countryName,
+          }
+        : null,
+      created: result.created,
+      reused: result.reused,
     });
   } catch (error) {
     return toErrorResponse(error, "works:city:set");

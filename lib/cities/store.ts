@@ -40,6 +40,12 @@ export interface CityStore {
   createCity(city: CityProfile): Promise<CityStoreWriteResult>;
   /** Update only when the stored revision matches `expectedRevision`. */
   putCity(city: CityProfile, expectedRevision: number): Promise<CityStoreWriteResult>;
+  /**
+   * Remove a profile document. Reserved for rolling back a creation that never
+   * reached a single association — never used to retire a city that content
+   * once pointed at.
+   */
+  deleteCity(cityId: string): Promise<void>;
 
   getLink(gameId: string): Promise<CityLink | null>;
   listLinks(): Promise<CityLink[]>;
@@ -158,6 +164,14 @@ export function createFileCityStore(root: string): CityStore {
         if (!current || current.revision !== expectedRevision) return { ok: false, conflict: true };
         await writeJsonAtomic(file, JSON.stringify(city, null, 2));
         return { ok: true };
+      });
+    },
+
+    async deleteCity(cityId) {
+      await withKeyLock(`city:${cityId}`, async () => {
+        await unlink(path.join(citiesDir, `${cityId}.json`)).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== "ENOENT") throw error;
+        });
       });
     },
 
@@ -288,6 +302,17 @@ export function createBlobCityStore(prefix: string): CityStore {
       return { ok: true };
     },
 
+    async deleteCity(cityId) {
+      try {
+        await del(at(`cities/${cityId}.json`));
+      } catch (error) {
+        if (error instanceof BlobNotFoundError) return;
+        const message = error instanceof Error ? error.message : String(error);
+        if (BLOB_NOT_FOUND_MESSAGE.test(message)) return;
+        throw error;
+      }
+    },
+
     async getLink(gameId) {
       const raw = await readText(`city-links/${gameId}.json`);
       return raw === null ? null : parseCityLink(raw, gameId);
@@ -333,12 +358,21 @@ export function createBlobCityStore(prefix: string): CityStore {
 let cached: CityStore | null = null;
 
 /**
- * `CITIES_STORE=blob` selects Vercel Blob; anything else uses `CITIES_DIR`
- * (default `.cities/`, git-ignored) — the zero-credential local/test mode.
+ * `CITIES_STORE=blob` selects Vercel Blob, `file` forces the local adapter.
+ *
+ * Unset is resolved by platform, not by wishful thinking: on Vercel the
+ * function filesystem is read-only and per-instance, so a file-backed city
+ * store would silently lose every profile on the next cold start. A deployment
+ * therefore defaults to Blob, while local development, tests and self-hosting
+ * keep the zero-credential file store.
+ *
+ * The Blob prefix is always resolved through the namespace guard, so a Preview
+ * deployment cannot fall into the production `cities/` namespace by accident.
  */
 export function getCityStore(): CityStore {
   if (cached) return cached;
-  const kind = process.env.CITIES_STORE?.trim().toLowerCase();
+  const configured = process.env.CITIES_STORE?.trim().toLowerCase();
+  const kind = configured || (process.env.VERCEL ? "blob" : "file");
   if (kind === "blob") {
     const prefix = resolveBlobPrefix({ store: "cities", prefix: process.env.CITIES_BLOB_PREFIX });
     cached = createBlobCityStore(prefix);

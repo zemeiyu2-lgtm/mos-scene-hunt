@@ -50,6 +50,16 @@ export interface CityProfile {
   aliases: string[];
   /** WGS84 decimal degrees, taken from the first linked pack's huntArea. */
   referenceLocation?: LocalizedPoint;
+  /**
+   * PROVENANCE. The pack whose association created this profile. Immutable and
+   * the answer to "what real content justified this city existing?".
+   *
+   * A profile may never be created outside a work-association flow, so a
+   * missing `sourceGameId` on a fresh profile is a defect, not a valid state.
+   */
+  sourceGameId?: string;
+  /** Actor that triggered creation. Audit value only, never public. */
+  sourceUserId?: string;
   status: CityStatus;
   /** Survivor of a merge. Present only when `status === "merged"`. */
   mergedInto?: string;

@@ -13,7 +13,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createOrReuseCity } from "@/lib/cities/service";
+import { attachCityToWork } from "@/lib/cities/service";
 import { listCityPackages, rebuildCityLinks, syncWorkCityLink } from "@/lib/cities/link";
 import { getCityStore } from "@/lib/cities/store";
 import { applySimpleAction, publishWork, setWorkCity } from "@/lib/registry/service";
@@ -24,20 +24,31 @@ import { actor, seedUser, seedWork, setupCityEnv } from "./setup";
 let env: CityTestEnv;
 let owner: Awaited<ReturnType<typeof seedUser>>;
 let admin: Awaited<ReturnType<typeof seedUser>>;
+let seq = 0;
 
 beforeEach(async () => {
   env = await setupCityEnv();
   owner = await seedUser(env.registry, "owner0001", "creator");
   admin = await seedUser(env.registry, "admin0001", "admin");
+  seq = 0;
 });
 
 afterEach(async () => {
   await env.cleanup();
 });
 
+/**
+ * A city can no longer be conjured out of a name: seed a draft pack, attach,
+ * keep the amount of content behind it explicit in every test.
+ */
 async function cityId(name = "Manila"): Promise<string> {
-  const created = await createOrReuseCity({ cityName: name, countryCode: "PH" });
-  return created.city.cityId;
+  seq += 1;
+  const gameId = `seed-${String(seq).padStart(3, "0")}`;
+  await seedWork(env.registry, { gameId, ownerUserId: owner.id, state: "draft" });
+  const result = await attachCityToWork(actor(owner), gameId, {
+    city: { cityName: name, countryCode: "PH" },
+  });
+  return result.city!.cityId;
 }
 
 describe("WorkRecord.cityId", () => {
@@ -86,13 +97,21 @@ describe("WorkRecord.cityId", () => {
 
   it("合并后的城市 id 写入时被解析为存活档案", async () => {
     const { mergeCities } = await import("@/lib/cities/service");
-    const a = await createOrReuseCity({ cityName: "Manila", countryCode: "PH", adminAreaId: "A" });
-    const b = await createOrReuseCity({ cityName: "Manila", countryCode: "PH", adminAreaId: "B" });
-    await mergeCities(a.city.cityId, b.city.cityId);
+    seq += 1;
+    await seedWork(env.registry, { gameId: `seed-a-${seq}`, ownerUserId: owner.id, state: "draft" });
+    const a = await attachCityToWork(actor(owner), `seed-a-${seq}`, {
+      city: { cityName: "Manila", countryCode: "PH", adminAreaId: "A" },
+    });
+    seq += 1;
+    await seedWork(env.registry, { gameId: `seed-b-${seq}`, ownerUserId: owner.id, state: "draft" });
+    const b = await attachCityToWork(actor(owner), `seed-b-${seq}`, {
+      city: { cityName: "Manila", countryCode: "PH", adminAreaId: "B" },
+    });
+    await mergeCities(a.city!.cityId, b.city!.cityId);
     await seedWork(env.registry, { gameId: "hunt-merged", ownerUserId: owner.id, state: "approved" });
 
-    const work = await setWorkCity(actor(owner), "hunt-merged", a.city.cityId);
-    expect(work.cityId).toBe(b.city.cityId);
+    const work = await setWorkCity(actor(owner), "hunt-merged", a.city!.cityId);
+    expect(work.cityId).toBe(b.city!.cityId);
   });
 });
 
@@ -198,8 +217,11 @@ describe("一致性与修复", () => {
     expect((await real.getLink("hunt-fail"))?.visible ?? false).toBe(false);
 
     // Repair: restore the profile and rebuild the derived index.
-    const recreated = await createOrReuseCity({ cityName: "Manila", countryCode: "PH" });
-    expect(recreated.city.cityId).toBe(id);
+    const recreated = await attachCityToWork(actor(admin), "hunt-fail", {
+      city: { cityName: "Manila", countryCode: "PH" },
+    });
+    expect(recreated.city!.cityId).toBe(id);
+    expect(recreated.created).toBe(true);
 
     const report = await rebuildCityLinks({ cityStore: real, registry: env.registry });
     expect(report.written).toBeGreaterThanOrEqual(1);
@@ -226,7 +248,10 @@ describe("一致性与修复", () => {
     await env.registry.putWork({ ...stored, state: "withdrawn", revision: stored.revision + 1 }, stored.revision);
 
     const report = await rebuildCityLinks({ cityStore: getCityStore(), registry: env.registry });
-    expect(report.unchanged + report.written).toBe(1);
+    // The seed pack behind `cityId()` is already consistent; the corrupted
+    // entry is the one that must be rewritten.
+    expect(report.failed).toHaveLength(0);
+    expect(report.missingCity).toHaveLength(0);
 
     const link = await getCityStore().getLink("hunt-truth");
     expect(link?.visible).toBe(false);
