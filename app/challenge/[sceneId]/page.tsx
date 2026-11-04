@@ -248,8 +248,8 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       {/* The player may have stepped out of the ring mid-question. Warn, but do
           not block: the challenge stays open once opened. */}
       {!inRange ? (
-        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-          <p className="text-[12.5px] leading-snug text-amber-900">
+        <div className="mb-3 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2">
+          <p className="text-[13px] leading-snug text-[var(--warn-text)]">
             你现在不在任务区域内（
             {distance ? `${Math.round(distance.distance)} m` : "未知"}）。已打开的任务可以继续完成，
             但建议回到地点附近以获得最佳体验。
@@ -258,7 +258,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       ) : null}
 
       <section className="card story-card p-5 challenge-reveal">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+        <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--muted)]">
           {challenge.type === "choice" ? "选择题" : challenge.type === "keyword" ? "关键词题" : "简答题"}
         </p>
         <h2 className="mt-2 text-[17px] font-bold leading-snug">{challenge.question}</h2>
@@ -286,7 +286,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
                 aria-pressed={active}
               >
                 <span
-                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-bold ${active ? "bg-[var(--accent)] text-[var(--accent-contrast)]" : "bg-[var(--line)] text-[var(--muted)]"}`}
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-bold ${active ? "bg-[var(--accent)] text-[var(--accent-contrast)]" : "bg-[var(--line)] text-[var(--muted)]"}`}
                 >
                   {String.fromCharCode(65 + index)}
                 </span>
@@ -320,7 +320,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
             autoCorrect="off"
             enterKeyHint="done"
           />
-          <p className="mt-1.5 text-[11px] text-[var(--muted)]">
+          <p className="mt-1.5 text-[12px] text-[var(--muted)]">
             大小写、全角半角与标点都会被自动忽略。
           </p>
         </section>
@@ -328,22 +328,22 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
 
       {feedback === "correct" ? (
         <div className="success-pulse mt-3">
-          <p className="text-[15px] font-bold text-emerald-800">✓ 完成了</p>
-          <p className="mt-0.5 text-[12px] text-emerald-700">这一站的钥匙正在交到你手里…</p>
+          <p className="text-[15px] font-bold text-[var(--ok-text)]">✓ 完成了</p>
+          <p className="mt-0.5 text-[13px] text-[var(--ok-strong)]">这一站的钥匙正在交到你手里…</p>
         </div>
       ) : feedback === "wrong" ? (
-        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
-          <p className="text-[13px] font-semibold text-red-800">答案不正确</p>
-          <p className="mt-0.5 text-[12px] leading-snug text-red-700">
+        <div className="mt-3 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] px-3 py-2.5">
+          <p className="text-[13px] font-semibold text-[var(--err-text)]">答案不正确</p>
+          <p className="mt-0.5 text-[13px] leading-snug text-[var(--err-text)]">
             已记录第 {attempts} 次尝试。可以再试一次——答错不会丢失任何进度。
           </p>
         </div>
       ) : null}
 
       {hintVisible && challenge.hint ? (
-        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
-          <p className="text-[12px] font-semibold text-amber-900">提示</p>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-amber-900">{challenge.hint}</p>
+        <div className="mt-3 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2.5">
+          <p className="text-[13px] font-semibold text-[var(--warn-text)]">提示</p>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-[var(--warn-text)]">{challenge.hint}</p>
         </div>
       ) : null}
 
@@ -370,7 +370,7 @@ export default function ChallengePage({ params }: { params: Promise<{ sceneId: s
       </div>
 
       {attempts > 0 && !challenge.hint ? (
-        <p className="mt-3 text-center text-[11.5px] text-[var(--muted)]">
+        <p className="mt-3 text-center text-[12px] text-[var(--muted)]">
           提示：答案与你在现场能观察到的具体事物有关，不必想得太复杂。
         </p>
       ) : null}

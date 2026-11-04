@@ -89,6 +89,8 @@ import { createBlankGame, nextBlankGameId } from "./design-game";
 
 const MICRO_PRESETS = [30, 50, 75, 100, 150, 250];
 const MIN_POLYGON_POINTS = 3;
+/** 三步向导的会话内步骤记忆（B-03）。 */
+const DESIGN_STEP_KEY = "mos-scene-hunt:design-step";
 
 export default function DesignPage() {
   const { game, loading, loadError, reloadContent } = useHunt();
@@ -140,6 +142,32 @@ export default function DesignPage() {
   // 立刻反映刚写入的这份游戏包，而不是停留在打开页面时的快照。
   const [storageVersion, setStorageVersion] = useState(0);
 
+  // ------------------------------------------------------------------
+  // B-03 三步向导：基本信息 → 路线与目标 → 检查与发布。
+  //
+  // 仅重组呈现顺序，所有输入控件、数据流与保存逻辑原样保留：每个步骤
+  // 都渲染同一个组件里的同一批 state，切换步骤不可能丢内容。会话内记住
+  // 所处步骤，刷新后回到原步骤继续。`?flow=all` 渲染全部步骤（验收探针
+  // 与需要纵览的作者使用）。离开页面的未保存修改由 beforeunload 拦截。
+  // ------------------------------------------------------------------
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  useEffect(() => {
+    const stored = window.sessionStorage.getItem(DESIGN_STEP_KEY);
+    if (stored === "2" || stored === "3") setStep(Number(stored) as 1 | 2 | 3);
+  }, []);
+  const gotoStep = (next: 1 | 2 | 3) => {
+    setStep(next);
+    try {
+      window.sessionStorage.setItem(DESIGN_STEP_KEY, String(next));
+    } catch {
+      /* 会话存储不可用时步骤只是不记忆，不影响编辑 */
+    }
+    window.scrollTo({ top: 0 });
+  };
+  const gotoStepAnchor = (next: 1 | 2 | 3) => {
+    document.getElementById(`design-step-${next}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   // 「继续设计」 deep link from the games centre (/design?game=<id>). Without
   // this the designer would land on whatever pack happens to be active - often
   // the bundled demo - and could silently edit and save over the wrong game.
@@ -166,6 +194,23 @@ export default function DesignPage() {
    * the author's yet.
    */
   const hasUnsavedEdits = Boolean(draft) && !saved;
+
+  // B-03：离开页面前提醒未保存的修改（切换步骤不受影响——步骤切换不卸载
+  // 任何 state）。浏览器会展示自己的确认框，这里只负责触发它。
+  useEffect(() => {
+    if (!hasUnsavedEdits) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedEdits]);
+
+  // 验收探针与需要纵览全部控件的作者：?flow=all 一次性渲染三个步骤。
+  const [showAllSteps] = useState(
+    () => typeof window !== "undefined" && window.location.search.includes("flow=all"),
+  );
 
   const entries = useMemo<MapSceneEntry[]>(
     () =>
@@ -207,7 +252,7 @@ export default function DesignPage() {
     return (
       <Screen title="创作中心">
         <div className="card h-40 animate-pulse" />
-        {loadError ? <p className="mt-3 text-sm text-red-700">{loadError}</p> : null}
+        {loadError ? <p className="mt-3 text-sm text-[var(--err-text)]">{loadError}</p> : null}
       </Screen>
     );
   }
@@ -796,48 +841,71 @@ export default function DesignPage() {
     a.href = url; a.download = `${working.id}.json`; a.click(); URL.revokeObjectURL(url);
   };
 
+  // 三步向导的进度（B-03）：每一步「做完」的标准与旧 ①②③④ 标记一致，
+  // 只是重新归组：基本信息看标题，路线与目标看区域/站点/半径，检查与发布
+  // 看是否已保存。
+  const stepDone: Record<1 | 2 | 3, boolean> = {
+    1: working.title.trim().length > 0,
+    2:
+      Boolean(area) &&
+      !areaIncomplete &&
+      !drawingArea &&
+      working.scenes.length > 0 &&
+      working.scenes.every((scene) => scene.location.radius),
+    3: saved,
+  };
+
   return (
     <Screen
       title="创作中心"
       headerRight={<div className="flex items-center gap-1"><Link href="/how-to-create" className="btn btn-ghost h-9 min-h-0 px-2 text-xs">创作说明</Link><Link href="/" className="btn btn-ghost h-9 min-h-0 px-2 text-xs">返回</Link></div>}
     >
-      <section id="package-import" className="card mb-4 scroll-mt-4">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-3 p-4 text-left"
-          onClick={() => setImportOpen((open) => !open)}
-          aria-expanded={importOpen}
-        >
-          <span className="min-w-0">
-            <span className="block font-bold">导入游戏包</span>
-            <span className="mt-0.5 block text-xs text-[var(--muted)]">粘贴或选择 AI 生成的 MOS Scene Hunt JSON 文件</span>
-          </span>
-          <span aria-hidden="true" className="shrink-0 text-[var(--muted)] transition-transform">{importOpen ? "▾" : "▸"}</span>
-        </button>
-        {importOpen ? (
-          <div className="border-t border-[var(--line)] p-4 pt-3">
-            <input ref={importInputRef} type="file" accept=".json,application/json" className="sr-only" onChange={(event) => void importPackageFile(event)} />
-            <button type="button" className="btn btn-secondary w-full" onClick={() => importInputRef.current?.click()}>选择 JSON 游戏包</button>
-            <textarea
-              value={importText}
-              onChange={(event) => setImportText(event.target.value)}
-              placeholder={'把 AI 输出的完整 JSON 粘贴到这里……\n标准格式包含 format、formatVersion 和 game。'}
-              className="mt-3 min-h-[140px] w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-xs leading-relaxed outline-none focus:border-[var(--accent)]"
-              spellCheck={false}
-              aria-label="粘贴 AI 生成的 JSON 游戏包"
-            />
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button type="button" className="btn btn-primary" onClick={() => importPackageText(importText)} disabled={!importText.trim()}>校验并导入</button>
-              <button type="button" className="btn btn-ghost" onClick={() => setImportText("")}>清空文本</button>
+      {/* ============================================================
+         B-03 三步向导：基本信息 → 路线与目标 → 检查与发布。
+         仅重组呈现顺序；所有控件、数据流与保存逻辑保持原样。
+         `?flow=all` 一次性渲染全部步骤（验收探针与纵览模式）。
+         ============================================================ */}
+      {/* ------------------------------------------------ 三步向导导航（B-03） */}
+      <nav aria-label="创作步骤" className="sticky top-0 z-20 -mx-4 mb-4 border-b border-[var(--line)] bg-[var(--card)]/95 px-4 py-2 backdrop-blur">
+        <ol className="grid grid-cols-3 gap-2">
+          {([
+            { n: 1, label: "基本信息", done: stepDone[1] },
+            { n: 2, label: "路线与目标", done: stepDone[2] },
+            { n: 3, label: "检查与发布", done: stepDone[3] },
+          ] as const).map((item) => (
+            <li key={item.n}>
+              <button
+                type="button"
+                aria-current={!showAllSteps && step === item.n ? "step" : undefined}
+                onClick={() => (showAllSteps ? gotoStepAnchor(item.n) : gotoStep(item.n))}
+                className={`flex min-h-[44px] w-full flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-1.5 text-[13px] font-semibold transition-colors ${
+                  !showAllSteps && step === item.n
+                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-deep)]"
+                    : item.done
+                      ? "border-[var(--ok)] bg-[var(--ok)]/10 text-[var(--ok)]"
+                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
+                }`}
+              >
+                <span aria-hidden="true">{item.done ? "✓" : "①②③"[item.n - 1]}</span>
+                <span className="leading-none">{item.label}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </nav>
+      {/* ------------------------------------------------ 第 1 步：基本信息 */}
+      {showAllSteps || step === 1 ? (
+        <div id="design-step-1" className="scroll-mt-24">
+          <div className="mb-3 flex items-center gap-2 rounded-xl bg-[var(--surface)] px-3 py-2">
+            <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--hero-teal)] text-[13px] font-bold text-white">①</span>
+            <div className="min-w-0">
+              <p className="text-[14px] font-bold leading-tight">
+                基本信息
+                {stepDone[1 as 1 | 2 | 3] ? <span className="ml-2 text-[13px] font-semibold text-[var(--ok)]">✓</span> : null}
+              </p>
+              <p className="text-[12px] leading-snug text-[var(--muted)]">游戏叫什么、给谁看；也可以从官方模板或 AI 游戏包开始。</p>
             </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">
-              导入后请先在地图上核对坐标，再现场试玩。格式详情见
-              <Link href="/how-to-create" className="mx-1 font-semibold text-[var(--accent)] underline">创作说明</Link>。
-            </p>
-            {importMessage ? <p role="status" className="mt-3 rounded-xl bg-[var(--surface)] px-3 py-2 text-xs leading-relaxed">{importMessage}</p> : null}
           </div>
-        ) : null}
-      </section>
 
       {/* ------------------------------------------------ 当前游戏 / 新建 */}
       <section className="card mb-4 p-3">
@@ -866,7 +934,7 @@ export default function DesignPage() {
           >
             简介
           </button>
-          {hasUnsavedEdits ? <span className="font-semibold text-amber-700">· 有未保存的修改</span> : null}
+          {hasUnsavedEdits ? <span className="font-semibold text-[var(--warn-text)]">· 有未保存的修改</span> : null}
         </p>
         {infoOpen ? (
           <label className="mt-2 block text-xs font-semibold">
@@ -876,9 +944,9 @@ export default function DesignPage() {
         ) : null}
 
         {pendingBlank ? (
-          <div role="alertdialog" aria-label="当前游戏有未保存的修改" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
-            <p className="text-[12px] font-bold text-amber-900">当前游戏还有未保存的修改</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-amber-900">
+          <div role="alertdialog" aria-label="当前游戏有未保存的修改" className="mt-3 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] p-3">
+            <p className="text-[12px] font-bold text-[var(--warn-text)]">当前游戏还有未保存的修改</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--warn-text)]">
               新建会切换到一款空白游戏。请选择如何处理这些修改。
             </p>
             <div className="mt-2 grid grid-cols-3 gap-1.5">
@@ -909,27 +977,79 @@ export default function DesignPage() {
         ) : null}
       </section>
 
-      {/* ------------------------------------------------ 步骤导航 */}
-      <ol className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[
-          { n: "①", label: "画游戏区域", done: Boolean(area) && !areaIncomplete && !drawingArea },
-          { n: "②", label: "放置场景", done: working.scenes.length > 0 && !drawingArea },
-          { n: "③", label: "设置触发距离", done: working.scenes.every((s) => s.location.radius) },
-          { n: "④", label: "保存游戏", done: saved },
-        ].map((step) => (
-          <li
-            key={step.n}
-            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-[12px] font-semibold ${
-              step.done
-                ? "border-[var(--ok)] bg-[var(--ok)]/10 text-[var(--ok)]"
-                : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
-            }`}
-          >
-            <span className="text-[14px]">{step.n}</span>
-            <span className="truncate">{step.label}</span>
-          </li>
-        ))}
-      </ol>
+      {/* ------------------------------------------------ 官方模板（紧凑入口） */}
+      <section className="card mt-4 flex items-center justify-between gap-3 p-4">
+        <div className="min-w-0">
+          <p className="text-[13px] font-bold">官方母版：黎刹公园 · 寻找最后的宝藏</p>
+          <p className="mt-0.5 text-[11.5px] text-[var(--muted)]">五站示范流程，载入后请核对坐标并现场试玩。</p>
+        </div>
+        <button type="button" className="btn btn-secondary h-9 min-h-0 shrink-0 px-3 text-xs" onClick={loadOfficialTemplate}>
+          载入母版
+        </button>
+      </section>
+      <section id="package-import" className="card mb-4 scroll-mt-4">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 p-4 text-left"
+          onClick={() => setImportOpen((open) => !open)}
+          aria-expanded={importOpen}
+        >
+          <span className="min-w-0">
+            <span className="block font-bold">导入游戏包</span>
+            <span className="mt-0.5 block text-xs text-[var(--muted)]">粘贴或选择 AI 生成的 MOS Scene Hunt JSON 文件</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-[var(--muted)] transition-transform">{importOpen ? "▾" : "▸"}</span>
+        </button>
+        {importOpen ? (
+          <div className="border-t border-[var(--line)] p-4 pt-3">
+            <input ref={importInputRef} type="file" accept=".json,application/json" className="sr-only" onChange={(event) => void importPackageFile(event)} />
+            <button type="button" className="btn btn-secondary w-full" onClick={() => importInputRef.current?.click()}>选择 JSON 游戏包</button>
+            <textarea
+              value={importText}
+              onChange={(event) => setImportText(event.target.value)}
+              placeholder={'把 AI 输出的完整 JSON 粘贴到这里……\n标准格式包含 format、formatVersion 和 game。'}
+              className="mt-3 min-h-[140px] w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-xs leading-relaxed outline-none focus:border-[var(--accent)]"
+              spellCheck={false}
+              aria-label="粘贴 AI 生成的 JSON 游戏包"
+            />
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" className="btn btn-primary" onClick={() => importPackageText(importText)} disabled={!importText.trim()}>检查并导入</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setImportText("")}>清空文本</button>
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">
+              导入后请先在地图上核对坐标，再现场试玩。格式详情见
+              <Link href="/how-to-create" className="mx-1 font-semibold text-[var(--accent)] underline">创作说明</Link>。
+            </p>
+            {importMessage ? <p role="status" className="mt-3 rounded-xl bg-[var(--surface)] px-3 py-2 text-xs leading-relaxed">{importMessage}</p> : null}
+          </div>
+        ) : null}
+      </section>
+          {!showAllSteps ? (
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                className="btn btn-primary h-11 min-h-[44px] px-4 text-[13px]"
+                onClick={() => gotoStep(2)}
+              >
+                下一步：路线与目标 →
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {/* ------------------------------------------------ 第 2 步：路线与目标 */}
+      {showAllSteps || step === 2 ? (
+        <div id="design-step-2" className="scroll-mt-24">
+          <div className="mb-3 flex items-center gap-2 rounded-xl bg-[var(--surface)] px-3 py-2">
+            <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--hero-teal)] text-[13px] font-bold text-white">②</span>
+            <div className="min-w-0">
+              <p className="text-[14px] font-bold leading-tight">
+                路线与目标
+                {stepDone[2 as 1 | 2 | 3] ? <span className="ml-2 text-[13px] font-semibold text-[var(--ok)]">✓</span> : null}
+              </p>
+              <p className="text-[12px] leading-snug text-[var(--muted)]">在地图上圈出范围、放置站点、设定每个站点的解锁距离。</p>
+            </div>
+          </div>
 
       {/* ------------------------------------------------ 地图（主要工作区） */}
       <section className="card overflow-hidden">
@@ -969,7 +1089,7 @@ export default function DesignPage() {
             )}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <span className="chip bg-amber-100 text-amber-800">
+            <span className="chip bg-[var(--warn-bg-strong)] text-[var(--warn-text)]">
               {isPolygon
                 ? `自定义区域 · ${polygonPoints.length} 个边界点`
                 : `圆形 · 半径 ${Math.round(area?.radiusMeters ?? 100)}m`}
@@ -1091,7 +1211,7 @@ export default function DesignPage() {
                   </button>
                   <button
                     type="button"
-                    className="text-xs font-semibold text-red-700 underline"
+                    className="text-xs font-semibold text-[var(--err-text)] underline"
                     onClick={clearPolygon}
                   >
                     清除区域
@@ -1136,35 +1256,6 @@ export default function DesignPage() {
         )}
       </section>
 
-      {/* ------------------------------------------------ 官方模板（紧凑入口） */}
-      <section className="card mt-4 flex items-center justify-between gap-3 p-4">
-        <div className="min-w-0">
-          <p className="text-[13px] font-bold">官方母版：黎刹公园 · 寻找最后的宝藏</p>
-          <p className="mt-0.5 text-[11.5px] text-[var(--muted)]">五站示范流程，载入后请核对坐标并现场试玩。</p>
-        </div>
-        <button type="button" className="btn btn-secondary h-9 min-h-0 shrink-0 px-3 text-xs" onClick={loadOfficialTemplate}>
-          载入母版
-        </button>
-      </section>
-
-      {/* ------------------------------------------------ 空间摘要 */}
-      <section className="card mt-4 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[15px] font-bold">空间设计总览</p>
-            <p className="mt-1 text-[11.5px] text-[var(--muted)]">地图决定玩家在哪里经历故事；系统只提示问题，不替你改点位。</p>
-          </div>
-          <span className="chip bg-[var(--surface)]">{working.scenes.length} 个体验点</span>
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(spatial?.totalMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">总路线</div></div>
-          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{spatial?.walkingMinutes ?? 0}′</div><div className="text-[10.5px] text-[var(--muted)]">粗略步行</div></div>
-          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(area?.radiusMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">区域尺度</div></div>
-        </div>
-        {working.scenes.length > 1 ? <div className="mt-3 overflow-x-auto pb-1"><div className="flex min-w-max items-center gap-1">{working.scenes.map((scene, i) => <span key={scene.id} className="flex items-center gap-1">{i > 0 ? <span className="text-[var(--muted)]">→</span> : null}<button type="button" className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${scene.id === selected?.id ? "border-[var(--accent)] bg-[var(--accent)]/10" : "border-[var(--line)]"}`} onClick={() => setSelectedId(scene.id)}>{i + 1}. {scene.title}</button></span>)}</div></div> : null}
-        {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}><strong>{issue.severity === "error" ? "需要修正：" : "空间提示："}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-semibold text-emerald-800">空间检查通过，可以继续设计。</p>}
-      </section>
-
       {/* ------------------------------------------------ ② 放置场景 */}
       <section className="card mt-4 p-4">
         <div className="flex items-center justify-between gap-3">
@@ -1193,7 +1284,7 @@ export default function DesignPage() {
         {selected ? (
           <div className="mt-4">
             {selectedOutsideArea ? (
-              <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
+              <p className="mb-3 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] font-semibold text-[var(--warn-text)]">
                 提示：「{selected.title}」落在游戏区域之外。把它拖进区域内，或重新绘制区域。
               </p>
             ) : null}
@@ -1212,7 +1303,7 @@ export default function DesignPage() {
                                 🏁 此站是<strong>结局</strong>（完成后游戏结束）。点击恢复连接「{working.scenes[idx + 1]?.title}」。
                               </button>
                             ) : (
-                              <p className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">🏁 此站是<strong>结局</strong>：完成后游戏即结束。多个结局 = 把多个站点都设为终点，再用选项路线分别指向它们。</p>
+                              <p className="mb-3 rounded-xl bg-[var(--ok-bg)] px-3 py-2 text-[11.5px] text-[var(--ok-text)]">🏁 此站是<strong>结局</strong>：完成后游戏即结束。多个结局 = 把多个站点都设为终点，再用选项路线分别指向它们。</p>
                             );
                           }
                           return (
@@ -1273,10 +1364,10 @@ export default function DesignPage() {
                     </p>
                   ) : null}
                   {requiresNotice ? (
-                    <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">{requiresNotice}</div>
+                    <div className="mt-2 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--warn-text)]">{requiresNotice}</div>
                   ) : null}
                   {dangling.length ? (
-                    <div className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[11.5px] leading-relaxed text-red-800">
+                    <div className="mt-2 rounded-xl bg-[var(--err-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--err-text)]">
                       发现失效的前置引用（{dangling.map((d) => d.missingId).join("、")}），保存会被校验拦下。请取消对应勾选后重试。
                     </div>
                   ) : null}
@@ -1402,7 +1493,7 @@ export default function DesignPage() {
                         </span>
                       </div>
                       {challenge.reflective ? (
-                        <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
+                        <div className="mt-2 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--warn-text)]">
                           这是<strong>反思型选择</strong>：没有标准答案，玩家做出真实选择即可完成，不用于排名或考试。
                         </div>
                       ) : null}
@@ -1439,7 +1530,7 @@ export default function DesignPage() {
                     />
                   </label>
                   {timeLimitDraft?.sceneId === selected.id && timeLimitDraft.error ? (
-                    <p className="mt-1 text-[10.5px] leading-snug text-red-700">{timeLimitDraft.error}</p>
+                    <p className="mt-1 text-[10.5px] leading-snug text-[var(--err-text)]">{timeLimitDraft.error}</p>
                   ) : challenge.timeLimitSeconds ? (
                     <p className="mt-1 text-[10.5px] leading-snug text-[var(--muted)]">
                       进入题目即开始计时；超时后本次作答作废，可重试，每次重试重新获得完整时限。
@@ -1485,7 +1576,7 @@ export default function DesignPage() {
               </div>
               <label className="mt-2 block text-xs">奖励内容<input className="input mt-1" value={selected.reward?.value ?? ""} onChange={(e) => updateScene(selected.id, { reward: selected.reward ? { ...selected.reward, value: e.target.value } : undefined })} /></label>
               {rewardNotice ? (
-                <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">{rewardNotice}</div>
+                <div className="mt-2 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--warn-text)]">{rewardNotice}</div>
               ) : null}
               {selected.reward?.type === "item" ? (
                 <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">
@@ -1542,7 +1633,7 @@ export default function DesignPage() {
               );
             })()}
 
-            <button type="button" className="mt-4 text-xs font-semibold text-red-700 underline" onClick={deleteSelected} disabled={working.scenes.length <= 1}>
+            <button type="button" className="mt-4 text-xs font-semibold text-[var(--err-text)] underline" onClick={deleteSelected} disabled={working.scenes.length <= 1}>
               删除这个场景
             </button>
           </div>
@@ -1588,6 +1679,57 @@ export default function DesignPage() {
           })}
         </div>
       </section>
+          {!showAllSteps ? (
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary h-11 min-h-[44px] px-4 text-[13px]"
+                onClick={() => gotoStep(1)}
+              >
+                ← 上一步
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary h-11 min-h-[44px] px-4 text-[13px]"
+                onClick={() => gotoStep(3)}
+              >
+                下一步：检查与发布 →
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {/* ------------------------------------------------ 第 3 步：检查与发布 */}
+      {showAllSteps || step === 3 ? (
+        <div id="design-step-3" className="scroll-mt-24">
+          <div className="mb-3 flex items-center gap-2 rounded-xl bg-[var(--surface)] px-3 py-2">
+            <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--hero-teal)] text-[13px] font-bold text-white">③</span>
+            <div className="min-w-0">
+              <p className="text-[14px] font-bold leading-tight">
+                检查与发布
+                {stepDone[3 as 1 | 2 | 3] ? <span className="ml-2 text-[13px] font-semibold text-[var(--ok)]">✓</span> : null}
+              </p>
+              <p className="text-[12px] leading-snug text-[var(--muted)]">检查路线是否合理，然后保存、试玩或生成分享链接。</p>
+            </div>
+          </div>
+
+      {/* ------------------------------------------------ 空间摘要 */}
+      <section className="card mt-4 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[15px] font-bold">路线检查</p>
+            <p className="mt-1 text-[11.5px] text-[var(--muted)]">地图决定玩家在哪里经历故事；系统只提示问题，不替你改点位。</p>
+          </div>
+          <span className="chip bg-[var(--surface)]">{working.scenes.length} 个体验点</span>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(spatial?.totalMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">总路线</div></div>
+          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{spatial?.walkingMinutes ?? 0}′</div><div className="text-[10.5px] text-[var(--muted)]">粗略步行</div></div>
+          <div className="rounded-xl bg-[var(--surface)] p-3 text-center"><div className="tabular text-[17px] font-bold">{Math.round(area?.radiusMeters ?? 0)}m</div><div className="text-[10.5px] text-[var(--muted)]">区域尺度</div></div>
+        </div>
+        {working.scenes.length > 1 ? <div className="mt-3 overflow-x-auto pb-1"><div className="flex min-w-max items-center gap-1">{working.scenes.map((scene, i) => <span key={scene.id} className="flex items-center gap-1">{i > 0 ? <span className="text-[var(--muted)]">→</span> : null}<button type="button" className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${scene.id === selected?.id ? "border-[var(--accent)] bg-[var(--accent)]/10" : "border-[var(--line)]"}`} onClick={() => setSelectedId(scene.id)}>{i + 1}. {scene.title}</button></span>)}</div></div> : null}
+        {(spatialWarnings.length || spatialErrors.length) ? <div className="mt-3 space-y-2">{[...spatialErrors, ...spatialWarnings].slice(0, 6).map((issue, i) => <div key={issue.path + i} className={`rounded-xl px-3 py-2 text-[11.5px] ${issue.severity === "error" ? "bg-[var(--err-bg)] text-[var(--err-text)]" : "bg-[var(--warn-bg)] text-[var(--warn-text)]"}`}><strong>{issue.severity === "error" ? "需要修正：" : "空间提示："}</strong>{issue.message}</div>)}</div> : <p className="mt-3 rounded-xl bg-[var(--ok-bg)] px-3 py-2 text-[11.5px] font-semibold text-[var(--ok-text)]">空间检查通过，可以继续设计。</p>}
+      </section>
 
       {/* ------------------------------------------------ ④ 保存游戏 */}
       <section className="card mt-4 p-4">
@@ -1600,14 +1742,14 @@ export default function DesignPage() {
           <p className="mt-1 text-[var(--muted)]">先设好真实起点、区域和各站坐标（AI 给的 0,0 只是占位），并在安全的户外试玩。修改后需重新发布，旧链接不会自动更新；二维码在本机生成，不调用外部服务。</p>
         </div>
         {areaIncomplete ? (
-          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-800">
+          <p className="mt-2 rounded-xl bg-[var(--warn-bg)] px-3 py-2 text-[11.5px] font-semibold text-[var(--warn-text)]">
             游戏区域还没有画完（至少 {MIN_POLYGON_POINTS} 个边界点），完成或取消绘制后才能保存。
           </p>
         ) : null}
         {saveFailure ? (
           <div
             role="alert"
-            className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11.5px] leading-relaxed text-red-800"
+            className="mt-2 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] px-3 py-2 text-[11.5px] leading-relaxed text-[var(--err-text)]"
           >
             <p className="font-semibold">{saveFailure.summary}</p>
             {/* A single problem is already spelled out in the summary above. */}
@@ -1675,7 +1817,7 @@ export default function DesignPage() {
           ) : null}
           {shareMessage ? <p className="text-center text-[11.5px] text-[var(--muted)]">{shareMessage}</p> : null}
           <div className="grid grid-cols-2 gap-2"><button type="button" className="btn btn-ghost btn-block" onClick={copyJson}>复制游戏 JSON</button><button type="button" className="btn btn-ghost btn-block" onClick={exportPackage}>导出游戏包</button></div>
-          <button type="button" className="btn btn-ghost btn-block text-red-700" onClick={resetOfficial}>恢复官方示范内容</button>
+          <button type="button" className="btn btn-ghost btn-block text-[var(--err-text)]" onClick={resetOfficial}>恢复官方示范内容</button>
         </div>
       </section>
 
@@ -1696,6 +1838,19 @@ export default function DesignPage() {
           }
         }}
       />
+          {!showAllSteps ? (
+            <div className="mt-4 flex justify-start">
+              <button
+                type="button"
+                className="btn btn-secondary h-11 min-h-[44px] px-4 text-[13px]"
+                onClick={() => gotoStep(2)}
+              >
+                ← 上一步
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </Screen>
   );
 }

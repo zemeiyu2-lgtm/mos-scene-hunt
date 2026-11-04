@@ -100,9 +100,9 @@ export function PasswordChangeForm() {
   if (result) {
     const tone =
       result.kind === "complete"
-        ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+        ? "border-[var(--ok-border)] bg-[var(--ok-bg)] text-[var(--ok-text)]"
         : result.kind === "partial"
-          ? "border-amber-300 bg-amber-50 text-amber-900"
+          ? "border-[var(--warn-border)] bg-[var(--warn-bg)] text-[var(--warn-text)]"
           : "border-slate-300 bg-slate-50 text-slate-900";
     const title =
       result.kind === "complete"
@@ -163,7 +163,7 @@ export function PasswordChangeForm() {
           autoComplete="new-password"
         />
       </label>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--err-text)]">{error}</p> : null}
       <button
         type="submit"
         disabled={busy}

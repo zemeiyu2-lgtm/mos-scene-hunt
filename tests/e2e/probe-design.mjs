@@ -133,7 +133,7 @@ try {
     if (m.type() === "error") errors.push(`console: ${m.text()}`);
   });
 
-  await page.goto(`${BASE}/design`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/design?flow=all`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".leaflet-container", { timeout: 15000 });
   await new Promise((r) => setTimeout(r, 1500));
 

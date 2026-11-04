@@ -87,25 +87,55 @@ export default function HomePage() {
     <Screen
       title="MOS Scene Hunt"
       headerRight={
-        <span className={`chip shrink-0 ${online ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
-          {online ? "在线" : "离线"}
-        </span>
+        // 「在线」chip 对新玩家语义不明（B-02 UX-05）：一切正常时保持安静，
+        // 只在离线时解释当前状态。
+        online ? null : (
+          <span className="chip shrink-0 bg-slate-200 text-slate-600">离线 · 缓存内容可用</span>
+        )
       }
     >
-      {/* 首屏重点：地图演示 + 主操作 */}
+      {/* 首屏重点：一句话价值主张 + 地图演示 + 主操作。
+          B-03：先回答「这是什么、为什么值得玩」，再给入口。 */}
       <section className="card overflow-hidden">
         <div className="relative overflow-hidden bg-[linear-gradient(145deg,var(--hero-teal)_0%,var(--hero-teal-mid)_55%,var(--hero-gold)_140%)] px-4 pb-4 pt-4 text-white">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--gold-bright)]/60 bg-white/10"
+              aria-hidden="true"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" role="img" aria-label="MOSRove 品牌标记">
+                <path
+                  d="M12 2.5 C8 7 5.5 10.6 5.5 14a6.5 6.5 0 0 0 13 0c0-3.4-2.5-7-6.5-11.5Z"
+                  fill="none"
+                  stroke="var(--gold-bright)"
+                  strokeWidth="1.6"
+                />
+                <circle cx="12" cy="14" r="2.4" fill="var(--gold-bright)" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-white/75">
+                MOSRove · 真实世界探索
+              </p>
+              <h2 className="mt-0.5 text-[20px] font-bold leading-tight">
+                走到真实地点，解锁那里的故事
+              </h2>
+            </div>
+          </div>
+          <p className="mt-2 text-[13px] leading-snug text-white/85">
+            为步行设计的城市探索路线：走到现场、观察思考、解开情境、收集关键词。
+          </p>
           {game ? (
-            <div className="flex items-center justify-between gap-3 text-[12px]">
-              <span className="truncate font-semibold">{game.title}</span>
-              <span className="shrink-0 rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-white/90">
+            <div className="mt-3 flex items-center justify-between gap-3 text-[13px]">
+              <span className="truncate font-semibold text-white/90">{game.title}</span>
+              <span className="shrink-0 rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-[12px] font-semibold text-white/90">
                 {statusLabel}
               </span>
             </div>
           ) : null}
           {showDemoMap ? (
             <div className="mt-3 overflow-hidden rounded-2xl border border-white/15 bg-[var(--gold-chalk)]">
-              <div className="relative h-[230px] w-full">
+              <div className="relative h-[180px] w-full">
                 <MapView player={previewPlayer} entries={previewEntries} huntArea={previewGame.huntArea} tileProvider="osm" fitToHunt />
               </div>
             </div>
@@ -127,7 +157,7 @@ export default function HomePage() {
             </div>
           ) : null}
         </div>
-        <div className="flex items-start gap-2 px-4 py-3 text-[12px] leading-relaxed text-[var(--muted)]">
+        <div className="flex items-start gap-2 px-4 py-3 text-[13px] leading-relaxed text-[var(--muted)]">
           <span aria-hidden="true">ⓘ</span>
           <p>请在安全、开放的户外区域游玩。GPS 在室内或高楼附近可能不够准确。</p>
         </div>
@@ -140,8 +170,8 @@ export default function HomePage() {
         </section>
       ) : loadError ? (
         <section className="card mt-3 p-4">
-          <p className="text-[14px] font-semibold text-red-700">游戏内容加载失败</p>
-          <p className="mt-1 text-[12px] leading-relaxed text-red-600">{loadError}</p>
+          <p className="text-[14px] font-semibold text-[var(--err-text)]">游戏内容加载失败</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-[var(--err-text)]">{loadError}</p>
           <button type="button" className="btn btn-secondary mt-3 w-full" onClick={() => reloadContent(true)}>重试加载</button>
         </section>
       ) : null}
@@ -166,10 +196,29 @@ export default function HomePage() {
       </section>
 
       {contentSource === "cache" ? (
-        <p className="mt-3 text-center text-[11px] text-[var(--muted)]">当前使用离线缓存内容</p>
+        <p className="mt-3 text-center text-[12px] text-[var(--muted)]">当前使用离线缓存内容</p>
       ) : contentSource === "local" ? (
-        <p className="mt-3 text-center text-[11px] text-[var(--muted)]">当前使用本机创作的游戏</p>
+        <p className="mt-3 text-center text-[12px] text-[var(--muted)]">当前使用本机创作的游戏</p>
       ) : null}
+
+      {/* B-03：品牌收尾。此前的首屏下方约 1/3 完全空白，页面观感接近未完成。 */}
+      <footer className="mt-6 border-t border-[var(--line)] pb-2 pt-4 text-center">
+        <div className="flex items-center justify-center gap-2 text-[var(--hero-teal)]">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+            <path
+              d="M12 2.5 C8 7 5.5 10.6 5.5 14a6.5 6.5 0 0 0 13 0c0-3.4-2.5-7-6.5-11.5Z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            />
+            <circle cx="12" cy="14" r="2.2" fill="currentColor" />
+          </svg>
+          <span className="text-[13px] font-bold tracking-wide">MOSRove</span>
+        </div>
+        <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
+          在真实地点进行的探索与发现 · 进度只保存在你的设备上
+        </p>
+      </footer>
     </Screen>
   );
 }

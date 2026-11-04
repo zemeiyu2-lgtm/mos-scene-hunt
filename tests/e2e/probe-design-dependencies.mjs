@@ -138,7 +138,7 @@ try {
     (game) => window.localStorage.setItem(`mos-scene-hunt:authoring:${game.id}`, JSON.stringify(game)),
     PACK,
   );
-  await page.goto(`${BASE}/design?game=${GAME_ID}`, { waitUntil: "networkidle2" });
+  await page.goto(`${BASE}/design?game=${GAME_ID}&flow=all`, { waitUntil: "networkidle2" });
   await new Promise((r) => setTimeout(r, 600));
 
   await check("设计页打开后存在「前置场景（可选）」区块", async () => {
@@ -186,7 +186,7 @@ try {
   });
 
   await check("重新打开（深链）后勾选状态准确回显", async () => {
-    await page.goto(`${BASE}/design?game=${GAME_ID}`, { waitUntil: "networkidle2" });
+    await page.goto(`${BASE}/design?game=${GAME_ID}&flow=all`, { waitUntil: "networkidle2" });
     await new Promise((r) => setTimeout(r, 600));
     await clickByText(page, "3. 第三站");
     const section = await requiresSection(page);

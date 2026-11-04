@@ -86,15 +86,15 @@ export function ChallengeTimerBar({
       data-role="challenge-timer"
       className={`mb-3 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${
         urgent
-          ? "border-red-200 bg-red-50 text-red-800"
+          ? "border-[var(--err-border)] bg-[var(--err-bg)] text-[var(--err-text)]"
           : "border-[var(--line)] bg-[var(--surface)] text-[var(--fg)]"
       }`}
     >
-      <span className="text-[12px] font-semibold">
+      <span className="text-[13px] font-semibold">
         限时作答 · 第 {attempt} 次尝试
       </span>
       <span className="flex items-baseline gap-1">
-        <span className="text-[11px] text-[var(--muted)]">剩余</span>
+        <span className="text-[12px] text-[var(--muted)]">剩余</span>
         <span
           data-role="challenge-remaining"
           className="text-[17px] font-bold tabular-nums"
@@ -102,7 +102,7 @@ export function ChallengeTimerBar({
         >
           {ready && remainingMs !== null ? formatClock(remainingMs) : "--:--"}
         </span>
-        <span className="text-[10.5px] text-[var(--muted)]">/ {limitLabel}</span>
+        <span className="text-[12px] text-[var(--muted)]">/ {limitLabel}</span>
       </span>
     </div>
   );
@@ -120,10 +120,10 @@ export function ChallengeExpiredPanel({
   return (
     <div
       data-role="challenge-expired"
-      className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3"
+      className="mb-3 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] px-3 py-3"
     >
-      <p className="text-[13.5px] font-bold text-red-800">时间到 · 本次尝试未完成</p>
-      <p className="mt-0.5 text-[12px] leading-snug text-red-700">
+      <p className="text-[13.5px] font-bold text-[var(--err-text)]">时间到 · 本次尝试未完成</p>
+      <p className="mt-0.5 text-[13px] leading-snug text-[var(--err-text)]">
         第 {attempt} 次尝试已超时（限时 {limitLabel}），这一次的答案不再计入。
         重试会重新获得完整的 {limitLabel}，之前答对的题目进度、奖励都不会受影响。
       </p>

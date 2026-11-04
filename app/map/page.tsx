@@ -17,10 +17,12 @@ import { useGps } from "@/components/gps-provider";
 import { MapView } from "@/components/map-view";
 import { SimulatorPanel } from "@/components/simulator-panel";
 import { GpsDiagnosticsChip } from "@/components/gps-diagnostics";
+import { GpsStatusBanner } from "@/components/gps-status-banner";
 import { calculateDistance, classifyFix, formatDistance, smoothHeading } from "@/lib/location";
 import { TabBar } from "@/components/tab-bar";
 import type { MapSceneEntry } from "@/components/game-map";
 import { TILE_PROVIDER_LIST, type TileProviderId } from "@/lib/map/tiles";
+import { nextTileProvider, type TileHealth } from "@/lib/map/tile-health";
 import { ArrivalPrompt } from "@/components/arrival-prompt";
 import { hasProgressIn, readHuntIndex } from "@/lib/storage";
 import {
@@ -69,7 +71,7 @@ function getServedTargets(): Map<string, number> {
 export default function MapPage() {
   const router = useRouter();
   const { settings, update } = useSettings();
-  const { fix, start, status, error, isSimulated, retry, simulatorAvailable } = useGps();
+  const { fix, start, status, error, permission, isSimulated, retry, simulatorAvailable } = useGps();
   const {
     game,
     state,
@@ -85,6 +87,10 @@ export default function MapPage() {
   } = useHunt();
 
   const [recenterToken, setRecenterToken] = useState(0);
+  // B-03: raster tile health. The map reports it; this screen owns the retry
+  // banner so the map component stays a renderer with no UI opinions.
+  const [tileHealth, setTileHealth] = useState<TileHealth>("loading");
+  const [tileRetryToken, setTileRetryToken] = useState(0);
   const [taskExpanded, setTaskExpanded] = useState(false);
   const [heading, setHeading] = useState<number | null>(null);
   const [headingEnabled, setHeadingEnabled] = useState(false);
@@ -321,6 +327,8 @@ export default function MapPage() {
           onSimulatedDrag={(lat, lng) => update({ simulatorCoordinate: { lat, lng } })}
           fitToHunt={!fix}
           recenterToken={recenterToken}
+          tileRetryToken={tileRetryToken}
+          onTileHealthChange={setTileHealth}
         />
 
         {/* Top bar: hunt progress + GPS state. */}
@@ -330,23 +338,25 @@ export default function MapPage() {
         >
           <div className="page">
             <div className="map-hud pointer-events-auto flex items-center gap-2">
+              {/* B-03 HUD：当前目标与进度是玩家最需要的信息，占据主位；
+                  其余控件收进右侧统一 46px 触控区。 */}
               <Link
                 href="/quest"
-                className="card flex min-w-0 flex-1 items-center gap-3 px-3 py-2"
+                className="card flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5"
                 aria-label="查看任务列表"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold">
+                  <p className="truncate text-[15px] font-bold leading-tight">
                     {complete ? "全部完成 🎉" : current?.title ?? "加载中…"}
                   </p>
-                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]">
+                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[var(--line)]">
                     <div
                       className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500"
                       style={{ width: `${Math.round(ratio * 100)}%` }}
                     />
                   </div>
                 </div>
-                <span className="shrink-0 text-[11px] tabular text-[var(--muted)]">
+                <span className="shrink-0 text-[13px] font-semibold tabular text-[var(--text)]">
                   {statuses.filter((s) => s.status === "completed").length}/{statuses.length}
                 </span>
               </Link>
@@ -354,7 +364,7 @@ export default function MapPage() {
               <button
                 type="button"
                 onClick={() => void enableHeading()}
-                className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px] ${heading !== null ? "border-amber-400 bg-amber-50" : ""}`}
+                className={`card grid h-[46px] w-[46px] shrink-0 place-items-center text-[19px] ${heading !== null ? "border-[var(--warn-border)] bg-[var(--warn-bg)]" : ""}`}
                 aria-label={heading !== null ? "手机朝向指示已启用" : "启用手机朝向指示"}
                 title="蓝色尾巴显示手机朝向；蓝色箭头指向目标"
               >
@@ -364,7 +374,7 @@ export default function MapPage() {
               <button
                 type="button"
                 onClick={() => setRecenterToken((t) => t + 1)}
-                className="card grid h-[46px] w-[46px] shrink-0 place-items-center text-[18px]"
+                className="card grid h-[46px] w-[46px] shrink-0 place-items-center text-[19px]"
                 aria-label="回到我的位置"
                 title="回到我的位置"
               >
@@ -374,7 +384,7 @@ export default function MapPage() {
               <select
                 value={settings.tileProvider}
                 onChange={(e) => update({ tileProvider: e.target.value as TileProviderId })}
-                className="card h-[46px] w-[46px] shrink-0 appearance-none bg-[var(--card)] text-center text-[12px]"
+                className="card h-[46px] w-[46px] shrink-0 appearance-none bg-[var(--card)] text-center text-[13px] font-bold"
                 aria-label="地图样式"
                 title="地图样式"
               >
@@ -388,57 +398,31 @@ export default function MapPage() {
 
             {/* GPS status strip: only shown when something is wrong or simulated. */}
             {headingMessage && heading === null ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-[12px] leading-snug text-amber-900">{headingMessage}</p>
+              <div className="pointer-events-auto mt-2 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2">
+                <p className="text-[13px] leading-snug text-[var(--warn-text)]">{headingMessage}</p>
               </div>
             ) : null}
 
             {outsideHuntArea ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
-                <p className="text-[12.5px] leading-snug text-amber-900">
+              <div className="pointer-events-auto mt-2 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2">
+                <p className="text-[13px] leading-snug text-[var(--warn-text)]">
                   你已离开本次寻宝区域，请结合地图回到寻宝范围内。
                 </p>
               </div>
             ) : null}
 
-            {status === "error" && error ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
-                <p className="text-[12.5px] leading-snug text-red-800">{error.userMessage}</p>
-                <button
-                  type="button"
-                  className="mt-1.5 text-[12px] font-semibold text-red-700 underline"
-                  onClick={retry}
-                >
-                  重新请求定位
-                </button>
-              </div>
-            ) : null}
-
-            {status === "idle" && !fix ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-[12.5px] leading-snug text-amber-900">
-                  尚未开始定位。允许定位后才能显示你的当前位置和目标方向。
-                </p>
-                <button
-                  type="button"
-                  className="btn btn-primary mt-2 h-9 min-h-0 px-3 text-[13px]"
-                  onClick={start}
-                >
-                  获取我的位置
-                </button>
-              </div>
-            ) : null}
-
-            {status === "requesting" && !fix ? (
-              // 首次定位等待中：此前这里完全空白，弱 GPS（室内/高楼间）可能
-              // 长时间停在 requesting，玩家得不到任何反馈（雷达探针 N0 防的
-              // 就是这种空白等待态）。
-              <div className="pointer-events-auto mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-[12.5px] leading-snug text-amber-900">
-                  正在获取定位……首次定位可能需要几秒钟，请在开阔位置稍候。
-                </p>
-              </div>
-            ) : null}
+            {/* B-03: one component owns every non-healthy positioning state.
+                Before this, a first-fix timeout only set `error` while the
+                status stayed "requesting", so the player saw an endless
+                "正在获取定位…" with no message and no retry (B-02 UX-01). */}
+            <GpsStatusBanner
+              status={status}
+              error={error}
+              permission={permission}
+              hasFix={Boolean(fix)}
+              onRetry={retry}
+              onStart={start}
+            />
 
             {isSimulated ? (
               <div className="pointer-events-auto mt-2">
@@ -452,7 +436,7 @@ export default function MapPage() {
             <GpsDiagnosticsChip />
 
             {loadError ? (
-              <div className="pointer-events-auto mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-800">
+              <div className="pointer-events-auto mt-2 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] px-3 py-2 text-[13px] text-[var(--err-text)]">
                 {loadError}
               </div>
             ) : null}
@@ -465,11 +449,49 @@ export default function MapPage() {
           style={{ paddingBottom: "calc(12px + var(--tabbar-h) + var(--safe-bottom))" }}
         >
           <div className="page">
+            {/* B-03: a failed basemap used to be silent grey squares. The bar
+                sits above the task card, never over the map centre, and keeps
+                tapping/panning available behind it. */}
+            {tileHealth === "failed" ? (
+              <div
+                className="mb-2 flex items-center gap-2 rounded-xl border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2 shadow-sheet"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-[var(--warn-text)]">
+                  底图没有加载出来，地图可能不完整
+                </p>
+                <button
+                  type="button"
+                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center rounded-lg bg-[var(--warn-text)] px-3 text-[13px] font-semibold text-white"
+                  onClick={() => {
+                    setTileHealth("loading");
+                    setTileRetryToken((token) => token + 1);
+                  }}
+                >
+                  重试
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-11 min-h-[44px] shrink-0 items-center rounded-lg border border-[var(--warn-ring)] px-3 text-[13px] font-semibold text-[var(--warn-text)]"
+                  onClick={() => {
+                    const next = nextTileProvider(
+                      TILE_PROVIDER_LIST.map((provider) => provider.id),
+                      settings.tileProvider as TileProviderId,
+                    );
+                    update({ tileProvider: next });
+                    setTileHealth("loading");
+                  }}
+                >
+                  换底图
+                </button>
+              </div>
+            ) : null}
             {loading ? (
               <div className="card p-3 text-center text-[13px] text-[var(--muted)]">正在加载游戏数据…</div>
             ) : complete ? (
               <div className="card p-3 shadow-sheet">
-                <p className="text-[14px] font-semibold text-emerald-700">🎉 你已走完全部 {statuses.length} 个地点</p>
+                <p className="text-[14px] font-semibold text-[var(--ok-strong)]">🎉 你已走完全部 {statuses.length} 个地点</p>
                 <Link href="/bag" className="btn btn-primary btn-block mt-2">查看我的收获</Link>
               </div>
             ) : current ? (
@@ -481,7 +503,7 @@ export default function MapPage() {
                   aria-expanded={taskExpanded}
                   aria-label={taskExpanded ? "收起任务详情" : "展开任务详情"}
                 >
-                  <div className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-sky-50">
+                  <div className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-[var(--info-border)] bg-[var(--info-bg)]">
                     <div
                       className="absolute inset-0 animate-[spin_2.8s_linear_infinite] opacity-80"
                       style={{
@@ -489,7 +511,7 @@ export default function MapPage() {
                       }}
                       aria-hidden="true"
                     />
-                    <div className="absolute inset-[7px] rounded-full border border-sky-200/80" aria-hidden="true" />
+                    <div className="absolute inset-[7px] rounded-full border border-[var(--info-border)]" aria-hidden="true" />
                     <svg
                       viewBox="0 0 40 40"
                       className="relative h-9 w-9 drop-shadow-sm"
@@ -506,26 +528,26 @@ export default function MapPage() {
                     <p className="truncate text-[14px] font-bold">{current.title}</p>
                   </div>
                   {currentDistance && !currentDistance.inRange ? (
-                    <span className="shrink-0 tabular text-[12px] font-semibold text-[var(--muted)]">
+                    <span className="shrink-0 text-[15px] font-bold tabular text-[var(--text)]">
                       {formatDistance(currentDistance.distance)}
                     </span>
                   ) : null}
                   {arrivedScene && arrivedScene.id === current.id ? (
-                    <span className="chip shrink-0 bg-emerald-100 text-emerald-700">已抵达</span>
+                    <span className="chip shrink-0 bg-[var(--ok-bg-strong)] text-[var(--ok-strong)]">已抵达</span>
                   ) : null}
                   <span className="shrink-0 text-[var(--muted)]" aria-hidden="true">{taskExpanded ? "⌄" : "⌃"}</span>
                 </button>
 
                 {taskExpanded ? (
                   <div className="border-t border-[var(--line)] px-3 pb-3 pt-2">
-                    <p className="text-[12px] text-[var(--muted)]">{current.location.name ?? "当前目标地点"}</p>
+                    <p className="text-[13px] text-[var(--muted)]">{current.location.name ?? "当前目标地点"}</p>
                     <p className="mt-2 text-[13px] leading-snug">
                       {targetBearing === null
                         ? "暂时无法确定目标方向。请确认定位权限，并移动到 GPS 信号较好的开阔位置。"
                         : "蓝色方向指示指向当前目标。请同时观察地图和现场环境；方向会随定位更新，卡片上的距离为 GPS 估算值，仅供参考。"}
                     </p>
                     {fixQuality?.message && !currentDistance?.inRange ? (
-                      <p className="mt-2 text-[11.5px] leading-snug text-amber-700">{fixQuality.message}</p>
+                      <p className="mt-2 text-[13px] leading-snug text-[var(--warn-text)]">{fixQuality.message}</p>
                     ) : null}
                     {arrivedScene && arrivedScene.id === current.id ? (
                       <button
@@ -539,7 +561,7 @@ export default function MapPage() {
                       <Link href="/quest" className="btn btn-secondary btn-block mt-3">查看任务详情</Link>
                     )}
                     {insideAnyScene && arrivedScene && arrivedScene.id !== current.id ? (
-                      <p className="mt-2 text-[11.5px] text-[var(--muted)]">
+                      <p className="mt-2 text-[13px] text-[var(--muted)]">
                         你正在「{arrivedScene.title}」的范围内，但它尚未解锁。先去完成当前目标。
                       </p>
                     ) : null}
@@ -619,7 +641,7 @@ function KioskFullscreenButton() {
     <button
       type="button"
       onClick={toggle}
-      className="kiosk-only items-center gap-1.5 rounded-full bg-[var(--card,#ffffff)]/92 px-3.5 py-2 text-[12px] font-semibold text-[var(--ink-700,#374151)] shadow-lg ring-1 ring-black/5 hover:bg-[var(--card,#ffffff)]"
+      className="kiosk-only items-center gap-1.5 rounded-full bg-[var(--card,#ffffff)]/92 px-3.5 py-2 text-[13px] font-semibold text-[var(--ink-700,#374151)] shadow-lg ring-1 ring-black/5 hover:bg-[var(--card,#ffffff)]"
       style={{ position: "absolute", right: 16, bottom: 16, zIndex: 500 }}
     >
       {isFullscreen ? "退出全屏" : "全屏展示"}

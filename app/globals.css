@@ -57,6 +57,45 @@
 
   /* Text/icon color on gold accent surfaces. */
   --accent-contrast: #3a2400;
+
+  /* ----------------------------------------------------------------
+     B-03 semantic status tokens (success / warning / danger / info).
+     Single source for every status color in the app; scattered Tailwind
+     status palette classes (emerald/amber/red/blue/sky/orange/green)
+     were converged onto these in batch 4. Values keep the hues the UI
+     already used, so nothing shifts visually except deliberate
+     convergences noted per token. Brand colors above (--hero-teal,
+     --accent, --gold-*) are untouched: the teal x gold pairing stays.
+     Purple/violet stay as the dedicated DEV/simulator accent (internal
+     tooling, deliberately NOT one of the four status semantics);
+     slate/zinc stay as plain neutrals.
+     Contrast pairs are enforced by tests/content/semantic-colors.test.ts.
+     ---------------------------------------------------------------- */
+  --ok-bg: #ecfdf5;         /* emerald-50 surface */
+  --ok-bg-strong: #d1fae5;  /* emerald-100 surface (converges 100) */
+  --ok-border: #a7f3d0;     /* emerald-200 border (converges 200/300) */
+  --ok-solid: #059669;      /* emerald-600 fill (converges 500/600) */
+  --ok-strong: #047857;     /* emerald-700 ink (converges 600/700) */
+  --ok-text: #065f46;       /* emerald-800 ink (converges 800/900) */
+
+  --warn-bg: #fffbeb;       /* amber-50 surface */
+  --warn-bg-strong: #fef3c7; /* amber-100 surface */
+  --warn-border: #fde68a;   /* amber-200 border (converges 200/300/400) */
+  --warn-solid: #f59e0b;    /* amber-500 fill (converges 400/500) — pair with --warn-ink */
+  --warn-ink: #451a03;      /* amber-950 ink for text sitting ON --warn-solid fills */
+  --warn-solid-deep: #b45309; /* white-ink warning fill = --accent-deep (was bg-orange-600) */
+  --warn-text: #78350f;     /* amber-900 ink (converges 700/800/900/950) */
+  --warn-ring: rgba(120, 53, 15, 0.3); /* was border-amber-900/30 */
+
+  --err-bg: #fef2f2;        /* red-50 surface */
+  --err-bg-strong: #fee2e2; /* red-100 surface */
+  --err-border: #fecaca;    /* red-200 border */
+  --err-solid: #dc2626;     /* red-600 fill (converges 500/600) */
+  --err-text: #991b1b;      /* red-800 ink (converges 600/700/800) */
+
+  --info-bg: #dbeafe;       /* blue-100 surface (converges sky-50/100, blue-100) */
+  --info-border: #bfdbfe;   /* blue-200 border (converges sky-200) */
+  --info-text: #1d4ed8;     /* blue-700 ink (converges blue-700/sky-800) */
 }
 
 html,
@@ -78,6 +117,17 @@ body {
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ------------------------------------------------------------------ */
+/* 户外字号层级（outdoor type scale, B-03）                             */
+/* ------------------------------------------------------------------ */
+/* tier 0  元信息/装饰        >= 12px                                   */
+/* tier 1  次要说明/正文      >= 13px                                   */
+/* tier 2  强调/标题          14-16px                                   */
+/* tier 3  HUD 数字/页标题    17px+                                     */
+/* 玩家在户外强光下阅读的界面（地图 HUD、任务卡、到站卡、底部导航）下限   */
+/* 为 13px；其余玩家界面下限 12px。下限由                              */
+/* tests/content/type-scale.test.ts 锁定，新增文案请按层级取值。         */
 
 /* ------------------------------------------------------------------ */
 /* Layout primitives                                                  */

@@ -32,6 +32,7 @@ import type { PositionFix } from "@/lib/location";
 
 import { TILE_PROVIDERS, resolveActiveTiles, type TileProviderId } from "@/lib/map/tiles";
 import { classifyGeoapifyFailure, describeGeoapifyBlock } from "@/lib/map/geoapify";
+import { evaluateTileHealth, type TileHealth } from "@/lib/map/tile-health";
 import { MARKER_LOCKED, MARKER_OK, NAV_BLUE } from "@/lib/visual-tokens";
 
 export type { TileProviderId };
@@ -68,6 +69,14 @@ interface GameMapProps {
   recenterToken?: number;
   /** Device compass heading in degrees clockwise from north; null until available. */
   heading?: number | null;
+  /**
+   * Bumped by the screen to rebuild the tile layer after a failed load. The
+   * layer is recreated rather than patched, because Leaflet's tile cache keeps
+   * the failed URLs otherwise.
+   */
+  tileRetryToken?: number;
+  /** Reports raster tile health so the screen can offer a retry. */
+  onTileHealthChange?: (health: TileHealth) => void;
   /** Optional authoring interactions. Gameplay never supplies these. */
   editable?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
@@ -210,6 +219,8 @@ export default function GameMap({
   fitToken = 0,
   recenterToken,
   heading = null,
+  tileRetryToken = 0,
+  onTileHealthChange,
   editable = false,
   onMapClick,
   onSceneDrag,
@@ -246,6 +257,8 @@ export default function GameMap({
   sceneSelectCallbackRef.current = onSceneSelect;
   const huntAreaDragCallbackRef = useRef(onHuntAreaDrag);
   huntAreaDragCallbackRef.current = onHuntAreaDrag;
+  const tileHealthCallbackRef = useRef(onTileHealthChange);
+  tileHealthCallbackRef.current = onTileHealthChange;
 
   // Marker click handlers are bound once at creation time, so they cannot read
   // the `drawingMode` prop directly without going stale.
@@ -474,7 +487,48 @@ export default function GameMap({
     layer.addTo(map);
     tileRef.current = layer;
     map.setMaxZoom(tiles.maxZoom);
-  }, [tileProvider, tiles.url, tiles.attribution, tiles.maxZoom]);
+
+    // ---- Tile health (B-03) -------------------------------------------
+    // Leaflet draws failed tiles as empty grey squares and says nothing, so a
+    // player on a dead network sees a broken map with no explanation and no
+    // way out. Count the layer's own events and report one of three states;
+    // the screen owns the banner and the retry.
+    const startedAt = Date.now();
+    let loaded = 0;
+    let errors = 0;
+    let reported: TileHealth = "loading";
+    const report = () => {
+      const next = evaluateTileHealth({ loaded, errors, elapsedMs: Date.now() - startedAt });
+      if (next === reported) return;
+      reported = next;
+      tileHealthCallbackRef.current?.(next);
+    };
+    const onLoad = () => {
+      loaded += 1;
+      report();
+    };
+    const onError = () => {
+      errors += 1;
+      report();
+    };
+    layer.on("tileload", onLoad);
+    layer.on("tileerror", onError);
+    // Errors can arrive without any further event afterwards (all requests
+    // settled), so the grace window is also checked on a timer.
+    const checkpoints = [
+      window.setTimeout(report, 5_000),
+      window.setTimeout(report, 13_000),
+    ];
+    tileHealthCallbackRef.current?.("loading");
+
+    return () => {
+      checkpoints.forEach((id) => window.clearTimeout(id));
+      layer.off("tileload", onLoad);
+      layer.off("tileerror", onError);
+    };
+    // `tileRetryToken` re-creates the layer after a failed load; Leaflet keeps
+    // failed URLs in its cache and would never re-request them in place.
+  }, [tileProvider, tiles.url, tiles.attribution, tiles.maxZoom, tileRetryToken]);
 
   /* ------------------------------------------------ 触发圈 */
   useEffect(() => {

@@ -92,7 +92,7 @@ export default async function WorkDetailPage({
       </div>
 
       {work.state === "published" && work.publishedVersionId ? (
-        <p className="rounded-xl bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
+        <p className="rounded-xl bg-[var(--ok-bg)] px-4 py-3 text-xs text-[var(--ok-text)]">
           公开链接：
           <Link
             className="ml-1 underline"
@@ -135,7 +135,7 @@ export default async function WorkDetailPage({
                 <td className="px-4 py-2 font-mono text-[11px]">
                   {version.versionId}
                   {version.versionId === work.publishedVersionId ? (
-                    <span className="ml-1 rounded bg-emerald-100 px-1 text-[10px] text-emerald-800">
+                    <span className="ml-1 rounded bg-[var(--ok-bg-strong)] px-1 text-[10px] text-[var(--ok-text)]">
                       公开中
                     </span>
                   ) : null}

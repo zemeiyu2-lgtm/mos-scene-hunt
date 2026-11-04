@@ -22,8 +22,8 @@ export function MediaGallery({ media }: { media?: MediaItem[] }) {
             <span className="media-doc-icon">▤</span>
             <span className="min-w-0">
               <strong className="block truncate">{item.title}</strong>
-              {item.description ? <span className="mt-0.5 block text-[11px] text-[var(--muted)]">{item.description}</span> : null}
-              <span className="mt-1 block text-[11px] font-semibold text-[var(--accent-deep)]">打开资料 →</span>
+              {item.description ? <span className="mt-0.5 block text-[12px] text-[var(--muted)]">{item.description}</span> : null}
+              <span className="mt-1 block text-[12px] font-semibold text-[var(--accent-deep)]">打开资料 →</span>
             </span>
           </a>
         ),
@@ -62,10 +62,10 @@ export function MediaEditor({
     <div className="mt-4 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] p-3">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-[12px] font-bold">图片与资料</p>
-          <p className="text-[10.5px] text-[var(--muted)]">图片、PDF、Word、PowerPoint 可作为这一站的现场资料。</p>
+          <p className="text-[13px] font-bold">图片与资料</p>
+          <p className="text-[12px] text-[var(--muted)]">图片、PDF、Word、PowerPoint 可作为这一站的现场资料。</p>
         </div>
-        <label className="btn btn-secondary min-h-9 cursor-pointer px-3 text-[12px]">
+        <label className="btn btn-secondary min-h-9 cursor-pointer px-3 text-[13px]">
           添加文件
           <input className="sr-only" type="file" multiple accept="image/*,.pdf,.doc,.docx,.ppt,.pptx" onChange={(e) => { void addFiles(e.target.files); e.currentTarget.value = ""; }} />
         </label>
@@ -80,7 +80,7 @@ export function MediaEditor({
                 ) : "▤"}
               </span>
               <input className="input !min-h-9 !py-1.5 text-[13px]" value={item.title} onChange={(e) => onChange(media.map((m) => m.id === item.id ? { ...m, title: e.target.value } : m))} />
-              <button type="button" className="btn btn-ghost min-h-9 shrink-0 px-2 text-[12px]" onClick={() => onChange(media.filter((m) => m.id !== item.id))}>删除</button>
+              <button type="button" className="btn btn-ghost min-h-9 shrink-0 px-2 text-[13px]" onClick={() => onChange(media.filter((m) => m.id !== item.id))}>删除</button>
             </div>
           ))}
         </div>

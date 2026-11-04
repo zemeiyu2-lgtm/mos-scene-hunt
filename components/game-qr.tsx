@@ -42,7 +42,7 @@ export function GameQr({
 
   if (!plan.ok) {
     return (
-      <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900" role="note">
+      <p className="mt-2 rounded-lg bg-[var(--warn-bg)] p-3 text-[12px] leading-relaxed text-[var(--warn-text)]" role="note">
         {plan.reason}
       </p>
     );
@@ -68,7 +68,7 @@ export function GameQr({
   return (
     <QrErrorBoundary
       fallback={
-        <p className="mt-2 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900" role="note">
+        <p className="mt-2 rounded-lg bg-[var(--warn-bg)] p-3 text-[12px] leading-relaxed text-[var(--warn-text)]" role="note">
           二维码生成时出现意外错误；分享链接不受影响，请直接复制链接发送。
         </p>
       }
@@ -76,7 +76,7 @@ export function GameQr({
       <div ref={containerRef} className="mx-auto mt-3 flex w-full max-w-[480px] justify-center rounded-xl bg-white p-3">
         <QRCodeCanvas value={url} size={480} level="L" marginSize={2} style={{ width: "100%", height: "auto" }} />
       </div>
-      <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">
+      <p className="mt-2 text-center text-[12px] leading-relaxed text-[var(--muted)]">
         让朋友用手机相机或微信扫一扫。现场展示时请调亮屏幕，并保持二维码完整可见。
       </p>
       <button type="button" className="btn btn-primary btn-block mt-3" onClick={downloadQrCode}>

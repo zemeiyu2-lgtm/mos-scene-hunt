@@ -190,7 +190,7 @@ try {
   log("· 准备：写入一份已有存档并打开它的设计页");
   await page.goto(BASE + "/games", { waitUntil: "networkidle2", timeout: 60000 });
   await page.evaluate((prefix, game) => localStorage.setItem(prefix + game.id, JSON.stringify(game)), PREFIX, SEED_GAME);
-  await page.goto(BASE + "/design?game=" + SEED_ID, { waitUntil: "networkidle2" });
+  await page.goto(BASE + "/design?game=" + SEED_ID + "&flow=all", { waitUntil: "networkidle2" });
   await page.waitForFunction(
     () => {
       const label = Array.from(document.querySelectorAll("label")).find((l) =>
@@ -361,7 +361,7 @@ try {
   });
 
   await check("重新打开已保存的游戏，题型与答案仍在", async () => {
-    await page.goto(BASE + "/design?game=" + encodeURIComponent(savedBlankId), {
+    await page.goto(BASE + "/design?game=" + encodeURIComponent(savedBlankId) + "&flow=all", {
       waitUntil: "networkidle2",
     });
     await page.waitForFunction(

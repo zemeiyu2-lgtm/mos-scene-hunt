@@ -67,28 +67,28 @@ export default function BagPage() {
       title="背包"
       subtitle={`${state.inventory.length} 件收获 · ${state.keywords.length} 个关键词`}
       headerRight={
-        <span className="chip bg-[var(--surface)] text-[11px] text-[var(--muted)]">
+        <span className="chip bg-[var(--surface)] text-[12px] text-[var(--muted)]">
           {completedCount}/{statuses.length}
         </span>
       }
     >
       {/* Keywords get their own treatment: they are the narrative currency. */}
       {state.keywords.length ? (
-        <Card className="border-amber-200 bg-amber-50">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-800">
+        <Card className="border-[var(--warn-border)] bg-[var(--warn-bg)]">
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--warn-text)]">
             已收集关键词
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {state.keywords.map((word) => (
               <span
                 key={word}
-                className="rounded-xl bg-white px-3 py-1.5 text-[15px] font-bold text-amber-900 shadow-sm"
+                className="rounded-xl bg-white px-3 py-1.5 text-[15px] font-bold text-[var(--warn-text)] shadow-sm"
               >
                 {word}
               </span>
             ))}
           </div>
-          <p className="mt-2.5 text-[11.5px] leading-relaxed text-amber-800">
+          <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--warn-text)]">
             关键词会被后续情境引用。它们由确定性游戏逻辑发放，不会因为刷新页面而改变。
           </p>
         </Card>
@@ -107,16 +107,16 @@ export default function BagPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-[14.5px] font-semibold leading-snug">{item.title}</p>
-                      <span className="chip shrink-0 bg-[var(--surface)] text-[10.5px] text-[var(--muted)]">
+                      <span className="chip shrink-0 bg-[var(--surface)] text-[12px] text-[var(--muted)]">
                         {REWARD_LABEL[item.type] ?? item.type}
                       </span>
                     </div>
                     {item.description ? (
-                      <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--muted)]">
+                      <p className="mt-0.5 text-[13px] leading-relaxed text-[var(--muted)]">
                         {item.description}
                       </p>
                     ) : null}
-                    <p className="mt-1 text-[11px] text-[var(--muted)]">
+                    <p className="mt-1 text-[12px] text-[var(--muted)]">
                       来自「{game.scenes.find((s) => s.id === item.sceneId)?.title ?? item.sceneId}」
                     </p>
                   </div>
@@ -145,14 +145,14 @@ export default function BagPage() {
           aria-expanded={showDiagnostics}
         >
           <span className="text-[13px] font-semibold">设备与运行状态</span>
-          <span className="text-[12px] text-[var(--muted)]">
+          <span className="text-[13px] text-[var(--muted)]">
             {showDiagnostics ? "收起 ▴" : "展开 ▾"}
           </span>
         </button>
 
         {showDiagnostics ? (
           <Card className="mt-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--muted)]">
               定位
             </p>
             <KV k="GPS 状态" v={gpsStatus} />
@@ -166,11 +166,11 @@ export default function BagPage() {
             />
             <KV k="精度" v={fix ? `±${Math.round(fix.accuracy)} m` : "—"} mono />
             {quality?.message ? (
-              <p className="mt-1 text-[11.5px] leading-snug text-amber-700">{quality.message}</p>
+              <p className="mt-1 text-[12px] leading-snug text-[var(--warn-text)]">{quality.message}</p>
             ) : null}
 
             <div className="my-3 h-px bg-[var(--line)]" />
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--muted)]">
               网络与存储
             </p>
             <KV k="网络" v={online ? "在线" : "离线"} />
@@ -179,7 +179,7 @@ export default function BagPage() {
             <KV k="视口宽度" v={`${viewportWidth} px`} mono />
 
             <div className="my-3 h-px bg-[var(--line)]" />
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--muted)]">
               各地点距离
             </p>
             {statuses.map((row) => {
@@ -201,11 +201,11 @@ export default function BagPage() {
             })}
 
             <div className="my-3 h-px bg-[var(--line)]" />
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--muted)]">
               偏好
             </p>
             <label className="flex items-center justify-between gap-3 py-1.5">
-              <span className="text-[12px]">允许精度补偿（更易触发）</span>
+              <span className="text-[13px]">允许精度补偿（更易触发）</span>
               <input
                 type="checkbox"
                 className="h-5 w-5 accent-[var(--accent)]"
@@ -214,7 +214,7 @@ export default function BagPage() {
               />
             </label>
             <label className="flex items-center justify-between gap-3 py-1.5">
-              <span className="text-[12px]">减少动画</span>
+              <span className="text-[13px]">减少动画</span>
               <input
                 type="checkbox"
                 className="h-5 w-5 accent-[var(--accent)]"
@@ -233,7 +233,7 @@ export default function BagPage() {
       {/* ---------------------------------------------------------- */}
       <section className="card mt-4 p-4">
         <p className="text-[13px] font-semibold">存档</p>
-        <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
+        <p className="mt-1 text-[13px] leading-relaxed text-[var(--muted)]">
           进度保存在本机浏览器中。刷新页面、切到后台再回来，进度都会保留。
         </p>
 
@@ -255,15 +255,15 @@ export default function BagPage() {
         </div>
 
         {importMsg ? (
-          <p className="mt-2 text-[12px] text-[var(--muted)]">{importMsg}</p>
+          <p className="mt-2 text-[13px] text-[var(--muted)]">{importMsg}</p>
         ) : null}
 
         <details className="mt-3">
-          <summary className="cursor-pointer text-[12px] text-[var(--muted)]">
+          <summary className="cursor-pointer text-[13px] text-[var(--muted)]">
             从文本导入存档
           </summary>
           <textarea
-            className="input mt-2 min-h-[100px] font-mono text-[11px]"
+            className="input mt-2 min-h-[100px] font-mono text-[12px]"
             value={importText}
             onChange={(e) => setImportText(e.target.value)}
             placeholder="粘贴导出的 JSON…"
@@ -282,17 +282,17 @@ export default function BagPage() {
         </details>
 
         {showReset ? (
-          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
-            <p className="text-[12.5px] font-semibold text-red-800">
+          <div className="mt-3 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] p-3">
+            <p className="text-[13px] font-semibold text-[var(--err-text)]">
               ⚠️ 重置会清空全部进度
             </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-red-700">
+            <p className="mt-1 text-[13px] leading-relaxed text-[var(--err-text)]">
               已完成的地点、全部关键词与奖励都会被删除，且无法恢复。此操作只影响本机存档。
             </p>
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                className="btn h-9 min-h-0 bg-red-600 px-3 text-[13px] text-white"
+                className="btn h-9 min-h-0 bg-[var(--err-solid)] px-3 text-[13px] text-white"
                 onClick={() => {
                   resetHunt();
                   setShowReset(false);
@@ -314,7 +314,7 @@ export default function BagPage() {
       </section>
 
       {settings.simulatorEnabled ? (
-        <p className="mt-3 text-center text-[11.5px] text-purple-700">
+        <p className="mt-3 text-center text-[12px] text-purple-700">
           GPS 模拟器已启用。可在「地图」页展开模拟器面板调整位置。
         </p>
       ) : null}

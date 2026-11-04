@@ -26,10 +26,10 @@ export const STATUS_LABEL: Record<SceneStatus, string> = {
 
 export const STATUS_CHIP_CLASS: Record<SceneStatus, string> = {
   locked: "bg-slate-100 text-slate-500",
-  available: "bg-amber-100 text-amber-800",
-  arrived: "bg-blue-100 text-blue-700",
-  challenging: "bg-blue-100 text-blue-700",
-  completed: "bg-emerald-100 text-emerald-700",
+  available: "bg-[var(--warn-bg-strong)] text-[var(--warn-text)]",
+  arrived: "bg-[var(--info-bg)] text-[var(--info-text)]",
+  challenging: "bg-[var(--info-bg)] text-[var(--info-text)]",
+  completed: "bg-[var(--ok-bg-strong)] text-[var(--ok-strong)]",
 };
 
 export function StatusChip({ status, className = "" }: { status: SceneStatus; className?: string }) {
@@ -75,7 +75,7 @@ export function DistanceReadout({
   if (inRange) {
     return (
       <div className="flex items-baseline gap-2">
-        <span className="text-lg font-bold text-emerald-600">✓ 已进入任务区域</span>
+        <span className="text-lg font-bold text-[var(--ok-strong)]">✓ 已进入任务区域</span>
       </div>
     );
   }
@@ -177,9 +177,9 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-      <p className="text-[15px] font-semibold text-red-800">{title}</p>
-      {detail ? <p className="mt-1 text-[13px] leading-relaxed text-red-700">{detail}</p> : null}
+    <div className="rounded-2xl border border-[var(--err-border)] bg-[var(--err-bg)] p-4">
+      <p className="text-[15px] font-semibold text-[var(--err-text)]">{title}</p>
+      {detail ? <p className="mt-1 text-[13px] leading-relaxed text-[var(--err-text)]">{detail}</p> : null}
       {onRetry ? (
         <button type="button" className="btn btn-secondary mt-3" onClick={onRetry}>
           重试
@@ -206,8 +206,8 @@ export function LoadingState({ label = "正在加载…" }: { label?: string }) 
 export function KV({ k, v, mono = false }: { k: string; v: ReactNode; mono?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5">
-      <span className="shrink-0 text-[12px] text-[var(--muted)]">{k}</span>
-      <span className={`text-right text-[12px] ${mono ? "tabular font-mono" : ""}`}>{v}</span>
+      <span className="shrink-0 text-[13px] text-[var(--muted)]">{k}</span>
+      <span className={`text-right text-[13px] ${mono ? "tabular font-mono" : ""}`}>{v}</span>
     </div>
   );
 }

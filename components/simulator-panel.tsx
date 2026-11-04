@@ -203,7 +203,7 @@ export function SimulatorPanel({ activeSceneId }: { activeSceneId?: string | nul
               </label>
             </div>
 
-            {error ? <p className="mt-2 text-[12px] text-red-600">{error}</p> : null}
+            {error ? <p className="mt-2 text-[12px] text-[var(--err-text)]">{error}</p> : null}
 
             <div className="mt-2 flex flex-wrap gap-2">
               <button

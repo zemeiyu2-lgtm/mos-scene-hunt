@@ -225,15 +225,17 @@ describe("GpsProvider - F1 retry rebuilds the continuous watcher", () => {
     expect(gpsValue?.status).toBe("watching");
   });
 
-  it("a one-shot PERMISSION_DENIED does not spawn a watch; the change event still recovers", async () => {
+  it("a retry denied by the one-shot drops its watcher; the change event still recovers", async () => {
     locationState.permission = "granted";
     renderProvider();
     await waitFor(() => expect(liveWatches().length).toBe(1));
 
-    // Simulate the retry path failing with a denial.
+    // Since B-03 retry() establishes the watch first, then races the one-shot.
+    // A denial must tear that new watcher down again, not leave a dead handle.
     locationState.oneShot = { reject: { code: "PERMISSION_DENIED", message: "denied" } };
     act(() => gpsValue?.retry());
     await waitFor(() => expect(gpsValue?.permission).toBe("denied"));
+    await waitFor(() => expect(liveWatches().length).toBe(0));
 
     locationState.permission = "granted";
     await act(async () => firePermissionChange());

@@ -22,10 +22,10 @@ const PERMISSION_LABEL: Record<string, string> = {
 };
 
 function accuracyLabel(metres: number) {
-  if (metres <= 15) return { label: "很好", hint: "适合测试较小的触发半径", tone: "text-emerald-700 bg-emerald-50" };
-  if (metres <= 30) return { label: "可用", hint: "可测试 20–30 米触发范围", tone: "text-emerald-700 bg-emerald-50" };
-  if (metres <= 100) return { label: "偏低", hint: "请等待读数稳定，并尽量到开阔处", tone: "text-amber-800 bg-amber-50" };
-  return { label: "较差", hint: "暂时不要据此判断站点触发是否准确", tone: "text-red-700 bg-red-50" };
+  if (metres <= 15) return { label: "很好", hint: "适合测试较小的触发半径", tone: "text-[var(--ok-strong)] bg-[var(--ok-bg)]" };
+  if (metres <= 30) return { label: "可用", hint: "可测试 20–30 米触发范围", tone: "text-[var(--ok-strong)] bg-[var(--ok-bg)]" };
+  if (metres <= 100) return { label: "偏低", hint: "请等待读数稳定，并尽量到开阔处", tone: "text-[var(--warn-text)] bg-[var(--warn-bg)]" };
+  return { label: "较差", hint: "暂时不要据此判断站点触发是否准确", tone: "text-[var(--err-text)] bg-[var(--err-bg)]" };
 }
 
 export default function GpsFieldTestPage() {
@@ -45,7 +45,7 @@ export default function GpsFieldTestPage() {
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">定位状态</p>
             <h2 className="mt-1 text-xl font-bold">{STATUS_LABEL[status] ?? status}</h2>
           </div>
-          <span className={`chip shrink-0 ${isSimulated ? "bg-violet-100 text-violet-800" : status === "watching" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+          <span className={`chip shrink-0 ${isSimulated ? "bg-violet-100 text-violet-800" : status === "watching" ? "bg-[var(--ok-bg-strong)] text-[var(--ok-text)]" : "bg-[var(--warn-bg-strong)] text-[var(--warn-text)]"}`}>
             {isSimulated ? "模拟位置" : status === "watching" ? "真实设备读数" : "等待真实读数"}
           </span>
         </div>
@@ -62,7 +62,7 @@ export default function GpsFieldTestPage() {
         </div>
 
         {error ? (
-          <div role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div role="alert" className="mt-3 rounded-xl border border-[var(--err-border)] bg-[var(--err-bg)] p-3 text-sm text-[var(--err-text)]">
             <p className="font-bold">{error.code}</p>
             <p className="mt-1">{error.userMessage}</p>
           </div>
@@ -109,9 +109,9 @@ export default function GpsFieldTestPage() {
         )}
       </section>
 
-      <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <p className="font-bold text-amber-950">现场测试提醒</p>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-relaxed text-amber-950/85">
+      <section className="mt-4 rounded-2xl border border-[var(--warn-border)] bg-[var(--warn-bg)] p-4">
+        <p className="font-bold text-[var(--warn-text)]">现场测试提醒</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-relaxed text-[var(--warn-text)]">
           <li>GPS 精度是手机的估算值，不代表真实误差保证。</li>
           <li>先记录站点坐标和精度，再测试触发半径；不要把示范坐标当成实测点。</li>
           <li>每个站点从安全、可通行的方向接近，并至少重复三次。</li>

@@ -49,50 +49,99 @@ class FakeOscillator extends FakeNode {
   detune = new FakeParam();
 }
 
-function makeFakeContext(state: AudioContextState = "running", failResume = false) {
-  return class FakeAudioContext {
-    state = state;
-    currentTime = 0;
-    sampleRate = 48000;
-    destination = new FakeNode();
+class FakeAudioContext {
+  /** Every constructed context, newest last (the module keeps one singleton). */
+  static instances: FakeAudioContext[] = [];
+
+  state: string;
+  currentTime = 0;
+  sampleRate = 48000;
+  destination = new FakeNode();
+  private listeners: Record<string, Array<() => void>> = {};
+  private failResume: boolean;
+  /** "none" models Safari's interrupted context: resume() resolves without
+   *  actually restarting audio; only the system ending the interruption does. */
+  private resumeEffect: "run" | "none";
+
+  constructor(state: string, failResume: boolean, resumeEffect: "run" | "none") {
+    this.state = state;
+    this.failResume = failResume;
+    this.resumeEffect = resumeEffect;
+    constructed++;
+    FakeAudioContext.instances.push(this);
+  }
+
+  addEventListener(type: string, cb: () => void) {
+    (this.listeners[type] ??= []).push(cb);
+  }
+
+  removeEventListener(type: string, cb: () => void) {
+    const list = this.listeners[type];
+    if (!list) return;
+    const index = list.indexOf(cb);
+    if (index >= 0) list.splice(index, 1);
+  }
+
+  /** Test hook: mimic the OS ending an audio interruption. */
+  resumeBySystem() {
+    this.state = "running";
+    for (const cb of this.listeners.statechange ?? []) cb();
+  }
+
+  resume() {
+    if (this.failResume) return Promise.reject(new Error("resume blocked"));
+    if (this.resumeEffect === "run") this.state = "running";
+    return Promise.resolve();
+  }
+
+  createGain() {
+    return Object.assign(new FakeNode(), { gain: new FakeParam() });
+  }
+
+  createOscillator() {
+    oscillatorCount++;
+    return new FakeOscillator();
+  }
+
+  createDynamicsCompressor() {
+    return Object.assign(new FakeNode(), {
+      threshold: new FakeParam(),
+      knee: new FakeParam(),
+      ratio: new FakeParam(),
+      attack: new FakeParam(),
+      release: new FakeParam(),
+    });
+  }
+
+  createBiquadFilter() {
+    return Object.assign(new FakeNode(), {
+      type: "",
+      frequency: new FakeParam(),
+      Q: new FakeParam(),
+    });
+  }
+
+  createBuffer(channels: number, frames: number, rate: number) {
+    return { channels, rate, length: frames, getChannelData: () => new Float32Array(frames) };
+  }
+
+  createBufferSource() {
+    return new FakeNode();
+  }
+}
+
+function lastAudioContext(): FakeAudioContext | null {
+  return FakeAudioContext.instances[FakeAudioContext.instances.length - 1] ?? null;
+}
+
+function makeFakeContext(
+  state: string = "running",
+  failResume = false,
+  resumeEffect: "run" | "none" = "run",
+) {
+  return class extends FakeAudioContext {
     constructor() {
-      constructed++;
-    }
-    resume() {
-      if (failResume) return Promise.reject(new Error("resume blocked"));
-      this.state = "running";
-      return Promise.resolve();
-    }
-    createGain() {
-      return Object.assign(new FakeNode(), { gain: new FakeParam() });
-    }
-    createOscillator() {
-      oscillatorCount++;
-      return new FakeOscillator();
-    }
-    createDynamicsCompressor() {
-      return Object.assign(new FakeNode(), {
-        threshold: new FakeParam(),
-        knee: new FakeParam(),
-        ratio: new FakeParam(),
-        attack: new FakeParam(),
-        release: new FakeParam(),
-      });
-    }
-    createBiquadFilter() {
-      return Object.assign(new FakeNode(), {
-        type: "",
-        frequency: new FakeParam(),
-        Q: new FakeParam(),
-      });
-    }
-    createBuffer(channels: number, frames: number, rate: number) {
-      // Shape only mirrors what the module reads; channel/rate included so the
-      // fake parameters are consumed.
-      return { channels, rate, length: frames, getChannelData: () => new Float32Array(frames) };
-    }
-    createBufferSource() {
-      return new FakeNode();
+      super(state, failResume, resumeEffect);
     }
   };
 }
@@ -110,6 +159,7 @@ beforeEach(() => {
   window.localStorage.clear();
   constructed = 0;
   oscillatorCount = 0;
+  FakeAudioContext.instances.length = 0;
   cleanup();
 });
 
@@ -250,5 +300,53 @@ describe("SoundToggle persistence", () => {
     expect(screen.getByRole("button").textContent).toBe("🔇");
     fireEvent.click(screen.getByRole("button"));
     expect(window.localStorage.getItem(KEY)).toBe("on");
+  });
+});
+
+describe("iOS interrupted context (B-03 / B-02 UX-08)", () => {
+  it("reports 'interrupted' instead of pretending to be running", async () => {
+    vi.stubGlobal("AudioContext", makeFakeContext("interrupted", false, "none"));
+    const { playSound, currentAudioState } = await loadSound();
+    playSound("arrive");
+    expect(constructed).toBe(1);
+    expect(currentAudioState()).toBe("interrupted");
+    // Scheduling into an interrupted context is a silent no-op that also hides
+    // the "tap to restore" hint - the exact bug this fixes.
+    expect(oscillatorCount).toBe(0);
+  });
+
+  it("plays the pending arrival cue when the system ends the interruption", async () => {
+    vi.stubGlobal("AudioContext", makeFakeContext("interrupted", false, "none"));
+    const { playSound, currentAudioState } = await loadSound();
+    playSound("arrive");
+    expect(oscillatorCount).toBe(0);
+
+    lastAudioContext()?.resumeBySystem();
+    expect(currentAudioState()).toBe("running");
+    expect(oscillatorCount).toBeGreaterThan(0);
+  });
+
+  it("drops a stale pending cue instead of ringing long after the arrival", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.stubGlobal("AudioContext", makeFakeContext("interrupted", false, "none"));
+      const { playSound } = await loadSound();
+      playSound("arrive");
+      expect(oscillatorCount).toBe(0);
+
+      vi.setSystemTime(Date.now() + 5_000); // beyond the 4 s cue TTL
+      lastAudioContext()?.resumeBySystem();
+      expect(oscillatorCount).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("still resumes a plain suspended context (autoplay policy unchanged)", async () => {
+    vi.stubGlobal("AudioContext", makeFakeContext("suspended"));
+    const { playSound } = await loadSound();
+    playSound("unlock");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(oscillatorCount).toBeGreaterThan(0);
   });
 });

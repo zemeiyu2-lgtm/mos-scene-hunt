@@ -52,7 +52,7 @@ export function TabBar() {
               <Link
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex h-[var(--tabbar-h)] flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
+                className={`relative flex h-[var(--tabbar-h)] flex-col items-center justify-center gap-0.5 text-[13px] font-medium transition-colors ${
                   active ? "text-[var(--accent-deep)]" : "text-[var(--muted)]"
                 }`}
               >

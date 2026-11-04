@@ -122,7 +122,7 @@ try {
     (game) => window.localStorage.setItem(`mos-scene-hunt:authoring:${game.id}`, JSON.stringify(game)),
     PACK,
   );
-  await page.goto(`${BASE}/design?game=${GAME_ID}`, { waitUntil: "networkidle2" });
+  await page.goto(`${BASE}/design?game=${GAME_ID}&flow=all`, { waitUntil: "networkidle2" });
   await sleep(700);
 
   await check("1. 挑战区块渲染出「限时（秒）」输入框，默认留空", async () => {
@@ -143,7 +143,7 @@ try {
   });
 
   await check("3. 重新打开（深链）后输入框回显 90", async () => {
-    await page.goto(`${BASE}/design?game=${GAME_ID}`, { waitUntil: "networkidle2" });
+    await page.goto(`${BASE}/design?game=${GAME_ID}&flow=all`, { waitUntil: "networkidle2" });
     await sleep(700);
     const value = await limitInputValue(page);
     assert(value === "90", `回显值应为 "90"，实际 "${value}"`);

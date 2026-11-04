@@ -101,12 +101,12 @@ export function CreateUserForm() {
         </label>
       </div>
       {error ? (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+        <p role="alert" className="rounded-lg bg-[var(--err-bg)] px-3 py-2 text-xs text-[var(--err-text)]">
           {error}
         </p>
       ) : null}
       {created ? (
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+        <p className="rounded-lg bg-[var(--ok-bg)] px-3 py-2 text-xs text-[var(--ok-text)]">
           已创建 {created}。请通过安全渠道把初始密码交给本人。
         </p>
       ) : null}
@@ -153,7 +153,7 @@ export function UserRow({ user, isSelf }: { user: PublicUser; isSelf: boolean })
       <td className="px-4 py-2.5">
         <div className="font-medium">{user.displayName}</div>
         <div className="text-[11px] text-[var(--muted)]">{user.email}</div>
-        {error ? <div className="text-[11px] text-red-700">{error}</div> : null}
+        {error ? <div className="text-[11px] text-[var(--err-text)]">{error}</div> : null}
       </td>
       <td className="px-4 py-2.5">
         <select
@@ -172,7 +172,7 @@ export function UserRow({ user, isSelf }: { user: PublicUser; isSelf: boolean })
       <td className="px-4 py-2.5">
         <span
           className={`rounded-full px-2 py-0.5 text-[11px] ${
-            user.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"
+            user.status === "active" ? "bg-[var(--ok-bg-strong)] text-[var(--ok-text)]" : "bg-[var(--err-bg-strong)] text-[var(--err-text)]"
           }`}
         >
           {user.status === "active" ? "正常" : "已停用"}
