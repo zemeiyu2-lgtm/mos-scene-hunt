@@ -476,7 +476,11 @@ export default function MapPage() {
                   className="inline-flex h-11 min-h-[44px] shrink-0 items-center rounded-lg border border-[var(--warn-ring)] px-3 text-[13px] font-semibold text-[var(--warn-text)]"
                   onClick={() => {
                     const next = nextTileProvider(
-                      TILE_PROVIDER_LIST.map((provider) => provider.id),
+                      // TILE_PROVIDER_LIST's element type allows id "geoapify",
+                      // but geoapify is a vendor switch and is never in the
+                      // user-facing raster list at runtime — narrow for the
+                      // persisted setting.
+                      TILE_PROVIDER_LIST.map((provider) => provider.id) as TileProviderId[],
                       settings.tileProvider as TileProviderId,
                     );
                     update({ tileProvider: next });

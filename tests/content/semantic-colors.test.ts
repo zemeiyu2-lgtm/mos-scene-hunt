@@ -121,7 +121,11 @@ describe("B03-09 no scattered status palette classes remain", () => {
     encoding: "utf8",
   })
     .split("\n")
-    .filter(Boolean);
+    .filter(Boolean)
+    // app/dev/** is internal tooling (dark bench UI, same class of surface as
+    // the purple DEV accent above): status semantics are for player-facing
+    // light surfaces, so the bench keeps its own identity colors.
+    .filter((f) => !f.startsWith("app/dev/"));
 
   const offenders: string[] = [];
   for (const f of files) {

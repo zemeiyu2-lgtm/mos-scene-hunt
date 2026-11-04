@@ -16,6 +16,7 @@
 import type { SceneStatus } from "@/lib/game/state";
 import type { HuntArea, Scene } from "@/lib/game/types";
 import type { PositionFix } from "@/lib/location";
+import type { TileHealth } from "./tile-health";
 
 /** A scene rendered on the map, with everything the marker needs precomputed. */
 export interface MapSceneEntry {
@@ -75,6 +76,17 @@ export interface GameMapProps {
    * a rebuild. Ignored by non-Leaflet adapters.
    */
   forceProvider?: "osm" | "osm-hot" | "carto-voyager" | null;
+  /**
+   * B-03: bumped by the screen to rebuild the Leaflet tile layer after a
+   * failed load (Leaflet's tile cache keeps the failed URLs otherwise).
+   * Ignored by non-Leaflet adapters.
+   */
+  tileRetryToken?: number;
+  /**
+   * B-03: reports raster tile health (loading/ok/failed) so the screen can
+   * offer a retry. Ignored by non-Leaflet adapters.
+   */
+  onTileHealthChange?: (health: TileHealth) => void;
 }
 
 /** Identifies which SDK actually painted, for probes and reports. */

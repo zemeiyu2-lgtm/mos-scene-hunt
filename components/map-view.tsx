@@ -65,7 +65,7 @@ export function MapView(props: GameMapProps) {
 
   const banner = outage ? (
     <div
-      className="absolute inset-x-3 top-3 z-[1300] rounded-xl border border-emerald-300 bg-emerald-50/95 p-3 text-[12px] leading-relaxed text-emerald-900 shadow-lg"
+      className="absolute inset-x-3 top-3 z-[1300] rounded-xl border border-[var(--ok-border)] bg-[var(--ok-bg)] p-3 text-[12px] leading-relaxed text-[var(--ok-text)] shadow-lg"
       data-testid="map-fallback-banner"
     >
       <p className="font-semibold">地图服务中断，已切换到备用方案</p>

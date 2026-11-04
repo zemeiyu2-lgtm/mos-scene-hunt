@@ -951,10 +951,10 @@ export default function GameMap({
 
       {/* A geoapify build without a working key must say so, not paint grey. */}
       {effectiveBlocked ? (
-        <div className="absolute inset-x-3 top-3 z-[1200] rounded-xl border border-amber-300 bg-amber-50/95 p-3 text-[12px] leading-relaxed text-amber-900 shadow-lg">
+        <div className="absolute inset-x-3 top-3 z-[1200] rounded-xl border border-[var(--warn-ring)] bg-[var(--warn-bg)] p-3 text-[12px] leading-relaxed text-[var(--warn-text)] shadow-lg">
           <p className="font-semibold">Geoapify 瓦片未就绪</p>
           <p className="mt-1">{describeGeoapifyBlock(effectiveBlocked)}</p>
-          <p className="mt-1 text-amber-800/80">
+          <p className="mt-1 text-[var(--warn-text)] opacity-80">
             需在测试环境配置 NEXT_PUBLIC_GEOAPIFY_KEY。本页面不会借用其他 Key，也不会回退到 OSM。
           </p>
         </div>

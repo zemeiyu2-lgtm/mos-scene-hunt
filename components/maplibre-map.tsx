@@ -745,10 +745,10 @@ export default function MaplibreMap({
     <div className="map-root" data-map-engine={runtimeId}>
       <div ref={containerRef} className="h-full w-full" data-testid="maplibre-container" />
       {blocked ? (
-        <div className="absolute inset-x-3 top-3 z-[1200] rounded-xl border border-amber-300 bg-amber-50/95 p-3 text-[12px] leading-relaxed text-amber-900 shadow-lg">
+        <div className="absolute inset-x-3 top-3 z-[1200] rounded-xl border border-[var(--warn-ring)] bg-[var(--warn-bg)] p-3 text-[12px] leading-relaxed text-[var(--warn-text)] shadow-lg">
           <p className="font-semibold">地图未就绪</p>
           <p className="mt-1">{describeMaplibreBlock(blocked)}</p>
-          <p className="mt-1 text-amber-800/80">
+          <p className="mt-1 text-[var(--warn-text)] opacity-80">
             当前引擎：{styleEngine === "protomaps" ? "Protomaps PMTiles" : "OpenFreeMap"}
             。本页面不会回退到其他供应商。
           </p>
