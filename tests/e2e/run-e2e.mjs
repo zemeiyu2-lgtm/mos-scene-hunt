@@ -311,9 +311,22 @@ async function main() {
     await page.goto(`${BASE}/map`, { waitUntil: "networkidle2" });
     await sleep(1600);
 
-    await check("地图页渲染 Leaflet 瓦片", async () => {
-      const tiles = await page.$$eval("img.leaflet-tile", (n) => n.length);
-      assert(tiles > 0, `瓦片数量为 ${tiles}`);
+    /* 引擎感知断言：生产默认是 Leaflet 栅格瓦片，合入 OpenFreeMap 后构建可以
+       是 MapLibre 矢量渲染。判定标准是「地图真的画出了底图」，而不是绑定某一
+       家 SDK 的 DOM——换引擎不再需要改这条测试。 */
+    await check("地图页渲染底图（Leaflet 瓦片或 MapLibre 画布）", async () => {
+      const painted = await page.evaluate(() => {
+        const engine = window.__mosMapEngine ?? "";
+        if (engine.startsWith("maplibre")) {
+          const canvas = document.querySelector("canvas.maplibregl-canvas");
+          if (!canvas) return false;
+          const box = canvas.getBoundingClientRect();
+          return box.width > 100 && box.height > 100;
+        }
+        // Leaflet 引擎（含 Geoapify/OSM 栅格供应商）：必须真的拉到了瓦片图。
+        return document.querySelectorAll("img.leaflet-tile").length > 0;
+      });
+      assert(painted, "既没有 Leaflet 瓦片也没有 MapLibre 画布，地图未渲染");
     });
 
     await check("地图渲染 5 个场景标记", async () => {
