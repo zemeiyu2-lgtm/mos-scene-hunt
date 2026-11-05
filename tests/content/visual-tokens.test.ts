@@ -45,13 +45,20 @@ describe("brand tokens (batch B)", () => {
     expect(NAV_BLUE).toBe(rootVar("nav-blue"));
   });
 
-  it("homepage no longer hardcodes hero colors", () => {
+  it("homepage V2 keeps brand colors token-driven (no raw brand hex)", () => {
+    // 首页 V2.0 把样式移到了 app/home.css（page.tsx 只负责状态编排），
+    // 守护对象随之改为新样式表：森林绿/亮金必须引用全局 token，
+    // 且不得重复出现 globals.css 中已定义的品牌色值。
     const page = read("app/page.tsx");
     for (const hex of ["#173f3b", "#27665c", "#d6ad67", "#f4ead4", "#f5c26b"]) {
       expect(page).not.toContain(hex);
     }
-    expect(page).toContain("var(--hero-teal)");
-    expect(page).toContain("var(--hero-gold)");
+    const homeCss = read("app/home.css");
+    for (const hex of ["#173f3b", "#27665c", "#d6ad67", "#f4ead4", "#f5c26b"]) {
+      expect(homeCss).not.toContain(hex);
+    }
+    expect(homeCss).toContain("var(--hero-teal)");
+    expect(homeCss).toContain("var(--gold-bright)");
   });
 
   it("games and tutorial pages no longer hardcode hero colors", () => {
