@@ -200,6 +200,42 @@ export interface WorkRecord {
    * follow `mergedInto` before using it.
    */
   cityId?: string;
+  /**
+   * City decision intent — the server-side record that makes "not decided",
+   * "waiting for the association", "explicitly skipped" and "association
+   * failed" four different things. See {@link CityIntent}.
+   *
+   * Absent means NOT DECIDED. It never means "skipped": only an explicit
+   * `mode === "skipped"` may be read that way, and `cityId === null` alone
+   * must never be used to infer either state.
+   */
+  cityIntent?: CityIntent;
+}
+
+/**
+ * City association intent (five-state model, V2.0 baseline §3).
+ *
+ * `pending` + `attempts === 0`  → waiting for the association to complete
+ * `pending` + `attempts > 0`    → association failed / state unknown, retryable
+ * `skipped`                     → the author explicitly chose not to associate
+ * (absent)                      → the author has not decided yet
+ * `cityId` present              → associated; the intent is cleared
+ */
+export interface CityIntent {
+  mode: "pending" | "skipped";
+  /** Target profile chosen by the author (pending only). */
+  cityId?: string;
+  /** Denormalised display fields so a failed retry needs no extra read. */
+  cityName?: string;
+  countryCode?: string;
+  /**
+   * Failed attempt counter, reported by the client on retry. Never written as
+   * "0 means success": success clears the intent instead.
+   */
+  attempts: number;
+  /** Last reported failure code, for the author and the admin column. */
+  lastError?: string | null;
+  at: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -226,6 +262,7 @@ export type AuditAction =
   | "work.transfer_owner"
   | "work.import_legacy"
   | "work.city_change"
+  | "work.city_intent"
   | "work.city_link_sync_failed";
 
 export interface AuditRecord {

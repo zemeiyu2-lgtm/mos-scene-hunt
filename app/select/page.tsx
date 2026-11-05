@@ -9,8 +9,8 @@
  * why.
  */
 
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
 import { findManifestEntry } from "@/lib/content";
@@ -26,9 +26,19 @@ import {
 import { ErrorState, Screen } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { detectCurrentPlatform, permissionRecoveryGuide } from "@/lib/location/guidance";
+import { resolveReturnTarget } from "@/lib/nav/safe-return";
 
 export default function SelectPage() {
   const router = useRouter();
+  /*
+   * `?from=` is a RETURN TARGET only, and it is read by <ReturnButton/> — the
+   * one control that needs it — instead of by the page. That keeps the rest of
+   * this screen statically renderable: `useSearchParams()` forces a client
+   * bailout, so confining it to a single Suspense-wrapped button means the
+   * briefing is still pre-rendered while the parameter stays validated.
+   *
+   * Nothing here touches game selection, GPS or the hunt flow.
+   */
   const {
     game,
     loadError,
@@ -340,13 +350,21 @@ export default function SelectPage() {
             ▶ 自动演示（模拟定位走完全程）
           </button>
         ) : null}
-        <button
-          type="button"
-          className="btn btn-ghost btn-block"
-          onClick={() => router.back()}
+        {/*
+          * The fallback is deliberately inert rather than "call history.back()":
+          * before the parameter has been validated there is no safe target, and
+          * a button that navigates with an unvalidated value is exactly what
+          * this boundary exists to avoid.
+          */}
+        <Suspense
+          fallback={
+            <button type="button" className="btn btn-ghost btn-block" disabled>
+              返回
+            </button>
+          }
         >
-          返回
-        </button>
+          <ReturnButton />
+        </Suspense>
       </div>
 
       {status === "unsupported" ? (
@@ -417,4 +435,31 @@ function challengeLabel(type: string): string {
     default:
       return "任务";
   }
+}
+
+/**
+ * 返回 — the only part of this screen that reads `?from=`.
+ *
+ * Three rules, in order:
+ *  1. the raw parameter is NEVER passed to the router; only the allow-listed
+ *     value returned by `resolveReturnTarget` is;
+ *  2. a present-but-unusable value lands on `/cities` (still inside the app);
+ *  3. an absent value falls back to `router.back()`, which follows the
+ *     BROWSER's history — usually the previous screen, but NOT guaranteed to
+ *     be in-app (a player who opened the link directly goes back to whatever
+ *     sent them). That is why "no target" is never treated as "safe target".
+ */
+function ReturnButton() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = resolveReturnTarget(searchParams.get("from"));
+  return (
+    <button
+      type="button"
+      className="btn btn-ghost btn-block"
+      onClick={() => (returnTo ? router.push(returnTo) : router.back())}
+    >
+      返回
+    </button>
+  );
 }

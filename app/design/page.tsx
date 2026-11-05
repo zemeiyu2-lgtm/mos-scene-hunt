@@ -18,12 +18,13 @@
  */
 
 import { useMemo, useRef, useState, useEffect } from "react";
+import { CityAssociation } from "@/components/city-association";
 import { GameQr } from "@/components/game-qr";
 import { LocalPackPanel } from "@/components/local-pack-panel";
 import Link from "next/link";
 import { MapView } from "@/components/map-view";
 import { useSettings } from "@/components/providers";
-import { Screen } from "@/components/ui";
+import { ErrorState, Screen } from "@/components/ui";
 import {
   clearActiveAuthoredGame,
   clearAuthoredGame,
@@ -103,6 +104,10 @@ export default function DesignPage() {
   const [saveFailure, setSaveFailure] = useState<SaveFailureText | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
+  // 提交成功后才有 WorkRecord：把 id 交给城市归属卡，触发关联与失败留存。
+  const [submittedGameId, setSubmittedGameId] = useState<string | null>(null);
+  // 服务端用 409 city_link_pending 拒绝发布时置位：本机不再猜，直接指向城市卡。
+  const [cityBlocked, setCityBlocked] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importText, setImportText] = useState("");
@@ -570,6 +575,7 @@ export default function DesignPage() {
     setShareBusy(true);
     setShareMessage(null);
     setShareUrl(null);
+    setCityBlocked(null);
     try {
       const game = ensureShareable();
       const response = await fetch("/api/publish", {
@@ -579,6 +585,7 @@ export default function DesignPage() {
       });
       const publishPayload = (await response.json().catch(() => null)) as
         | {
+            error?: string;
             gameId?: string;
             versionId?: string;
             reviewStatus?: string;
@@ -594,11 +601,26 @@ export default function DesignPage() {
       if (response.status === 401) {
         throw new Error("发布需要先登录后台账号。请先登录，再回来发布。");
       }
+      /*
+       * 409 city_link_pending：服务端拒绝发布，因为作者选了城市但关联没完成。
+       * 这不是一句普通报错——要指回城市卡，让用户当场把它解决掉，而不是在
+       * 一堆按钮之间自己找原因。
+       */
+      if (response.status === 409 && publishPayload?.error === "city_link_pending") {
+        setCityBlocked(
+          publishPayload.message || "该作品已选择城市但尚未关联成功，请先完成关联或标记为不关联城市。",
+        );
+        return;
+      }
       if (!response.ok || !publishPayload?.gameId || !publishPayload?.versionId) {
         throw new Error(
           publishPayload?.detail || publishPayload?.message || `发布失败（HTTP ${response.status}）`,
         );
       }
+
+      // 作品这一刻才真正存在于服务器上：把 id 交给城市归属卡，
+      // 让「已选择城市」的意图立刻转为服务端的 pending/已关联状态。
+      setSubmittedGameId(publishPayload.gameId);
 
       // 只有当接口明确说「这一版就是对外可见的那一版」时才给出分享链接；
       // 否则分享出去的会是未审核或旧版本的内容。
@@ -1769,6 +1791,27 @@ export default function DesignPage() {
             </p>
           </div>
         ) : null}
+        <CityAssociation gameId={working?.id ?? null} submittedGameId={submittedGameId} />
+
+        {cityBlocked ? (
+          <div className="mt-3">
+            <ErrorState
+              title="该作品已选择城市但尚未关联成功"
+              detail={`${cityBlocked} 关联完成前不能公开发布；如果不打算关联城市，也可以改为「暂不关联」。`}
+            />
+            <button
+              type="button"
+              className="btn btn-secondary mt-2 min-h-10 px-3 text-sm"
+              onClick={() => {
+                const card = document.getElementById("city-association-title");
+                card?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+            >
+              去完成关联
+            </button>
+          </div>
+        ) : null}
+
         <div className="mt-3 grid gap-2">
           <button
             type="button"

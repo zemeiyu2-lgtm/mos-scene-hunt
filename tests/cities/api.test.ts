@@ -204,31 +204,140 @@ describe("GET /api/cities", () => {
     expect(body.cities[0].revision).toBeUndefined();
   });
 
-  it("scope=all 需要登录", async () => {
-    const response = await citiesGet(new Request("http://localhost/api/cities?scope=all"));
-    expect(response.status).toBe(401);
+  it("scope=all 需要登录，且降级为 picker 并标记 deprecated", async () => {
+    const anonymous = await citiesGet(new Request("http://localhost/api/cities?scope=all"));
+    expect(anonymous.status).toBe(401);
+
+    const response = await citiesGet(
+      new Request("http://localhost/api/cities?scope=all", { headers: { cookie: creatorCookie } }),
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.deprecated).toBe(true);
+    expect(body.scope).toBe("picker");
+  });
+
+  it("picker 不泄露其他作者的草稿城市", async () => {
+    // Author B creates a city through a draft pack.
+    const other = await seedUser(env.registry, "creator-b");
+    const otherSession = await issueSession(env.registry, {
+      userId: other.id,
+      role: "creator",
+      ipHash: "ip",
+      uaHash: "ua",
+    });
+    const otherCookie = `${SESSION_COOKIE}=${otherSession.token}`;
+    await seedWork(env.registry, { gameId: "hunt-b", ownerUserId: other.id, state: "draft" });
+    await citiesPost(
+      jsonRequest("http://localhost/api/cities", { gameId: "hunt-b", city: { cityName: "Cebu", countryCode: "PH" } }, otherCookie),
+    );
+
+    // Author A sees nothing of B's draft city.
+    const mine = await citiesGet(
+      new Request("http://localhost/api/cities?scope=picker", { headers: { cookie: creatorCookie } }),
+    );
+    expect(mine.status).toBe(200);
+    expect((await mine.json()).cities).toHaveLength(0);
+
+    // B sees its own.
+    const theirs = await citiesGet(
+      new Request("http://localhost/api/cities?scope=picker", { headers: { cookie: otherCookie } }),
+    );
+    expect((await theirs.json()).cities.map((city: { cityId: string }) => city.cityId)).toEqual(["cebu-ph"]);
+  });
+
+  it("普通作者不能读取 admin scope", async () => {
+    const response = await citiesGet(
+      new Request("http://localhost/api/cities?scope=admin", { headers: { cookie: creatorCookie } }),
+    );
+    expect(response.status).toBe(403);
+  });
+
+  it("无法识别的 scope 返回 400 invalid_scope", async () => {
+    const response = await citiesGet(new Request("http://localhost/api/cities?scope=everything"));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe("invalid_scope");
+  });
+
+  /*
+   * `limit` is part of the response contract (the Game Center entry asks for
+   * three rows, not the whole catalogue), so it must be honoured and validated
+   * — silently ignoring it would make the entry look broken, and a bad value
+   * must not be treated as "no limit".
+   */
+  it("limit 在筛选与排序之后截断，返回的是完整列表的前 N 行", async () => {
+    // Four published cities — one MORE than the /games entry asks for — so a
+    // pass-through (ignoring limit) would leak the fourth row.
+    for (const [gameId, cityName] of [
+      ["hunt-cebu", "Cebu"],
+      ["hunt-manila", "Manila"],
+      ["hunt-quezon", "Quezon City"],
+      ["hunt-davao", "Davao"],
+    ] as const) {
+      await seedWork(env.registry, { gameId, ownerUserId: creatorId, state: "approved" });
+      await citiesPost(
+        jsonRequest("http://localhost/api/cities", { gameId, city: { cityName, countryCode: "PH" } }, creatorCookie),
+      );
+      await publishWork(actor(admin), gameId);
+    }
+
+    const full = await (await citiesGet(new Request("http://localhost/api/cities"))).json();
+    expect(full.cities).toHaveLength(4);
+
+    // The Game Center entry asks for exactly this shape: at most three rows.
+    const limited = await (await citiesGet(new Request("http://localhost/api/cities?limit=3"))).json();
+    expect(limited.cities).toHaveLength(3);
+    // Same first rows as the full list: truncation never reorders.
+    expect(limited.cities.map((c: { cityId: string }) => c.cityId)).toEqual(
+      full.cities.slice(0, 3).map((c: { cityId: string }) => c.cityId),
+    );
+  });
+
+  it("非法 limit 返回 400 invalid_limit，而不是被当成没有上限", async () => {
+    for (const value of ["0", "-3", "abc", "2.5", "201"]) {
+      const response = await citiesGet(new Request(`http://localhost/api/cities?limit=${value}`));
+      expect(response.status, `limit=${value}`).toBe(400);
+      expect((await response.json()).error).toBe("invalid_limit");
+    }
   });
 });
 
 describe("GET /api/cities/[cityId]", () => {
-  it("存在返回 200，未知 id 返回 404", async () => {
+  it("R2：没有公开探索包的城市返回 404，未知 id 也返回 404", async () => {
+    // Draft only: the profile exists (the author's own draft created it), but a
+    // stranger may not see a city page with nothing to open.
     await seedWork(env.registry, { gameId: "hunt-api", ownerUserId: creatorId, state: "draft" });
     await citiesPost(
       jsonRequest("http://localhost/api/cities", { gameId: "hunt-api", city: { cityName: "Manila", countryCode: "PH" } }, creatorCookie),
     );
+    const draftOnly = await cityDetailGet(new Request("http://localhost/api/cities/manila-ph"), {
+      params: Promise.resolve({ cityId: "manila-ph" }),
+    });
+    expect(draftOnly.status).toBe(404);
+    expect((await draftOnly.json()).error).toBe("city_not_public");
+
+    const missing = await cityDetailGet(new Request("http://localhost/api/cities/nowhere-xx"), {
+      params: Promise.resolve({ cityId: "nowhere-xx" }),
+    });
+    expect(missing.status).toBe(404);
+  });
+
+  it("有公开探索包时返回 200，只含公开包", async () => {
+    await seedWork(env.registry, { gameId: "hunt-live", ownerUserId: creatorId, state: "approved" });
+    await citiesPost(
+      jsonRequest("http://localhost/api/cities", { gameId: "hunt-live", city: { cityName: "Manila", countryCode: "PH" } }, creatorCookie),
+    );
+    await publishWork(actor(admin), "hunt-live");
+
     const ok = await cityDetailGet(new Request("http://localhost/api/cities/manila-ph"), {
       params: Promise.resolve({ cityId: "manila-ph" }),
     });
     expect(ok.status).toBe(200);
     const body = await ok.json();
     expect(body.city.cityId).toBe("manila-ph");
-    expect(body.packages).toEqual([]);
+    expect(body.city.gameCount).toBe(1);
+    expect(body.packages.map((entry: { gameId: string }) => entry.gameId)).toEqual(["hunt-live"]);
     expect(body.redirected).toBe(false);
-
-    const missing = await cityDetailGet(new Request("http://localhost/api/cities/nowhere-xx"), {
-      params: Promise.resolve({ cityId: "nowhere-xx" }),
-    });
-    expect(missing.status).toBe(404);
   });
 });
 

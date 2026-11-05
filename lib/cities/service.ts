@@ -465,12 +465,35 @@ export interface CityListQuery {
   country?: string;
   /**
    * `public` (default) = the discovery catalogue: only cities that currently
-   * have at least one PUBLISHED pack. `all` = the creator's picker, which must
-   * also see cities that so far only have drafts — otherwise a creator cannot
-   * find the city their own unpublished pack created.
+   * have at least one PUBLISHED pack.
+   *
+   * `picker` = the creator's picker: published cities PLUS the cities this
+   * author's own works are attached to (drafts included), so a creator can
+   * find the city their unpublished pack created — and NOTHING else. It must
+   * never widen into "all cities", because drafts of other authors are not
+   * this actor's business.
+   *
+   * `manage` = one work's own association (resolved per work in A8).
+   * `admin` = staff only, full catalogue including cities with no published
+   * pack, for provenance and repair work.
    */
-  scope?: "public" | "all";
+  scope?: "public" | "picker" | "manage" | "admin";
+  /** Required for `picker`: the actor whose own works define the visible set. */
+  actorUserId?: string;
+  /**
+   * Optional cap on the number of rows returned, applied AFTER filtering and
+   * sorting — i.e. "the first N cities of this result", never "a sample".
+   *
+   * It exists because a preview strip (the Game Center entry shows at most
+   * three cities) must not have to download the whole catalogue to render one
+   * card. Because it changes the response, it is part of the client cache key
+   * as well (see `lib/cities/client.ts`).
+   */
+  limit?: number;
 }
+
+/** Hard ceiling for `limit`: a caller may not ask for an unbounded page. */
+export const CITY_LIST_MAX_LIMIT = 200;
 
 /** Public listing projection, with a count validated against the works. */
 export async function listCitiesPublic(
@@ -485,11 +508,38 @@ export async function listCitiesPublic(
   // only pack is no longer discoverable.
   const counts = await countPublishedByCity({ cityStore: store, registry: deps.registry });
 
+  /*
+   * `picker` visibility = published cities ∪ the cities THIS author's works
+   * point at. Built from the author's own work documents (the authority), so a
+   * stale `city-links` entry can neither add nor hide a city here.
+   */
+  let ownCityIds: Set<string> | null = null;
+  if (scope === "picker") {
+    ownCityIds = new Set<string>();
+    if (query.actorUserId) {
+      const registry = deps.registry ?? getRegistry();
+      for (const work of await registry.listWorks()) {
+        if (work.ownerUserId !== query.actorUserId) continue;
+        if (work.cityId) ownCityIds.add(work.cityId);
+        if (work.cityIntent?.cityId) ownCityIds.add(work.cityIntent.cityId);
+      }
+    }
+  }
+
   const q = query.q?.trim().toLowerCase() ?? "";
   const country = query.country?.trim().toUpperCase() ?? "";
+  const rawLimit = typeof query.limit === "number" && Number.isFinite(query.limit) ? Math.floor(query.limit) : null;
+  const limit = rawLimit !== null && rawLimit > 0 ? Math.min(rawLimit, CITY_LIST_MAX_LIMIT) : null;
 
-  return cities
-    .filter((city) => (scope === "public" ? (counts.get(city.cityId) ?? 0) > 0 : true))
+  const rows = cities
+    .filter((city) => {
+      if (scope === "public") return (counts.get(city.cityId) ?? 0) > 0;
+      if (scope === "picker") {
+        return (counts.get(city.cityId) ?? 0) > 0 || Boolean(ownCityIds?.has(city.cityId));
+      }
+      // `admin` and `manage` see the profile regardless of published counts.
+      return true;
+    })
     .filter((city) => (country ? city.countryCode === country : true))
     .filter((city) => {
       if (!q) return true;
@@ -515,6 +565,11 @@ export async function listCitiesPublic(
       gameCount: counts.get(city.cityId) ?? 0,
     }))
     .sort((a, b) => a.cityName.localeCompare(b.cityName, "zh-Hans-CN"));
+
+  // Truncation happens last, so "first 3" always means the first three rows of
+  // the ordered, filtered result — the same three a full request would show
+  // first, and never an unordered subset of the store.
+  return limit === null ? rows : rows.slice(0, limit);
 }
 
 export interface PublicCityDetail {

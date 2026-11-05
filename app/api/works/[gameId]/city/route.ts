@@ -9,6 +9,8 @@ import {
 } from "@/lib/auth/guard";
 import { parseCityInput } from "@/lib/cities/service";
 import { attachCityToWork } from "@/lib/cities/service";
+import { resolveCityRef } from "@/lib/cities/resolve";
+import { getCityStore } from "@/lib/cities/store";
 import { isValidGameId } from "@/lib/publish/version";
 import { getRegistry } from "@/lib/registry/store";
 
@@ -57,9 +59,36 @@ export async function GET(
       throw new HttpError(400, "invalid_game_id", "游戏 id 不合法。");
     }
     const { work } = await loadWorkForActor(request, gameId);
+    // Denormalised city summary + the raw decision intent, so the creator UI can
+    // render all five states from ONE request and a closed browser can never
+    // silently turn "waiting" into "skipped".
+    let city: {
+      cityId: string;
+      cityName: string;
+      countryCode: string;
+      countryName: string;
+    } | null = null;
+    if (work.cityId) {
+      const resolved = await resolveCityRef(getCityStore(), work.cityId);
+      if (resolved) {
+        city = {
+          cityId: resolved.city.cityId,
+          cityName: resolved.city.cityName,
+          countryCode: resolved.city.countryCode,
+          countryName: resolved.city.countryName,
+        };
+      }
+    }
     return jsonResponse(
       200,
-      { gameId: work.gameId, cityId: work.cityId ?? null, state: work.state },
+      {
+        gameId: work.gameId,
+        cityId: work.cityId ?? null,
+        state: work.state,
+        title: work.title,
+        city,
+        intent: work.cityIntent ?? null,
+      },
       { "Cache-Control": NO_STORE },
     );
   } catch (error) {

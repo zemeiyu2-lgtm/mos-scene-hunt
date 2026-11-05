@@ -110,6 +110,6 @@ describe("关联失败时的补偿", () => {
 
     expect(await getCityStore().listCities()).toHaveLength(0);
     expect(await getCityStore().listLinks()).toHaveLength(0);
-    expect(await listCitiesPublic({ scope: "all" })).toHaveLength(0);
+    expect(await listCitiesPublic({ scope: "admin" })).toHaveLength(0);
   });
 });

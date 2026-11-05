@@ -336,7 +336,7 @@ describe("公开城市列表", () => {
     expect(publicList[0].gameCount).toBe(1);
 
     // The creator picker still sees the city its draft created.
-    const all = await listCitiesPublic({ scope: "all" });
+    const all = await listCitiesPublic({ scope: "picker", actorUserId: owner.id });
     expect(all.map((entry) => entry.cityId).sort()).toEqual([draftOnly.cityId, published.cityId].sort());
   });
 
@@ -357,13 +357,13 @@ describe("公开城市列表", () => {
     const sg = await attach({ cityName: "Singapore", countryCode: "SG" });
     await mergeCities(sg.cityId, cebu.cityId);
 
-    const all = await listCitiesPublic({ scope: "all" });
+    const all = await listCitiesPublic({ scope: "picker", actorUserId: owner.id });
     expect(all.map((entry) => entry.cityId).sort()).toEqual([cebu.cityId, "manila-ph"].sort());
 
-    const ph = await listCitiesPublic({ scope: "all", country: "PH" });
+    const ph = await listCitiesPublic({ scope: "picker", actorUserId: owner.id, country: "PH" });
     expect(ph.every((entry) => entry.countryCode === "PH")).toBe(true);
 
-    const searched = await listCitiesPublic({ scope: "all", q: "cebu" });
+    const searched = await listCitiesPublic({ scope: "picker", actorUserId: owner.id, q: "cebu" });
     expect(searched).toHaveLength(1);
     expect(searched[0].cityId).toBe(cebu.cityId);
   });

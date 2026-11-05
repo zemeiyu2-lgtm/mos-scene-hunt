@@ -27,6 +27,7 @@ import {
   REGISTRY_SCHEMA_VERSION,
   type AuditAction,
   type AuditRecord,
+  type CityIntent,
   type Role,
   type UserRecord,
   type WorkRecord,
@@ -456,10 +457,53 @@ export async function setWorkCity(
   return work;
 }
 
+/**
+ * Record the author's city DECISION — chosen, skipped, or cleared.
+ *
+ * Deliberately separate from {@link setWorkCity}: this never creates a city
+ * profile, never writes `cityId`, and therefore cannot leak a city into the
+ * public catalogue. Its only job is to make the decision durable so that a
+ * closed browser, a dead network or a different device cannot turn "waiting
+ * for the association" into "the author skipped it".
+ */
+export async function setCityIntent(
+  actor: ActorContext,
+  gameId: string,
+  intent: CityIntent | null,
+): Promise<WorkRecord> {
+  const registry = getRegistry();
+  const before = await registry.getWork(gameId);
+  const { work, changed } = await mutateWork(registry, gameId, actor, {
+    type: "set_city_intent",
+    intent,
+    actorUserId: actor.user.id,
+    actorRole: actor.user.role,
+  });
+
+  if (changed) {
+    await recordAudit(registry, {
+      actor,
+      action: "work.city_intent",
+      targetType: "work",
+      targetId: gameId,
+      before: {
+        mode: before?.cityIntent?.mode ?? null,
+        cityId: before?.cityIntent?.cityId ?? null,
+        attempts: before?.cityIntent?.attempts ?? null,
+      },
+      after: {
+        mode: work.cityIntent?.mode ?? null,
+        cityId: work.cityIntent?.cityId ?? null,
+        attempts: work.cityIntent?.attempts ?? null,
+      },
+    });
+  }
+  return work;
+}
+
 /* ------------------------------------------------------------------ */
 /* Read models for the admin UI                                       */
 /* ------------------------------------------------------------------ */
-
 export interface QueueEntry {
   work: WorkRecord;
   waitingSince: string;

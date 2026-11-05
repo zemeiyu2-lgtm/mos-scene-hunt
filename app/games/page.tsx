@@ -7,6 +7,7 @@ import { importGamePackageChecked, listAuthoredGames, markCurrentAuthoredGame } 
 import type { Game } from "@/lib/game/types";
 import { loadCloudCatalog, packUrl, publishedGames, type CloudGameEntry } from "@/lib/cloud";
 import { MapView } from "@/components/map-view";
+import { loadCityList, type PublicCitySummary } from "@/lib/cities/client";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
 import type { MapSceneEntry } from "@/components/game-map";
 import type { PositionFix } from "@/lib/location";
@@ -17,6 +18,12 @@ export default function GamesPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  /**
+   * City entry preview. Deliberately allowed to stay empty: when there is no
+   * public city (or the request fails) the whole section disappears instead of
+   * offering a door into an empty room, and nothing below it is affected.
+   */
+  const [cities, setCities] = useState<PublicCitySummary[]>([]);
 
   const refreshLocal = () => setLocalGames(listAuthoredGames());
 
@@ -39,6 +46,29 @@ export default function GamesPage() {
     const onFocus = () => refreshLocal();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  /**
+   * Independent of the game catalogue: a city failure must never delay or break
+   * the play path, so this neither blocks rendering nor surfaces an error box —
+   * an entry with nothing behind it is simply not shown.
+   *
+   * `limit: 3` is the preview contract: the entry shows at most three chips, so
+   * it asks for three rows instead of the whole catalogue. Because the limit
+   * changes the response, it is part of the cache key — a 3-row answer can
+   * never be served to a full-list caller.
+   */
+  useEffect(() => {
+    let alive = true;
+    void loadCityList({ limit: 3 }).then((result) => {
+      if (!alive) return;
+      // Failure hides the entry (never renders a broken shell); the play path
+      // above is already on screen and unaffected.
+      setCities(result.ok ? result.data : []);
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const download = async (entry: CloudGameEntry) => {
@@ -111,6 +141,42 @@ export default function GamesPage() {
       </section>
 
       {message ? <div role="status" className="card mt-3 p-3 text-sm leading-relaxed">{message}</div> : null}
+
+      {cities.length > 0 ? (
+        <section className="mt-4" aria-labelledby="city-entry-title">
+          <div className="mb-2">
+            <h2 id="city-entry-title" className="text-lg font-bold">城市探索</h2>
+            <p className="text-xs text-[var(--muted)]">按城市看看有哪些公开的探索路线。</p>
+          </div>
+          <div className="card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[15px] font-semibold">从一座城市开始</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
+                  城市里集合了当地的公开探索包，先选城市再选路线。
+                </p>
+              </div>
+              <span className="text-[17px] leading-none text-[var(--hero-teal)]" aria-hidden>
+                ◎
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {cities.slice(0, 3).map((city) => (
+                <Link
+                  key={city.cityId}
+                  href={`/cities/${encodeURIComponent(city.cityId)}`}
+                  className="chip bg-[var(--surface)] hover:border-[var(--accent)]"
+                >
+                  {city.cityName} · {city.gameCount}
+                </Link>
+              ))}
+            </div>
+            <Link href="/cities" className="btn btn-secondary mt-3 w-full text-center">
+              浏览全部城市
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-4">
         <div className="mb-2 flex items-center justify-between gap-3">

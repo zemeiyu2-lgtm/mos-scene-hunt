@@ -17,6 +17,7 @@
 import { isValidCityId } from "../cities/types";
 import {
   isPubliclyReadable,
+  type CityIntent,
   type ReviewDecision,
   type ReviewRecord,
   type Role,
@@ -56,6 +57,18 @@ export type WorkEvent =
       cityId: string | null;
       actorUserId: string;
       actorRole: Role;
+    }
+  /**
+   * City DECISION intent — orthogonal to the lifecycle, and deliberately
+   * separate from `set_city`: this records what the author decided (chose a
+   * city, or explicitly skipped) without creating a profile or touching
+   * `cityId`. Publishing is blocked only while the intent is `pending`.
+   */
+  | {
+      type: "set_city_intent";
+      intent: CityIntent | null;
+      actorUserId: string;
+      actorRole: Role;
     };
 
 export type TransitionErrorCode =
@@ -69,6 +82,8 @@ export type TransitionErrorCode =
   | "reason_required"
   | "work_archived"
   | "city_change_forbidden"
+  | "city_intent_forbidden"
+  | "city_link_pending"
   | "invalid_city";
 
 export interface TransitionError {
@@ -113,6 +128,30 @@ export function canSetCity(
   const publishedReachable: WorkState[] = ["published", "unlisted", "withdrawn"];
   if (publishedReachable.includes(work.state) && !isAdmin) {
     return fail("city_change_forbidden", "作品已发布过，城市归属只能由管理员修改。");
+  }
+  return null;
+}
+
+/**
+ * Who may record a city DECISION intent.
+ *
+ * Same shape as {@link canSetCity} but deliberately laxer on one point: a
+ * `pending`/`skipped` decision is not public data (it creates no profile and
+ * changes nothing strangers can read), so the owner may still record one on a
+ * live work. What the owner may NOT do is move an already-public association —
+ * that stays admin-only in `canSetCity`.
+ */
+export function canSetCityIntent(
+  work: WorkRecord,
+  actor: { userId: string; role: Role },
+): TransitionError | null {
+  const isAdmin = actor.role === "admin";
+  const isOwner = actor.userId === work.ownerUserId;
+  if (!isAdmin && !isOwner) {
+    return fail("not_owner", "只有作者本人或管理员可以修改城市归属。");
+  }
+  if (work.state === "archived" && !isAdmin) {
+    return fail("city_intent_forbidden", "作品已归档，无法修改城市归属。");
   }
   return null;
 }
@@ -198,8 +237,47 @@ export function applyWorkEvent(
       const next = clone(work);
       if (event.cityId === null) {
         delete next.cityId;
+        // Clearing the association also clears the decision: the author is
+        // back to "not decided", not to "skipped".
+        delete next.cityIntent;
       } else {
         next.cityId = event.cityId;
+        // Invariant I-A: a completed association retires the intent, which is
+        // what makes "pending" mean "still waiting" and nothing else.
+        delete next.cityIntent;
+      }
+      return { ok: true, work: settle(next, now), changed: true };
+    }
+
+    case "set_city_intent": {
+      const denied = canSetCityIntent(work, { userId: event.actorUserId, role: event.actorRole });
+      if (denied) return denied;
+      const incoming = event.intent;
+      if (incoming && incoming.mode === "pending" && !incoming.cityId) {
+        return fail("invalid_city", "选择了城市就必须给出 cityId。");
+      }
+      if (incoming && incoming.mode === "pending" && !isValidCityId(incoming.cityId)) {
+        return fail("invalid_city", "城市 id 不合法。");
+      }
+      // Idempotent: the same decision replayed (same mode, same target, no new
+      // failure report) must not bump the revision, so a flaky network cannot
+      // inflate `attempts` or rewrite the document.
+      const current = work.cityIntent ?? null;
+      const sameDecision =
+        (!current && !incoming) ||
+        (current &&
+          incoming &&
+          current.mode === incoming.mode &&
+          (current.cityId ?? null) === (incoming.cityId ?? null) &&
+          current.attempts === incoming.attempts &&
+          (current.lastError ?? null) === (incoming.lastError ?? null));
+      if (sameDecision) return { ok: true, work, changed: false };
+
+      const next = clone(work);
+      if (!incoming) {
+        delete next.cityIntent;
+      } else {
+        next.cityIntent = incoming;
       }
       return { ok: true, work: settle(next, now), changed: true };
     }
@@ -262,6 +340,22 @@ export function applyWorkEvent(
     }
 
     case "publish": {
+      /*
+       * Publish gate (V2.0 §3 rule 2): a work whose author chose a city but
+       * whose association has not completed may not go public. `skipped` and
+       * "not decided" pass through — refusing those would turn an optional
+       * field into a hard requirement.
+       *
+       * This is a server-side rule on purpose: the client may hide the button,
+       * but only this check actually stops a publish, and it has no side
+       * effect, so a rejected publish leaves the work untouched.
+       */
+      if (work.cityIntent?.mode === "pending") {
+        return fail(
+          "city_link_pending",
+          "该作品已选择城市但尚未关联成功，请先完成关联或标记为不关联城市。",
+        );
+      }
       const publishable: WorkState[] = ["approved", "published", "unlisted"];
       if (!publishable.includes(work.state)) {
         return fail("invalid_state", `只有审核通过的作品可以发布，当前 ${work.state}。`);

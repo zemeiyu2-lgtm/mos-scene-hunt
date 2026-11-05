@@ -3,19 +3,31 @@ import {
   assertSafeMutation,
   clientHints,
   jsonResponse,
+  requireRole,
   requireUser,
   toErrorResponse,
 } from "@/lib/auth/guard";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
-import { attachCityToWork, listCitiesPublic, parseCityInput } from "@/lib/cities/service";
+import { attachCityToWork, CITY_LIST_MAX_LIMIT, listCitiesPublic, parseCityInput } from "@/lib/cities/service";
+import { countPublishedByCity } from "@/lib/cities/link";
 
 /**
  * City catalogue.
  *
  * GET  /api/cities?q=&country=            public discovery (cities that
  *                                         currently hold ≥1 published pack)
- * GET  /api/cities?scope=all              authenticated creator picker (also
- *                                         shows cities with drafts only)
+ * GET  /api/cities?limit=3                ...and at most N rows, applied after
+ *                                         filtering and sorting (entry previews)
+ * GET  /api/cities?scope=picker           signed-in creator picker: published
+ *                                         cities + the cities THIS author's
+ *                                         own works are attached to
+ * GET  /api/cities?scope=admin            staff only: full catalogue
+ * GET  /api/cities?scope=all              DEPRECATED. Historically returned
+ *                                         every city to any signed-in user,
+ *                                         which exposed other authors' draft
+ *                                         cities. It now answers with the
+ *                                         `picker` set plus `"deprecated": true`
+ *                                         and is scheduled for removal.
  * POST /api/cities  { gameId, city }      associate a pack with a city,
  *                                         creating the profile if it is new
  *
@@ -39,17 +51,64 @@ const CREATE_MAX_PER_HOUR = 60;
 export async function GET(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
-    const scope = url.searchParams.get("scope") === "all" ? "all" : "public";
-    // The full catalogue is a creator tool, not public data: it exposes cities
-    // whose packs are still drafts and therefore not meant to be discoverable.
-    if (scope === "all") await requireUser(request);
+    const requested = url.searchParams.get("scope");
+    let scope: "public" | "picker" | "admin" = "public";
+    let deprecated = false;
+
+    if (requested === "all") {
+      // Compatibility window: same visibility as `picker`, never wider.
+      deprecated = true;
+      scope = "picker";
+    } else if (requested === "picker") {
+      scope = "picker";
+    } else if (requested === "admin") {
+      scope = "admin";
+    } else if (requested && requested !== "public") {
+      return jsonResponse(
+        400,
+        { error: "invalid_scope", message: "scope 只支持 public、picker、admin。" },
+        { "Cache-Control": NO_STORE },
+      );
+    }
+
+    // Picker and admin both need an actor: the picker set is defined by WHO is
+    // asking, and the admin catalogue includes cities with no published pack.
+    let actorUserId: string | undefined;
+    if (scope === "picker") {
+      actorUserId = (await requireUser(request)).user.id;
+    } else if (scope === "admin") {
+      actorUserId = (await requireRole(request, "reviewer")).user.id;
+    }
+
+    // `limit` changes the response body, so it is validated here rather than
+    // silently ignored: a caller that asked for 3 rows and got 40 would think
+    // its own UI was broken.
+    const rawLimit = url.searchParams.get("limit");
+    let limit: number | undefined;
+    if (rawLimit !== null && rawLimit !== "") {
+      const parsed = Number(rawLimit);
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > CITY_LIST_MAX_LIMIT) {
+        return jsonResponse(
+          400,
+          { error: "invalid_limit", message: `limit 必须是 1 到 ${CITY_LIST_MAX_LIMIT} 之间的整数。` },
+          { "Cache-Control": NO_STORE },
+        );
+      }
+      limit = parsed;
+    }
 
     const cities = await listCitiesPublic({
       q: url.searchParams.get("q") ?? undefined,
       country: url.searchParams.get("country") ?? undefined,
       scope,
+      actorUserId,
+      limit,
     });
-    return jsonResponse(200, { cities, scope }, { "Cache-Control": NO_STORE });
+    return jsonResponse(
+      200,
+      deprecated ? { cities, scope, deprecated } : { cities, scope },
+      { "Cache-Control": NO_STORE },
+    );
   } catch (error) {
     return toErrorResponse(error, "cities:list");
   }
@@ -115,6 +174,7 @@ export async function POST(request: Request): Promise<Response> {
       { city: input },
     );
     const city = result.city!;
+    const packedCounts = await countPublishedByCity();
 
     return jsonResponse(result.created ? 201 : 200, {
       city: {
@@ -125,7 +185,10 @@ export async function POST(request: Request): Promise<Response> {
         adminAreaName: city.adminAreaName ?? null,
         localizedNames: city.localizedNames,
         status: city.status,
-        gameCount: 0,
+        // Real published count, never a placeholder: this is the number the UI
+        // shows next to a freshly created city (usually 0, because the pack is
+        // still a draft — which is the honest answer).
+        gameCount: packedCounts.get(city.cityId) ?? 0,
       },
       work: { gameId: result.work.gameId, cityId: result.work.cityId ?? null, state: result.work.state },
       created: result.created,

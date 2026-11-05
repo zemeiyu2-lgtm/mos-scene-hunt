@@ -158,11 +158,21 @@ export function Card({
   return <Tag className={`card p-4 ${className}`}>{children}</Tag>;
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({
+  title,
+  hint,
+  actions,
+}: {
+  title: string;
+  hint?: string;
+  /** Optional next steps. An empty state that only apologises is a dead end. */
+  actions?: ReactNode;
+}) {
   return (
     <div className="grid place-items-center rounded-2xl border border-dashed border-[var(--line)] bg-[var(--card)] px-6 py-10 text-center">
       <p className="text-[15px] font-semibold">{title}</p>
       {hint ? <p className="mt-1 text-[13px] text-[var(--muted)]">{hint}</p> : null}
+      {actions ? <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{actions}</div> : null}
     </div>
   );
 }

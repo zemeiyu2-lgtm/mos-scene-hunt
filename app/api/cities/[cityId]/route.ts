@@ -29,6 +29,24 @@ export async function GET(
       return jsonResponse(404, { error: "city_not_found", message: "城市档案不存在。" }, { "Cache-Control": NO_STORE });
     }
     const packages = await listCityPackages(detail.city.cityId);
+    /*
+     * R2: a city with no publicly readable pack is NOT a public page. Answering
+     * 200 with an empty list would advertise "this city exists but has nothing
+     * you can play" — a dead end for a stranger and an information leak about
+     * other authors' unpublished work. 404 keeps the public surface equal to
+     * "something you can actually open".
+     *
+     * Authors and admins never depend on this route for their own drafts: they
+     * read A8 (`/api/works/<gameId>/city`) or the picker scope, both of which
+     * are authenticated and permission-scoped.
+     */
+    if (packages.length === 0) {
+      return jsonResponse(
+        404,
+        { error: "city_not_public", message: "这座城市还没有公开的探索包。" },
+        { "Cache-Control": NO_STORE },
+      );
+    }
     return jsonResponse(
       200,
       {
