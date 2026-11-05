@@ -63,6 +63,7 @@ export interface ExplorePack {
    * function the cloud download path uses — rather than concatenated by hand.
    */
   packFile: string;
+  versionId: string | null;
   /** Coarse start point for a static map preview; never used for gameplay. */
   startPoint: { lat: number; lng: number } | null;
 }
@@ -71,6 +72,7 @@ export interface PackSource {
   gameId: string;
   updatedAt: string;
   packFile: string;
+  versionId?: string | null;
   cityId?: string | null;
   cityName?: string | null;
 }
@@ -200,6 +202,7 @@ export function summarizePack(
         : 1000,
     updatedAt: source.updatedAt,
     packFile: source.packFile,
+    versionId: source.versionId ?? null,
     startPoint:
       startLat !== null && startLng !== null ? { lat: startLat, lng: startLng } : null,
   };

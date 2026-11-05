@@ -11,6 +11,8 @@ export interface CloudGameEntry {
   sceneCount: number;
   status: CloudGameStatus;
   packFile: string;
+  /** Exact immutable published version; absent for static content files. */
+  versionId?: string;
 }
 
 export interface CloudCatalog {
@@ -29,6 +31,7 @@ function validEntry(value: unknown): value is CloudGameEntry {
     typeof x.author === "string" && typeof x.description === "string" &&
     typeof x.language === "string" && typeof x.sceneCount === "number" &&
     typeof x.packFile === "string" &&
+    (x.versionId === undefined || (typeof x.versionId === "string" && /^[0-9a-f]{16}$/.test(x.versionId))) &&
     ["published","draft","unlisted","archived"].includes(String(x.status));
 }
 
