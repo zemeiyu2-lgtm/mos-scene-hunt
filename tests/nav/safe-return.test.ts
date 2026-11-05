@@ -117,3 +117,21 @@ describe("resolveReturnTarget — 安全默认落点", () => {
     expect(resolveReturnTarget("")).toBeNull();
   });
 });
+
+describe("safeReturnPath — 探索页（2026-11-05）", () => {
+  it("探索目录与合法探索包 id 允许返回", () => {
+    expect(safeReturnPath("/explore")).toBe("/explore");
+    expect(safeReturnPath("/explore/mos-classic-01")).toBe("/explore/mos-classic-01");
+  });
+
+  it("多层路径、非法 id 与大写 id 一律拒绝", () => {
+    expect(safeReturnPath("/explore/category/place-activity")).toBeNull();
+    expect(safeReturnPath("/explore/../etc")).toBeNull();
+    expect(safeReturnPath("/explore/MOS-Classic")).toBeNull();
+    expect(safeReturnPath("/explore/")).toBeNull();
+  });
+
+  it("不可用的探索返回目标退到城市目录，不跳出站外", () => {
+    expect(resolveReturnTarget("/explore/../etc")).toBe(DEFAULT_RETURN_PATH);
+  });
+});

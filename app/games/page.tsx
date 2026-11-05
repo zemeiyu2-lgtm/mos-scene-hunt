@@ -1,6 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+/**
+ * 探索中心 (first layer).
+ *
+ * Reordered around the question a first-time visitor actually asks — "what is
+ * this place, and what can I do here?" — instead of around where the bytes came
+ * from. The old machine-shaped sections (本机游戏 / 云端游戏 / 设计者入口) are all
+ * still here, demoted below the discovery content; nothing was removed, and the
+ * download + play path is byte-for-byte the same code.
+ *
+ * Honesty rules applied on this page:
+ *  - featured content is the editorial ordering over real published packs; when
+ *    there is none, the section is absent rather than filled with a placeholder;
+ *  - the city entry is always visible and states how many cities are real;
+ *  - a failed discovery request shows a retry, never an empty "no content" claim.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Screen, LoadingState } from "@/components/ui";
 import { importGamePackageChecked, listAuthoredGames, markCurrentAuthoredGame } from "@/lib/content";
@@ -11,6 +27,11 @@ import { loadCityList, type PublicCitySummary } from "@/lib/cities/client";
 import { RIZAL_PARK_TEMPLATE } from "@/lib/game/templates";
 import type { MapSceneEntry } from "@/components/game-map";
 import type { PositionFix } from "@/lib/location";
+import { PackCard } from "@/components/explore/pack-card";
+import { CategoryTiles } from "@/components/explore/discovery";
+import { loadExplorePacks } from "@/lib/explore/client";
+import type { ExplorePack } from "@/lib/explore/summary";
+import { EXPLORE_CATEGORIES, type ExploreCategorySlug } from "@/lib/explore/taxonomy";
 
 export default function GamesPage() {
   const [games, setGames] = useState<CloudGameEntry[]>([]);
@@ -18,14 +39,38 @@ export default function GamesPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [packs, setPacks] = useState<ExplorePack[]>([]);
+  const [categoryCounts, setCategoryCounts] = useState<Partial<Record<ExploreCategorySlug, number>>>({});
+  const [exploreLoading, setExploreLoading] = useState(true);
+  const [exploreFailed, setExploreFailed] = useState(false);
+
   /**
-   * City entry preview. Deliberately allowed to stay empty: when there is no
-   * public city (or the request fails) the whole section disappears instead of
-   * offering a door into an empty room, and nothing below it is affected.
+   * City entry preview. `limit: 3` is part of the cache key, so the 3-row answer
+   * can never be served to a full-list caller. A failure hides the chips but not
+   * the entry itself — the entry states the truth ("0 座城市") instead of
+   * pretending the feature does not exist.
    */
   const [cities, setCities] = useState<PublicCitySummary[]>([]);
+  const [cityState, setCityState] = useState<"loading" | "ok" | "failed">("loading");
 
   const refreshLocal = () => setLocalGames(listAuthoredGames());
+
+  const refreshExplore = () => {
+    setExploreLoading(true);
+    setExploreFailed(false);
+    void loadExplorePacks({ fresh: true }).then((result) => {
+      if (result.ok) {
+        setPacks(result.packs);
+        const next: Partial<Record<ExploreCategorySlug, number>> = {};
+        for (const entry of result.categories) next[entry.slug] = entry.count;
+        setCategoryCounts(next);
+      } else {
+        setExploreFailed(true);
+      }
+      setExploreLoading(false);
+    });
+  };
 
   const refresh = async () => {
     setLoading(true);
@@ -43,33 +88,33 @@ export default function GamesPage() {
   useEffect(() => {
     void refresh();
     refreshLocal();
+    refreshExplore();
     const onFocus = () => refreshLocal();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, []);
 
-  /**
-   * Independent of the game catalogue: a city failure must never delay or break
-   * the play path, so this neither blocks rendering nor surfaces an error box —
-   * an entry with nothing behind it is simply not shown.
-   *
-   * `limit: 3` is the preview contract: the entry shows at most three chips, so
-   * it asks for three rows instead of the whole catalogue. Because the limit
-   * changes the response, it is part of the cache key — a 3-row answer can
-   * never be served to a full-list caller.
-   */
-  useEffect(() => {
-    let alive = true;
+  const refreshCities = useCallback(() => {
+    setCityState("loading");
     void loadCityList({ limit: 3 }).then((result) => {
-      if (!alive) return;
-      // Failure hides the entry (never renders a broken shell); the play path
-      // above is already on screen and unaffected.
-      setCities(result.ok ? result.data : []);
+      if (result.ok) {
+        setCities(result.data);
+        setCityState("ok");
+      } else {
+        // Failure is NOT "no cities": saying so would be a false statement
+        // about the catalogue. Show the difference instead.
+        setCities([]);
+        setCityState("failed");
+      }
     });
-    return () => {
-      alive = false;
-    };
   }, []);
+
+  useEffect(() => {
+    refreshCities();
+  }, [refreshCities]);
+
+  const featured = useMemo(() => packs.filter((pack) => pack.featured).slice(0, 2), [packs]);
+  const publicCount = packs.length;
 
   const download = async (entry: CloudGameEntry) => {
     setBusyId(entry.id);
@@ -122,8 +167,146 @@ export default function GamesPage() {
   }));
 
   return (
-    <Screen title="游戏中心">
-      <section className="card overflow-hidden">
+    <Screen title="游戏中心" subtitle="发现、选择，然后出发">
+      <section className="hero-explore rounded-2xl px-5 py-6">
+        <p className="game-kicker">探索中心</p>
+        <h2 className="mt-2 text-[26px] font-bold leading-tight">世界很大，值得亲自去发现。</h2>
+        <p className="mt-2 text-[13px] leading-relaxed text-white/80">
+          发现身边、城市与自然中的有趣探索：按兴趣选题材，或从一座城市开始，走进现场找线索。
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/explore" className="btn btn-primary px-4">
+            发现探索
+          </Link>
+          <Link href="/cities" className="btn btn-secondary px-4">
+            按城市看看
+          </Link>
+        </div>
+        <p className="mt-3 text-[12px] text-white/70">
+          {exploreLoading
+            ? "正在读取公开探索包…"
+            : exploreFailed
+              ? "探索内容暂时无法读取"
+              : publicCount > 0
+                ? `目前有 ${publicCount} 个公开探索包`
+                : "公开探索包即将上线"}
+        </p>
+      </section>
+
+      {message ? (
+        <div role="status" className="card mt-3 p-3 text-sm leading-relaxed">
+          {message}
+        </div>
+      ) : null}
+
+      {exploreLoading ? (
+        <div className="mt-4">
+          <LoadingState label="正在读取探索内容…" />
+        </div>
+      ) : null}
+
+      {!exploreLoading && exploreFailed ? (
+        <div className="card mt-4 p-4">
+          <p className="text-[13px] font-semibold">暂时无法读取探索内容</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
+            网络或服务暂时不可用。你仍然可以玩本机游戏，或稍后重试。
+          </p>
+          <button type="button" className="btn btn-secondary mt-3" onClick={refreshExplore}>
+            重试
+          </button>
+        </div>
+      ) : null}
+
+      {!exploreLoading && !exploreFailed && featured.length > 0 ? (
+        <section className="mt-5" aria-labelledby="featured-title">
+          <div className="mb-2 flex items-end justify-between gap-3">
+            <div>
+              <h2 id="featured-title" className="text-lg font-bold">
+                精选探索
+              </h2>
+              <p className="text-[12px] text-[var(--muted)]">编辑挑选的公开探索，先看这一个。</p>
+            </div>
+            <Link href="/explore" className="text-[12px] font-semibold text-[var(--accent-deep)]">
+              全部 →
+            </Link>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {featured.map((pack) => (
+              <li key={pack.gameId}>
+                <PackCard pack={pack} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="mt-5" aria-labelledby="categories-title">
+        <h2 id="categories-title" className="text-lg font-bold">
+          按兴趣发现
+        </h2>
+        <p className="mt-0.5 text-[12px] text-[var(--muted)]">三个方向，覆盖文化、自然与场所活动。</p>
+        <div className="mt-2">
+          <CategoryTiles counts={categoryCounts} categories={EXPLORE_CATEGORIES} />
+        </div>
+      </section>
+
+      <section className="mt-3" aria-labelledby="city-entry-title">
+        <div className="mb-2 flex items-end justify-between gap-3">
+          <div>
+            <h2 id="city-entry-title" className="text-lg font-bold">
+              城市探索
+            </h2>
+            <p className="text-[12px] text-[var(--muted)]">按城市看看有哪些公开的探索路线。</p>
+          </div>
+          <Link href="/cities" className="text-[12px] font-semibold text-[var(--accent-deep)]">
+            全部城市 →
+          </Link>
+        </div>
+        <div className="card p-4">
+          {cityState === "loading" ? (
+            <p className="text-[12px] text-[var(--muted)]">正在读取城市目录…</p>
+          ) : cityState === "failed" ? (
+            <>
+              <p className="text-[13px] font-semibold">暂时无法读取城市目录</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
+                这不代表没有城市；网络恢复后可以重试。
+              </p>
+              <button type="button" className="btn btn-secondary mt-3 w-full" onClick={refreshCities}>
+                重试
+              </button>
+            </>
+          ) : cities.length > 0 ? (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {cities.slice(0, 3).map((city) => (
+                  <Link
+                    key={city.cityId}
+                    href={`/cities/${encodeURIComponent(city.cityId)}`}
+                    className="chip bg-[var(--surface)] hover:border-[var(--accent)]"
+                  >
+                    {city.cityName} · {city.gameCount}
+                  </Link>
+                ))}
+              </div>
+              <Link href="/cities" className="btn btn-secondary mt-3 w-full text-center">
+                浏览全部城市
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-[13px] font-semibold">还没有公开的城市</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
+                城市会在第一个探索包发布后自动出现。现在可以先按兴趣浏览，或直接打开一个探索包。
+              </p>
+              <Link href="/cities" className="btn btn-secondary mt-3 w-full text-center">
+                看看城市目录
+              </Link>
+            </>
+          )}
+        </div>
+      </section>
+
+      <section className="card mt-5 overflow-hidden">
         <div className="relative h-[190px] bg-[var(--gold-chalk)]">
           <MapView player={demoPlayer} entries={demoEntries} huntArea={demoGame.huntArea} tileProvider="osm" fitToHunt />
           <span className="pointer-events-none absolute bottom-2 left-2 z-[700] rounded-full border border-white/70 bg-[var(--hero-teal-veil)] px-3 py-1 text-[12px] font-semibold text-white shadow">玩法示范 · 模拟位置</span>
@@ -133,56 +316,18 @@ export default function GamesPage() {
             <div className="min-w-0">
               <p className="text-[12px] font-bold tracking-[0.18em] text-[var(--muted)]">HOW TO PLAY</p>
               <h2 className="mt-1 text-xl font-bold">先看示范，再开始探索</h2>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">看地图、走近地点、解锁任务、收集线索。示范不会读取真实位置。</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">看地图、走近地点、解锁任务、收集线索。示范不会读取真实位置。</p>
             </div>
             <Link href="/tutorial" className="btn btn-primary shrink-0 px-3 text-sm">开始演示</Link>
           </div>
         </div>
       </section>
 
-      {message ? <div role="status" className="card mt-3 p-3 text-sm leading-relaxed">{message}</div> : null}
-
-      {cities.length > 0 ? (
-        <section className="mt-4" aria-labelledby="city-entry-title">
-          <div className="mb-2">
-            <h2 id="city-entry-title" className="text-lg font-bold">城市探索</h2>
-            <p className="text-xs text-[var(--muted)]">按城市看看有哪些公开的探索路线。</p>
-          </div>
-          <div className="card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[15px] font-semibold">从一座城市开始</p>
-                <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
-                  城市里集合了当地的公开探索包，先选城市再选路线。
-                </p>
-              </div>
-              <span className="text-[17px] leading-none text-[var(--hero-teal)]" aria-hidden>
-                ◎
-              </span>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {cities.slice(0, 3).map((city) => (
-                <Link
-                  key={city.cityId}
-                  href={`/cities/${encodeURIComponent(city.cityId)}`}
-                  className="chip bg-[var(--surface)] hover:border-[var(--accent)]"
-                >
-                  {city.cityName} · {city.gameCount}
-                </Link>
-              ))}
-            </div>
-            <Link href="/cities" className="btn btn-secondary mt-3 w-full text-center">
-              浏览全部城市
-            </Link>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="mt-4">
+      <section className="mt-5">
         <div className="mb-2 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold">本机游戏</h2>
-            <p className="text-xs text-[var(--muted)]">已导入或由创作中心保存，可直接游玩。</p>
+            <p className="text-[12px] text-[var(--muted)]">已导入或由创作中心保存，可直接游玩。</p>
           </div>
           <button type="button" className="btn btn-ghost min-h-9 px-2 text-xs" onClick={refreshLocal}>刷新</button>
         </div>
@@ -192,11 +337,11 @@ export default function GamesPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="font-bold">{game.title}</h3>
-                  <p className="mt-1 text-xs text-[var(--muted)]">{game.scenes.length} 个地点 · 约 {game.estimatedMinutes ?? "—"} 分钟</p>
+                  <p className="mt-1 text-[12px] text-[var(--muted)]">{game.scenes.length} 个地点 · 约 {game.estimatedMinutes ?? "—"} 分钟</p>
                 </div>
                 <span className="chip shrink-0 bg-[var(--ok-bg)] text-[var(--ok-text)]">已就绪</span>
               </div>
-              {game.description ? <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">{game.description}</p> : null}
+              {game.description ? <p className="mt-2 text-[12px] leading-relaxed text-[var(--muted)]">{game.description}</p> : null}
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button type="button" className="btn btn-primary" onClick={() => playLocal(game)}>开始游戏</button>
                 <Link href={"/design?game=" + encodeURIComponent(game.id)} className="btn btn-secondary text-center">继续设计</Link>
@@ -210,7 +355,7 @@ export default function GamesPage() {
       <section className="mt-5">
         <div className="mb-2">
           <h2 className="text-lg font-bold">云端游戏</h2>
-          <p className="text-xs text-[var(--muted)]">从服务器下载到本机后即可游玩。</p>
+          <p className="text-[12px] text-[var(--muted)]">从服务器下载到本机后即可游玩。</p>
         </div>
         {loading ? <LoadingState label="正在读取云端游戏库…" /> : (
           <div className="grid gap-3">
@@ -240,7 +385,7 @@ export default function GamesPage() {
 
       <section className="card mt-5 p-4">
         <p className="text-sm font-semibold">设计者入口</p>
-        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">导入统一 JSON 游戏包、校验内容、标定真实坐标，再保存到本机游戏库。</p>
+        <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">导入统一 JSON 游戏包、校验内容、标定真实坐标，再保存到本机游戏库。</p>
         <Link href="/design#package-import" className="btn btn-secondary mt-3 w-full text-center">进入创作中心</Link>
       </section>
     </Screen>

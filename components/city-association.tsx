@@ -17,7 +17,6 @@
  *    card only explains it).
  */
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   attachCity,
@@ -411,12 +410,14 @@ export function CityAssociation({
         )}
 
         {signedOut ? (
+          /*
+           * Deliberately NOT a link. B03-10 forbids public surfaces from
+           * pointing at `/admin*`; a creator who needs the backend reaches it
+           * by its own address. The sentence keeps the information without
+           * turning the creator card into an admin door.
+           */
           <p className="mt-3 text-[12px] text-[var(--muted)]">
-            城市关联需要登录后台账号：
-            <Link href="/admin/login" className="underline">
-              去登录
-            </Link>
-            。未登录时仍可保存到本机和生成分享链接。
+            城市关联需要登录后台账号；未登录时仍可保存到本机和生成分享链接。
           </p>
         ) : null}
 

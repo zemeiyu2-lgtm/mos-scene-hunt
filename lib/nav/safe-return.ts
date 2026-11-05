@@ -7,7 +7,8 @@
  *
  * Strategy — allow-list, not block-list:
  *
- *   - Only two shapes exist today: `/cities` and `/cities/<valid cityId>`.
+ *   - Only these shapes exist today: `/cities`, `/cities/<valid cityId>`,
+ *     `/explore` and `/explore/<valid pack id>`.
  *   - These targets are ASCII-only by construction, so **percent-encoding is
  *     never legitimate** and any `%` is rejected outright. That removes the
  *     whole encoding-bypass family (`%2f`, `%5c`, `%252f`, `%2e%2e`, …) in one
@@ -23,6 +24,7 @@
  */
 
 import { isValidCityId } from "@/lib/cities/types";
+import { isValidGameId } from "@/lib/publish/version";
 
 /** Safe landing spot when `from` is present but unusable. */
 export const DEFAULT_RETURN_PATH = "/cities";
@@ -57,6 +59,17 @@ export function safeReturnPath(raw: string | null | undefined): string | null {
   if (segments.length === 1 && segments[0] === "cities") return "/cities";
   if (segments.length === 2 && segments[0] === "cities") {
     return isValidCityId(segments[1]) ? `/cities/${segments[1]}` : null;
+  }
+  /*
+   * Exploration pages (2026-11-05). A player who starts a pack from its detail
+   * page must be able to come back to that page, not to the city directory.
+   * Only the two canonical shapes are accepted: the index and one pack id.
+   * Category pages are deliberately absent — nothing links to them from
+   * `/select`, and a shorter list is a smaller attack surface.
+   */
+  if (segments.length === 1 && segments[0] === "explore") return "/explore";
+  if (segments.length === 2 && segments[0] === "explore") {
+    return isValidGameId(segments[1]) ? `/explore/${segments[1]}` : null;
   }
   return null;
 }
