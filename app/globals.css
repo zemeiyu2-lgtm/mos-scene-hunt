@@ -57,6 +57,39 @@
 
   /* Text/icon color on gold accent surfaces. */
   --accent-contrast: #3a2400;
+
+  /* ----------------------------------------------------------------
+     Semantic status tokens (success / warning / danger).
+     Ported with the exploration surface (2026-11-05): the exploration
+     cards, error panels and empty states express status through these
+     tokens instead of scattering Tailwind palette classes. Brand colors
+     above (--hero-teal, --accent, --gold-*) are untouched and stay the
+     single source for the teal x gold pairing.
+     Values are the same hues the app already used, so nothing shifts
+     visually; the additions are additive only -- no existing token is
+     redefined.
+     ---------------------------------------------------------------- */
+  --ok-bg: #ecfdf5;         /* emerald-50 surface */
+  --ok-bg-strong: #d1fae5;  /* emerald-100 surface */
+  --ok-border: #a7f3d0;     /* emerald-200 border */
+  --ok-solid: #059669;      /* emerald-600 fill */
+  --ok-strong: #047857;     /* emerald-700 ink */
+  --ok-text: #065f46;       /* emerald-800 ink */
+
+  --warn-bg: #fffbeb;       /* amber-50 surface */
+  --warn-bg-strong: #fef3c7; /* amber-100 surface */
+  --warn-border: #fde68a;   /* amber-200 border */
+  --warn-solid: #f59e0b;    /* amber-500 fill */
+  --warn-ink: #451a03;      /* amber-950 ink on --warn-solid fills */
+  --warn-solid-deep: #b45309; /* white-ink warning fill */
+  --warn-text: #78350f;     /* amber-900 ink */
+  --warn-ring: rgba(120, 53, 15, 0.3);
+
+  --err-bg: #fef2f2;        /* red-50 surface */
+  --err-bg-strong: #fee2e2; /* red-100 surface */
+  --err-border: #fecaca;    /* red-200 border */
+  --err-solid: #dc2626;     /* red-600 fill */
+  --err-text: #991b1b;      /* red-800 ink */
 }
 
 html,

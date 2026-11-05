@@ -9,8 +9,8 @@
  * why.
  */
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { useHunt } from "@/components/hunt-provider";
 import { useGps } from "@/components/gps-provider";
 import { findManifestEntry } from "@/lib/content";
@@ -22,6 +22,7 @@ import {
 } from "@/lib/content/shared-save";
 import { ErrorState, Screen } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
+import { resolveReturnTarget } from "@/lib/nav/safe-return";
 
 export default function SelectPage() {
   const router = useRouter();
@@ -293,13 +294,15 @@ export default function SelectPage() {
         <button type="button" className="btn btn-primary btn-block" onClick={begin}>
           {hasProgress ? "继续寻宝" : "开始寻宝"}
         </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-block"
-          onClick={() => router.back()}
+        <Suspense
+          fallback={
+            <button type="button" className="btn btn-ghost btn-block" onClick={() => router.back()}>
+              返回
+            </button>
+          }
         >
-          返回
-        </button>
+          <ReturnButton />
+        </Suspense>
       </div>
 
       {status === "unsupported" ? (
@@ -347,4 +350,35 @@ function challengeLabel(type: string): string {
     default:
       return "任务";
   }
+}
+
+/**
+ * 返回 — the only part of this screen that reads `?from=`.
+ *
+ * Three rules, in order:
+ *  1. the raw parameter is NEVER passed to the router; only the allow-listed
+ *     value returned by `resolveReturnTarget` is;
+ *  2. a present-but-unusable value lands on `/games` (still inside the app);
+ *  3. an absent value falls back to `router.back()`, which follows the
+ *     BROWSER's history — usually the previous screen, but NOT guaranteed to
+ *     be in-app (a player who opened the link directly goes back to whatever
+ *     sent them). That is why "no target" is never treated as "safe target".
+ *
+ * Confined to its own component and wrapped in <Suspense/>: `useSearchParams()`
+ * forces a client bailout, so keeping it here leaves the rest of the screen
+ * statically renderable.
+ */
+function ReturnButton() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = resolveReturnTarget(searchParams.get("from"));
+  return (
+    <button
+      type="button"
+      className="btn btn-ghost btn-block"
+      onClick={() => (returnTo ? router.push(returnTo) : router.back())}
+    >
+      返回
+    </button>
+  );
 }
