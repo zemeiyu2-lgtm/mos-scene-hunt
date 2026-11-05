@@ -1,12 +1,14 @@
 /**
- * 批次 A 验收探针：首页精简（ui/first-batch-polish）
+ * 批次 A 验收探针：首页（ui/first-batch-polish）
  *
- * 覆盖：
- *   1. 首页正常打开、地图演示渲染
+ * V2.0 更新（feat/homepage-v2）：首页按 MOSRove 首页 V2.0 重做——真实摄影
+ * Hero 取代固定演示地图，新增游戏中心/创作中心卡片、精选探索包、三步流程、
+ * 品牌理念与安全隐私区块。探针同步到 V2.0 的验收口径：
+ *   1. 首页正常打开、Hero 真实摄影渲染
  *   2. 四种状态：无进度 / 有进度 / 已完成 / 加载失败（每个状态用独立
  *      incognito context，保证 SW / 存储 / 拦截互不污染）
  *   3. 主按钮文案与链接行为（开始探索→/select、继续→/map、完成→/bag）
- *   4. 次级入口存在且降权
+ *   4. 核心入口存在（游戏中心 / 创作中心 / 创作说明）
  *   5. 状态不重复展示
  *   6. 无 pageerror / console.error
  *
@@ -111,7 +113,7 @@ async function openHome(page, { interceptContent = false } = {}) {
     });
   }
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  // 首页是否渲染演示地图随状态而变（无游戏才展示），主按钮才是稳定锚点。
+  // 主按钮是最稳定的锚点；Hero 摄影在 V2.0 里也是首屏必在元素。
   await page.waitForSelector("a.btn-primary, button.btn-primary", { timeout: 20000 });
   await sleep(1400);
 }
@@ -122,12 +124,12 @@ async function homeState(page) {
     const primary = Array.from(document.querySelectorAll("a.btn-primary, button.btn-primary")).find(
       (el) => el.offsetParent !== null,
     );
-    const map = document.querySelector(".leaflet-container");
+    const heroImg = document.querySelector(".home-hero img");
     return {
       text,
       primaryLabel: primary ? primary.textContent.trim().replace(/\s+/g, " ") : null,
       primaryHref: primary && primary.tagName === "A" ? primary.getAttribute("href") : null,
-      mapRendered: Boolean(map && map._leaflet_id),
+      heroLoaded: Boolean(heroImg && heroImg.complete && heroImg.naturalWidth > 0),
       percentHits: (text.match(/\d+% 已探索/g) ?? []).length,
       titleHits: (text.match(/MOS Scene Hunt/g) ?? []).length,
       hasExploreChip: text.includes("Explore · Discover · Play"),
@@ -143,14 +145,14 @@ const browser = await puppeteer.launch({
 
 try {
   /* ---------- 状态 1：无进度 ---------- */
-  await check("S1 无进度：打开首页，地图渲染，主按钮「开始探索」→/select", async () => {
+  await check("S1 无进度：打开首页，Hero 摄影渲染，主按钮「开始探索」→/select", async () => {
     const { context, page } = await freshPage(browser);
     try {
       await page.evaluateOnNewDocument(() => localStorage.clear());
       await openHome(page);
-      await page.waitForSelector(".leaflet-container", { timeout: 20000 });
+      await page.waitForSelector(".home-hero img", { timeout: 20000 });
       const s = await homeState(page);
-      assert(s.mapRendered, "地图未完成 Leaflet 初始化");
+      assert(s.heroLoaded, "Hero 真实摄影未完成加载");
       assert(s.primaryLabel?.includes("开始探索"), `主按钮应为「开始探索」，实际「${s.primaryLabel}」`);
       assert(s.primaryHref === "/select", `主按钮应指向 /select，实际 ${s.primaryHref}`);
       assert(s.text.includes("请在安全、开放的户外区域游玩"), "缺少户外安全提示");
@@ -160,20 +162,23 @@ try {
     } finally { await context.close(); }
   });
 
-  await check("S1b 次级入口存在且为降权样式（非渐变卡片）", async () => {
+  await check("S1b 核心入口存在：游戏中心 / 创作中心 / 创作说明", async () => {
     const { context, page } = await freshPage(browser);
     try {
       await page.evaluateOnNewDocument(() => localStorage.clear());
       await openHome(page);
       const s = await homeState(page);
       for (const t of ["游戏中心", "创作中心", "创作说明"]) assert(s.text.includes(t), `缺少入口「${t}」`);
-      const weighted = await page.evaluate(() => {
-        const el = Array.from(document.querySelectorAll('a[href="/games"]')).find((n) => n.offsetParent !== null);
-        if (!el) return null;
-        return { hasGradient: /from-(sky|violet)-50/.test(el.className), isSmallCard: el.className.includes("text-[13px]") };
+      const entry = await page.evaluate(() => {
+        const el = Array.from(document.querySelectorAll('a[href="/games"].home-entry')).find((n) => n.offsetParent !== null);
+        return Boolean(el);
       });
-      assert(weighted, "找不到游戏中心入口");
-      assert(weighted.isSmallCard && !weighted.hasGradient, "次级入口未降权");
+      assert(entry, "游戏中心应为 V2.0 的卡片式核心入口（a.home-entry）");
+      const packLink = await page.evaluate(() => {
+        const el = Array.from(document.querySelectorAll('a[href="/games"].home-pack-link')).find((n) => n.offsetParent !== null);
+        return Boolean(el);
+      });
+      assert(packLink, "精选探索包缺少「在游戏中心打开」入口");
     } finally { await context.close(); }
   });
 
@@ -206,11 +211,18 @@ try {
           primary: primary ? primary.textContent.replace(/\s+/g, "") : "",
         };
       });
-      assert(!during.hasMap, "内容尚在恢复时已渲染地图，存在错误地图闪现的风险");
+      assert(!during.hasMap, "内容尚在恢复时不应渲染地图");
       assert(during.primary.includes("正在恢复游戏"), `恢复期主按钮应为「正在恢复游戏…」，实际「${during.primary}」`);
-      await page.waitForSelector(".leaflet-container", { timeout: 20000 });
+      await page.waitForSelector(".home-hero img", { timeout: 20000 });
+      // 内容延迟恢复完成后，主按钮才从「正在恢复游戏…」变为「开始探索」。
+      // 注意必须检查主按钮本身——页面文案（三步流程标题）也含「开始探索」。
+      await page.waitForFunction(() => {
+        const el = Array.from(document.querySelectorAll("a.btn-primary, button.btn-primary"))
+          .find((n) => n.offsetParent !== null);
+        return Boolean(el && (el.textContent ?? "").includes("开始探索"));
+      }, { timeout: 20000 });
       const after = await homeState(page);
-      assert(after.mapRendered, "恢复完成后新玩家应能看到演示地图");
+      assert(after.heroLoaded, "恢复完成后 Hero 摄影应已渲染");
       assert(after.primaryLabel?.includes("开始探索"), `恢复完成后主按钮应为「开始探索」，实际「${after.primaryLabel}」`);
     } finally { await context.close(); }
   });
@@ -228,8 +240,8 @@ try {
       assert(s.primaryLabel?.includes("继续探索"), `主按钮应为「继续探索」，实际「${s.primaryLabel}」`);
       assert(s.primaryHref === "/map", `主按钮应指向 /map，实际 ${s.primaryHref}`);
       assert(s.percentHits === 1, `「N% 已探索」应只出现 1 次，实际 ${s.percentHits} 次`);
-      assert(s.text.includes("背包与线索"), "有进度时应保留背包入口");
-      assert(!s.mapRendered, "有进度的玩家不应再看到固定的黎刹公园演示地图");
+      assert(s.text.includes("继续探索"), "有进度时主按钮应为继续探索");
+      assert(s.heroLoaded, "Hero 摄影应正常渲染");
       await page.screenshot({ path: path.join(ARTIFACTS, "home-s2-progress.png") });
     } finally { await context.close(); }
   });
@@ -248,7 +260,7 @@ try {
       assert(s.primaryHref === "/bag", `主按钮应指向 /bag，实际 ${s.primaryHref}`);
       assert(s.text.includes("已完成"), "应显示已完成状态");
       assert(!s.text.includes("背包与线索"), "完成态不应再重复「背包与线索」入口（主按钮已指向 /bag）");
-      assert(!s.mapRendered, "完成态不应显示固定的黎刹公园演示地图");
+      assert(s.heroLoaded, "Hero 摄影应正常渲染");
       await page.screenshot({ path: path.join(ARTIFACTS, "home-s3-complete.png") });
     } finally { await context.close(); }
   });
@@ -265,9 +277,9 @@ try {
       await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
       await sleep(2500);
       const s = await homeState(page);
-      assert(s.text.includes("游戏内容加载失败"), "应显示加载失败提示");
+      assert(s.text.includes("加载失败"), "应显示加载失败状态");
       assert(s.primaryLabel === "重新加载游戏", `主按钮应为「重新加载游戏」，实际「${s.primaryLabel}」`);
-      assert(!s.mapRendered, "加载失败时不应再显示与当前游戏无关的演示地图");
+      assert(s.heroLoaded, "加载失败时 Hero 摄影仍应正常渲染");
       await page.evaluate(() => {
         const btn = Array.from(document.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("重新加载游戏"));
         btn?.click();
@@ -340,7 +352,7 @@ try {
     try {
       await page.evaluateOnNewDocument(() => localStorage.clear());
       await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-      await page.waitForSelector(".leaflet-container", { timeout: 20000 });
+      await page.waitForSelector(".home-hero img", { timeout: 20000 });
       await sleep(1200);
       await page.evaluate(() => {
         const a = Array.from(document.querySelectorAll("a.btn-primary")).find((el) => el.offsetParent !== null);
