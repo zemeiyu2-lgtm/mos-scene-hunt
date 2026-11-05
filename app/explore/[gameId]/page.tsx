@@ -260,6 +260,7 @@ export default function ExplorePackPage() {
             gameId={pack.gameId}
             title={pack.title}
             packFile={pack.packFile}
+            versionId={pack.versionId}
             fromPath={packHref(pack.gameId)}
           />
           <p className="mt-2 text-center text-[12px] leading-relaxed text-[var(--muted)]">

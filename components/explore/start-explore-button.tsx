@@ -9,17 +9,13 @@ import { safeReturnPath } from "@/lib/nav/safe-return";
 /**
  * 开始探索 — the one primary action on the detail page.
  *
- * It hands over to the EXISTING play flow, unchanged: the pack is downloaded
- * from the same public content route `/games` uses (`packUrl`, which rejects any
- * file name that is not a bare `*.json`), installed into the local library with
- * the same `importGamePackageChecked`, marked as the active pack, and the router
- * navigates to `/select?game=<id>`. Nothing about GPS, unlocking, progress or the
- * map is touched here — if this button were removed, the old download path would
- * still work exactly as before.
+ * It hands over to the EXISTING play flow: immutable published versions are
+ * fetched from /api/games/<id>?v=<versionId>; legacy static packs use packUrl().
+ * The result is installed into the local library with importGamePackageChecked,
+ * marked as the active pack, and the router navigates to /select?game=<id>.
+ * GPS, unlocking, progress and map logic are not changed here.
  *
- * The pack file comes from the server's validated catalogue entry and is passed
- * through `packUrl()` rather than concatenated here, so the traversal guard is
- * the same one the cloud download path uses.
+ * Static file names still pass through packUrl() and its traversal guard.
  *
  * `from` is only appended when it survives the allow-list; the value is never
  * forwarded raw.
@@ -33,6 +29,7 @@ export function StartExploreButton({
   gameId,
   title,
   packFile,
+  versionId,
   fromPath,
   hasProgress = false,
 }: {
@@ -40,6 +37,7 @@ export function StartExploreButton({
   title: string;
   /** Catalogue pack file name, already validated server-side. */
   packFile: string;
+  versionId?: string | null;
   /** Where the player came from, so `/select` can return them there. */
   fromPath: string;
   hasProgress?: boolean;
@@ -63,7 +61,10 @@ export function StartExploreButton({
         status: "published",
         packFile,
       };
-      const response = await fetch(packUrl(entry), { cache: "no-cache" });
+      const sourceUrl = versionId && process.env.NODE_ENV === "production"
+        ? "/api/games/" + encodeURIComponent(gameId) + "?v=" + encodeURIComponent(versionId)
+        : packUrl(entry);
+      const response = await fetch(sourceUrl, { cache: versionId ? "force-cache" : "no-cache" });
       if (!response.ok) throw new Error(`探索包读取失败（HTTP ${response.status}）`);
       const outcome = importGamePackageChecked(await response.text());
       if (outcome.status === "error") {

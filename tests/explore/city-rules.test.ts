@@ -70,11 +70,12 @@ describe("城市档案 — 先有真实探索包", () => {
     for (const city of cities) expect(city.count).toBeGreaterThan(0);
   });
 
-  it("生产目录与真实包目前没有任何城市声明（不虚构城市）", async () => {
-    const packs = await service.listPublicExplorePacks();
-    expect(packs.length).toBeGreaterThan(0);
-    for (const pack of packs) expect(pack.city).toBeNull();
-    expect(availableCities(packs)).toEqual([]);
+  it("生产城市只由已公开且已关联的真实探索包派生", async () => {
+    const source: service.ExploreSource = { catalog: CLOUD_CATALOG, readPackFile: async (file) => packJson(file.slice(0, -5)) };
+    const packs = await service.listPublicExplorePacks(source);
+    const cities = availableCities(packs).map((city) => [city.cityId, city.count]).sort();
+    expect(cities).toEqual([["baguio-ph", 2], ["cebu-city-ph", 2], ["davao-city-ph", 3], ["manila-ph", 3]]);
+    for (const city of availableCities(packs)) expect(city.count).toBeGreaterThan(0);
   });
 });
 
@@ -95,7 +96,8 @@ describe("城市档案 — 浏览不写入", () => {
   });
 
   it("生产目录里每条城市信息都必须能在真实公开包中找到来源", async () => {
-    const packs = await service.listPublicExplorePacks();
+    const source: service.ExploreSource = { catalog: CLOUD_CATALOG, readPackFile: async (file) => packJson(file.slice(0, -5)) };
+    const packs = await service.listPublicExplorePacks(source);
     const declaredCities = new Set(
       packs.filter((p) => p.city).map((p) => p.city!.cityId),
     );
