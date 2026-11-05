@@ -1,10 +1,10 @@
 {
   "base": "http://127.0.0.1:3100",
-  "ranAt": "2026-10-05T05:31:37.405Z",
+  "ranAt": "2026-11-05T08:09:13.500Z",
   "total": 40,
-  "passed": 40,
-  "failed": 0,
-  "passRate": "100.0%",
+  "passed": 38,
+  "failed": 2,
+  "passRate": "95.0%",
   "results": [
     {
       "name": "首页可访问且为 200",
@@ -19,27 +19,27 @@
     {
       "name": "PWA manifest 可访问且声明 standalone",
       "ok": true,
-      "ms": 175
+      "ms": 241
     },
     {
       "name": "Service Worker 脚本可访问且注册成功",
       "ok": true,
-      "ms": 65
+      "ms": 70
     },
     {
       "name": "GPS 自动启动，无需手动点击（规范 §6）",
       "ok": true,
-      "ms": 1849
+      "ms": 1967
     },
     {
       "name": "地图页渲染 Leaflet 瓦片",
       "ok": true,
-      "ms": 42
+      "ms": 48
     },
     {
       "name": "地图渲染 5 个场景标记",
       "ok": true,
-      "ms": 17
+      "ms": 18
     },
     {
       "name": "地图显示玩家自己的位置标记",
@@ -54,37 +54,38 @@
     {
       "name": "地图页不再显示「等待定位」",
       "ok": true,
-      "ms": 2
+      "ms": 1
     },
     {
-      "name": "地图页显示距离读数或已进入提示",
-      "ok": true,
-      "ms": 1
+      "name": "地图页显示雷达任务卡或已进入提示",
+      "ok": false,
+      "ms": 1,
+      "error": "地图页没有雷达任务卡或进入提示：\n1\n2\n3\n4\n★\n第一站 · 自由\n100 m\n Leaflet | © OpenStreetMap contributors, Tiles style by HOT\n\n第一站 · 自由\n\n0/5\n🧭\n◎\nOSM\nHOT\nCARTO\n模拟定位中 · 非真实位置\n\n第一站 · 自由\n\n146 m\n⌃\nDEV\nGPS 模拟器\n· 已启用 14.5845, 120.9794\n展开 ▾\n◎\n地图\n◆\n任务\n▤\n背包"
     },
     {
       "name": "远离所有场景时，scene-a 仍为未解锁或待前往",
       "ok": true,
-      "ms": 4018
+      "ms": 4071
     },
     {
       "name": "距 scene-a 半径外（约 120m）不可进入",
       "ok": true,
-      "ms": 4203
+      "ms": 4223
     },
     {
       "name": "进入 scene-a 半径后自动解锁（规范 §6 核心闭环）",
       "ok": true,
-      "ms": 2994
+      "ms": 2896
     },
     {
       "name": "进入半径后 scene 页可开始任务",
       "ok": true,
-      "ms": 1982
+      "ms": 2080
     },
     {
       "name": "错误答案不推进进度",
       "ok": true,
-      "ms": 53
+      "ms": 62
     },
     {
       "name": "错误答案不会跳转到奖励页",
@@ -94,47 +95,47 @@
     {
       "name": "正确答案推进并跳转到奖励页",
       "ok": true,
-      "ms": 1641
+      "ms": 2329
     },
     {
       "name": "奖励页展示关键词奖励「自由」",
       "ok": true,
-      "ms": 712
+      "ms": 703
     },
     {
       "name": "完成后 scene-b 被解锁（可在半径内进入）",
       "ok": true,
-      "ms": 4306
+      "ms": 4328
     },
     {
       "name": "刷新页面后进度仍在（规范 §17）",
       "ok": true,
-      "ms": 1253
+      "ms": 1249
     },
     {
       "name": "重新进入已完成位置不重复发奖励",
       "ok": true,
-      "ms": 3838
+      "ms": 3831
     },
     {
       "name": "内容包可从独立路由读取",
       "ok": true,
-      "ms": 9
+      "ms": 26
     },
     {
       "name": "起点落在所有场景的触发半径之外",
       "ok": true,
-      "ms": 1
+      "ms": 2
     },
     {
       "name": "相邻场景不会互相落入对方半径",
       "ok": true,
-      "ms": 1
+      "ms": 0
     },
     {
       "name": "场景坐标互不重合",
       "ok": true,
-      "ms": 0
+      "ms": 1
     },
     {
       "name": "场景链的 nextSceneId 形成单一线性路径",
@@ -144,27 +145,27 @@
     {
       "name": "内容路由拒绝路径穿越",
       "ok": true,
-      "ms": 14
+      "ms": 25
     },
     {
       "name": "不存在的内容包返回 404",
       "ok": true,
-      "ms": 8
+      "ms": 4
     },
     {
       "name": "Service Worker 已注册并接管页面",
       "ok": true,
-      "ms": 714
+      "ms": 764
     },
     {
       "name": "Service Worker 已缓存应用外壳",
       "ok": true,
-      "ms": 3333
+      "ms": 3273
     },
     {
       "name": "Service Worker 已缓存游戏内容包",
       "ok": true,
-      "ms": 18
+      "ms": 28
     },
     {
       "name": "缓存中的外壳是一份可解析的 HTML",
@@ -174,27 +175,27 @@
     {
       "name": "360px 下无横向溢出",
       "ok": true,
-      "ms": 6763
+      "ms": 6737
     },
     {
       "name": "390px 下无横向溢出",
       "ok": true,
-      "ms": 6624
+      "ms": 6657
     },
     {
       "name": "430px 下无横向溢出",
       "ok": true,
-      "ms": 6673
+      "ms": 6798
     },
     {
       "name": "底部导航在三主页面可用（规范 §12：地图/任务/背包）",
       "ok": true,
-      "ms": 4955
+      "ms": 4968
     },
     {
       "name": "情境流程页不显示底部导航（保持专注）",
       "ok": true,
-      "ms": 4047
+      "ms": 4017
     },
     {
       "name": "全程无未捕获的 JS 错误",
@@ -203,14 +204,15 @@
     },
     {
       "name": "无 404 资源请求（排除已知探测）",
-      "ok": true,
-      "ms": 0
+      "ok": false,
+      "ms": 0,
+      "error": "控制台报错：\nFailed to load resource: the server responded with a status of 404 (Not Found)"
     }
   ],
   "screenshots": [
-    "C:\\Users\\Administrator\\WorkBuddy\\2026-10-04-09-08-00\\scene-hunt\\tests\\e2e\\artifacts\\02-map.png",
-    "C:\\Users\\Administrator\\WorkBuddy\\2026-10-04-09-08-00\\scene-hunt\\tests\\e2e\\artifacts\\03-arrived.png",
-    "C:\\Users\\Administrator\\WorkBuddy\\2026-10-04-09-08-00\\scene-hunt\\tests\\e2e\\artifacts\\04-reward.png",
-    "C:\\Users\\Administrator\\WorkBuddy\\2026-10-04-09-08-00\\scene-hunt\\tests\\e2e\\artifacts\\05-mobile-390.png"
+    "D:\\wordbuddy\\2026-11-05-12-46-47\\repo\\tests\\e2e\\artifacts\\02-map.png",
+    "D:\\wordbuddy\\2026-11-05-12-46-47\\repo\\tests\\e2e\\artifacts\\03-arrived.png",
+    "D:\\wordbuddy\\2026-11-05-12-46-47\\repo\\tests\\e2e\\artifacts\\04-reward.png",
+    "D:\\wordbuddy\\2026-11-05-12-46-47\\repo\\tests\\e2e\\artifacts\\05-mobile-390.png"
   ]
 }
