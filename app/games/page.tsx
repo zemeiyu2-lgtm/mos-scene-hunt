@@ -96,7 +96,10 @@ export default function GamesPage() {
     setBusyId(entry.id);
     setMessage("");
     try {
-      const response = await fetch(packUrl(entry), { cache: "no-cache" });
+      const sourceUrl = entry.versionId && process.env.NODE_ENV === "production"
+        ? "/api/games/" + encodeURIComponent(entry.id) + "?v=" + encodeURIComponent(entry.versionId)
+        : packUrl(entry);
+      const response = await fetch(sourceUrl, { cache: entry.versionId ? "force-cache" : "no-cache" });
       if (!response.ok) throw new Error("游戏包下载失败（HTTP " + response.status + "）");
       const outcome = importGamePackageChecked(await response.text());
       if (outcome.status === "error") {
