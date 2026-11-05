@@ -648,3 +648,86 @@
   .home-nav-in { padding: 10px 16px; }
   .home-net { display: none; }
 }
+
+/* ------------------------------ 品牌影片（V2.1） ------------------------------ */
+/* 16:9 固定宽高比：封面到视频零布局位移。视频默认不加载，视口附近才开始取流。 */
+
+.home-film-sec { padding-block: 40px 56px; }
+
+.home-film {
+  margin-top: 4px;
+}
+
+.home-film-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--home-forest-deep) 0%, #1c4636 60%, #2a5a44 100%);
+  box-shadow: 0 18px 44px rgba(20, 53, 42, 0.28);
+  isolation: isolate;
+}
+
+.home-film-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-film-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(250, 247, 239, 0.85);
+  background: rgba(20, 53, 42, 0.55);
+  color: var(--home-gold-soft, #e9b959);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.home-film-play svg { width: 34px; height: 34px; margin-left: 3px; }
+.home-film-play:hover { transform: translate(-50%, -50%) scale(1.06); background: rgba(20, 53, 42, 0.75); }
+.home-film-play:focus-visible { outline: 3px solid var(--home-gold); outline-offset: 3px; }
+
+.home-film-sound {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(250, 247, 239, 0.55);
+  background: rgba(20, 53, 42, 0.62);
+  color: var(--home-cream);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.home-film-sound svg { width: 18px; height: 18px; }
+.home-film-sound[aria-pressed="true"] { border-color: var(--home-gold); color: var(--home-gold-soft, #e9b959); }
+.home-film-sound:focus-visible { outline: 2px solid var(--home-gold); outline-offset: 2px; }
+
+.home-film-note {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--home-ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-film-play { transition: none; }
+  .home-film-play:hover { transform: translate(-50%, -50%); }
+}

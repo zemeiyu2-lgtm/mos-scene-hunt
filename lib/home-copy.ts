@@ -136,6 +136,16 @@ export interface HomeCopy {
     reload: string;
     imageAlt: string;
   };
+  film: {
+    kicker: string;
+    title: string;
+    note: string;
+    play: string;
+    soundOn: string;
+    soundOff: string;
+    posterAlt: string;
+    fallback: string;
+  };
   entries: {
     kicker: string;
     games: { title: string; desc: string };
@@ -211,6 +221,16 @@ export const HOME_COPY: Record<HomeLocale, HomeCopy> = {
       reload: "重新加载游戏",
       imageAlt: "马尼拉湾日落：人们在罗哈斯大道的海堤上望着夕阳下的海面",
     },
+    film: {
+      kicker: "品牌动画",
+      title: "一张地图，一场冒险",
+      note: "35 秒看懂 MOSRove：跟着标记走进真实的街巷与公园，解开线索与挑战，再把你的探索做给所有人。",
+      play: "播放动画",
+      soundOn: "开启声音",
+      soundOff: "已静音",
+      posterAlt: "MOSRove 品牌动画封面：小探险家面前的发光地图升起微缩世界",
+      fallback: "动画暂时无法播放，已显示封面。",
+    },
     entries: {
       kicker: "两个入口",
       games: { title: "游戏中心", desc: "挑选一条已发布的路线，今天就从楼下开始。" },
@@ -264,7 +284,7 @@ export const HOME_COPY: Record<HomeLocale, HomeCopy> = {
       contactLink: "GitHub Issues",
       creditsTitle: "影像来源",
       creditsLine: "首页摄影：Vyacheslav Argenberg，来自 Wikimedia Commons，CC BY 4.0。",
-      versionLine: "MOSRove 首页 V2.0",
+      versionLine: "MOSRove 首页 V2.1",
       privacyLine: "进度只保存在你的设备上。",
     },
   },
@@ -295,6 +315,16 @@ export const HOME_COPY: Record<HomeLocale, HomeCopy> = {
       browse: "Browse the game centre",
       reload: "Reload the game",
       imageAlt: "Sunset over Manila Bay: people on the Roxas Boulevard seawall watching the sun go down",
+    },
+    film: {
+      kicker: "Brand film",
+      title: "One map, one adventure",
+      note: "35 seconds to see MOSRove: follow the pin into real streets and parks, solve the clues, then craft a hunt of your own for everyone.",
+      play: "Play the film",
+      soundOn: "Unmute",
+      soundOff: "Muted",
+      posterAlt: "MOSRove brand film cover: a glowing map raising a miniature world before a young explorer",
+      fallback: "The film could not be played right now; the cover is shown instead.",
     },
     entries: {
       kicker: "Two doors in",
@@ -349,7 +379,7 @@ export const HOME_COPY: Record<HomeLocale, HomeCopy> = {
       contactLink: "GitHub Issues",
       creditsTitle: "Photo credits",
       creditsLine: "Photography: Vyacheslav Argenberg, via Wikimedia Commons, CC BY 4.0.",
-      versionLine: "MOSRove Homepage V2.0",
+      versionLine: "MOSRove Homepage V2.1",
       privacyLine: "Progress stays on your device.",
     },
   },

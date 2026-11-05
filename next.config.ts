@@ -30,6 +30,15 @@ const nextConfig: NextConfig = {
         source: "/content/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=300" }],
       },
+      {
+        // Homepage brand film (V2.1) is immutable content: hashed filename on
+        // any future replacement, so it can be cached hard and ranged cheaply.
+        source: "/home/film/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          { key: "Accept-Ranges", value: "bytes" },
+        ],
+      },
     ];
   },
 };
