@@ -15,6 +15,7 @@
 import Link from "next/link";
 import { SoundToggle } from "@/components/sound";
 import { LocaleToggle, useHomeLocale } from "@/components/home/home-locale";
+import { HomeFilm } from "@/components/home/home-film";
 import { DIFFICULTY_LABEL, FEATURED_PACKS } from "@/lib/home-copy";
 
 /* ------------------------------------------------------------------ */
@@ -251,6 +252,10 @@ export function HomeLanding({
           ) : null}
         </div>
       </section>
+
+      {/* --------------------------- 品牌影片 ------------------------------ */}
+      {/* V2.1 品牌动画：视口附近才加载，静音自动播放，失败回退封面。 */}
+      <HomeFilm />
 
       {/* --------------------------- 核心入口 ------------------------------ */}
       <section className="home-section" aria-label={t.entries.kicker}>
