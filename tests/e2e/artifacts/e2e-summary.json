@@ -1,10 +1,10 @@
 {
   "base": "http://127.0.0.1:3100",
-  "ranAt": "2026-11-05T12:16:13.313Z",
+  "ranAt": "2026-11-05T12:42:15.418Z",
   "total": 40,
-  "passed": 34,
-  "failed": 6,
-  "passRate": "85.0%",
+  "passed": 38,
+  "failed": 2,
+  "passRate": "95.0%",
   "results": [
     {
       "name": "首页可访问且为 200",
@@ -14,82 +14,78 @@
     {
       "name": "首页无 JS 运行时错误",
       "ok": true,
-      "ms": 0
+      "ms": 1
     },
     {
       "name": "PWA manifest 可访问且声明 standalone",
       "ok": true,
-      "ms": 396
+      "ms": 380
     },
     {
       "name": "Service Worker 脚本可访问且注册成功",
       "ok": true,
-      "ms": 86
+      "ms": 83
     },
     {
       "name": "GPS 自动启动，无需手动点击（规范 §6）",
       "ok": true,
-      "ms": 1972
+      "ms": 2034
     },
     {
       "name": "地图页渲染 Leaflet 瓦片",
       "ok": true,
-      "ms": 41
+      "ms": 508
     },
     {
       "name": "地图渲染 5 个场景标记",
       "ok": true,
-      "ms": 9
+      "ms": 198
     },
     {
       "name": "地图显示玩家自己的位置标记",
-      "ok": false,
-      "ms": 12053,
-      "error": "未找到玩家标记（等待 12000ms 超时）"
+      "ok": true,
+      "ms": 6
     },
     {
       "name": "玩家标记为模拟器模式（DEV 模拟器生效）",
-      "ok": false,
-      "ms": 1,
-      "error": "模拟坐标已写入但标记未标记为 simulated，说明真实 GPS 抢占了"
+      "ok": true,
+      "ms": 17
     },
     {
       "name": "地图页不再显示「等待定位」",
       "ok": true,
-      "ms": 2
+      "ms": 12
     },
     {
       "name": "地图页显示雷达任务卡或已进入提示",
       "ok": false,
-      "ms": 1,
-      "error": "地图页没有雷达任务卡或进入提示：\n1\n2\n3\n4\n★\n第一站 · 自由\n1 km\n Leaflet | © OpenStreetMap contributors, Tiles style by HOT\n\n第一站 · 自由\n\n0/5\n🧭\n◎\nOSM\nHOT\nCARTO\n\n正在获取定位……首次定位可能需要几秒钟，请在开阔位置稍候。\n\n第一站 · 自由\n\n⌃\n◎\n地图\n◆\n任务\n▤\n背包"
+      "ms": 5,
+      "error": "地图页没有雷达任务卡或进入提示：\n1\n2\n3\n4\n★\n第一站 · 自由\n100 m\n Leaflet | © OpenStreetMap contributors, Tiles style by HOT\n\n第一站 · 自由\n\n0/5\n🧭\n◎\nOSM\nHOT\nCARTO\n模拟定位中 · 非真实位置\n\n第一站 · 自由\n\n146 m\n⌃\nDEV\nGPS 模拟器\n· 已启用 14.5845, 120.9794\n展开 ▾\n◎\n地图\n◆\n任务\n▤\n背包"
     },
     {
       "name": "远离所有场景时，scene-a 仍为未解锁或待前往",
       "ok": true,
-      "ms": 4052
+      "ms": 5914
     },
     {
       "name": "距 scene-a 半径外（约 120m）不可进入",
-      "ok": false,
-      "ms": 4256,
-      "error": "半径外应显示距离读数，正文：\n任务\n\nLuneta · 看见这座城市 · 0/5 个地点已完成\n\n🔊\n退出\n\n当前目标：第一站 · 自由\n\n0%\n打开地图继续\n1\n\n第一站 · 自由\n\n待前往\n\nSentinel of Freedom · Lapu-Lapu Monument · 奖励：自由\n\n前往第一站：Sentinel of Freedom。到达后，先观察雕像整体，再回答问题。\n\n在地图上查看路线\n🔒\n\n第二站 · 智慧\n\n未解锁\n\nChinese Garden · Rizal Park · 奖励：智慧\n\n完成「第一站 · 自由」后解锁\n\n🔒\n\n第三站 · 人\n\n未解锁\n\nJuan Sumuroy Memorial · 奖励：人\n\n完成「第二站 · 智慧」后解锁\n\n🔒\n\n第四站 · 记得\n\n未解锁\n\nIndependence Flagpole · Rizal Park · 奖励：记得\n\n完成「第三站 · 人"
+      "ok": true,
+      "ms": 5082
     },
     {
       "name": "进入 scene-a 半径后自动解锁（规范 §6 核心闭环）",
-      "ok": false,
-      "ms": 15040,
-      "error": "进入半径后任务列表未显示「已进入任务区域」/「解锁情境」（等待 12000ms 超时）"
+      "ok": true,
+      "ms": 3089
     },
     {
       "name": "进入半径后 scene 页可开始任务",
       "ok": true,
-      "ms": 2038
+      "ms": 2351
     },
     {
       "name": "错误答案不推进进度",
       "ok": true,
-      "ms": 57
+      "ms": 144
     },
     {
       "name": "错误答案不会跳转到奖励页",
@@ -99,28 +95,27 @@
     {
       "name": "正确答案推进并跳转到奖励页",
       "ok": true,
-      "ms": 2395
+      "ms": 2419
     },
     {
       "name": "奖励页展示关键词奖励「自由」",
       "ok": true,
-      "ms": 711
+      "ms": 708
     },
     {
       "name": "完成后 scene-b 被解锁（可在半径内进入）",
-      "ok": false,
-      "ms": 4342,
-      "error": "scene-b 未解锁，正文：\n任务\n\nLuneta · 看见这座城市 · 1/5 个地点已完成\n\n🔊\n退出\n\n当前目标：第二站 · 智慧\n\n20%\n打开地图继续\n✓\n\n第一站 · 自由\n\n✓ 已完成\n\nSentinel of Freedom · Lapu-Lapu Monument · 奖励：自由\n\n重看情境\n奖励\n2\n\n第二站 · 智慧\n\n待前往\n\nChinese Garden · Rizal Park · 奖励：智慧\n\n前往 Chinese Garden。进入花园公共区域后，找一个安全的位置停下来观察 30 秒。\n\n在地图上查看路线\n🔒\n\n第三站 · 人\n\n未解锁\n\nJuan Sumuroy Memorial · 奖励：人\n\n完成「第二站 · 智慧」后解锁\n\n🔒\n\n第四站 · 记得\n\n未解锁\n\nIndependence Flagpole · Rizal Park · 奖励：记得\n\n完成「第三站 · 人」后解锁\n\n🔒\n\n第五站 · 成为祝福\n\n未解锁\n\nDr. Jose Rizal Monument · 奖励：城市行走者\n\n完成「第四站 · 记得」后解锁\n\n◎\n地图\n◆\n任务\n▤\n背包"
+      "ok": true,
+      "ms": 4371
     },
     {
       "name": "刷新页面后进度仍在（规范 §17）",
       "ok": true,
-      "ms": 1256
+      "ms": 1297
     },
     {
       "name": "重新进入已完成位置不重复发奖励",
       "ok": true,
-      "ms": 3822
+      "ms": 3856
     },
     {
       "name": "内容包可从独立路由读取",
@@ -135,7 +130,7 @@
     {
       "name": "相邻场景不会互相落入对方半径",
       "ok": true,
-      "ms": 1
+      "ms": 0
     },
     {
       "name": "场景坐标互不重合",
@@ -150,22 +145,22 @@
     {
       "name": "内容路由拒绝路径穿越",
       "ok": true,
-      "ms": 14
+      "ms": 17
     },
     {
       "name": "不存在的内容包返回 404",
       "ok": true,
-      "ms": 4
+      "ms": 6
     },
     {
       "name": "Service Worker 已注册并接管页面",
       "ok": true,
-      "ms": 793
+      "ms": 806
     },
     {
       "name": "Service Worker 已缓存应用外壳",
       "ok": true,
-      "ms": 3298
+      "ms": 3291
     },
     {
       "name": "Service Worker 已缓存游戏内容包",
@@ -180,27 +175,27 @@
     {
       "name": "360px 下无横向溢出",
       "ok": true,
-      "ms": 6807
+      "ms": 6977
     },
     {
       "name": "390px 下无横向溢出",
       "ok": true,
-      "ms": 6694
+      "ms": 6725
     },
     {
       "name": "430px 下无横向溢出",
       "ok": true,
-      "ms": 6725
+      "ms": 6663
     },
     {
       "name": "底部导航在三主页面可用（规范 §12：地图/任务/背包）",
       "ok": true,
-      "ms": 4934
+      "ms": 5122
     },
     {
       "name": "情境流程页不显示底部导航（保持专注）",
       "ok": true,
-      "ms": 3986
+      "ms": 3993
     },
     {
       "name": "全程无未捕获的 JS 错误",
@@ -209,8 +204,9 @@
     },
     {
       "name": "无 404 资源请求（排除已知探测）",
-      "ok": true,
-      "ms": 1
+      "ok": false,
+      "ms": 0,
+      "error": "控制台报错：\nFailed to load resource: the server responded with a status of 404 (Not Found)"
     }
   ],
   "screenshots": [
